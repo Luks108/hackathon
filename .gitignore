@@ -1,0 +1,12 @@
+# Segredos
+.env
+**/.env
+google-sa.json
+
+# Captura bruta: pode conter dados pessoais publicados pelos portais
+portal/dados/bruto/
+
+# Ambiente
+node_modules/
+.venv/
+__pycache__/

@@ -1,0 +1,153 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Checkpoint 1 — Desafio 1</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@400;600&display=swap">
+<style>*{box-sizing:border-box;margin:0}html{background:#20242c}body{display:flex;flex-direction:column;align-items:center;gap:24px;padding:24px 0}
+.q{width:min(100vw,1920px);overflow:hidden}.s{width:1920px;height:1080px;transform-origin:0 0;position:relative}
+table{border-collapse:collapse;width:100%}th,td{padding:.35em .6em;border-bottom:1px solid #cfccc2;text-align:left}ul,ol{padding-left:1.2em}li{margin-bottom:.25em}</style></head><body>
+<div class="q"><section class="s" id="capa" data-transition="fade" style="background:#14213D;color:#F7F6F1;font-family:'Inter', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between">
+<p style="font-size:32px;font-weight:600;color:#F2A65A;letter-spacing:1px">HACK GARANHUNS TECH · DESAFIO 1</p>
+<div style="display:flex;flex-direction:column;gap:40px">
+<h1 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:120px;font-weight:600;line-height:1.05">Histórico de fornecedor com prova</h1>
+<p style="font-size:44px;line-height:1.3;color:#C9D3E3;width:1400px">Toda resposta aponta para o trecho literal da fonte, e cada perfil vê só o que pode ver.</p>
+</div>
+<p style="font-size:32px;color:#C9D3E3">Checkpoint 1 · Escopo, arquitetura e backlog · 05/11/2026 · Equipe [nome]</p>
+
+</section></div><div class="q"><section class="s" id="problema" data-transition="fade" style="background:#F7F6F1;color:#14213D;font-family:'Inter', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<h2 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1">Problema e hipótese</h2>
+<div style="display:flex;gap:48px;flex:1">
+<div style="flex:1;display:flex;flex-direction:column;gap:32px">
+<p style="font-size:44px;line-height:1.3;font-weight:600">O analista de risco precisa identificar a empresa, juntar telas separadas e provar de onde tirou cada número.</p>
+<div style="background:#14213D;color:#F7F6F1;padding:40px;border-radius:16px;display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:600;color:#F2A65A">HIPÓTESE, A CONFIRMAR COM 3 ESPECIALISTAS</p>
+<p style="font-size:32px;line-height:1.35">O levantamento leva mais de 30 min por fornecedor e cai para minutos, com fonte conferível.</p>
+</div>
+</div>
+<div style="width:640px;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:24px;font-weight:600;color:#9A3F16">O QUE JÁ MEDIMOS NO PORTAL DE GARANHUNS</p>
+<div style="background:#FFFFFF;border:1px solid #DAD8CF;border-radius:16px;padding:28px 32px">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:72px;font-weight:600">756</h3>
+<p style="font-size:24px;color:#4A5568">contratos de 2026 capturados</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DAD8CF;border-radius:16px;padding:28px 32px">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:72px;font-weight:600">29</h3>
+<p style="font-size:24px;color:#4A5568">documentos mascarados ligados a mais de um nome</p>
+</div>
+<div style="background:#FFFFFF;border:1px solid #DAD8CF;border-radius:16px;padding:28px 32px">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:72px;font-weight:600">36%</h3>
+<p style="font-size:24px;color:#4A5568">dos contratos sem código de licitação</p>
+</div>
+</div>
+</div>
+
+</section></div><div class="q"><section class="s" id="escopo" data-transition="fade" style="background:#F7F6F1;color:#14213D;font-family:'Inter', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<h2 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1">Escopo do MVP</h2>
+<div style="display:flex;gap:32px;flex:1">
+<div style="flex:1.25;display:flex;flex-direction:column;gap:20px;background:#14213D;color:#F7F6F1;padding:40px;border-radius:16px">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:44px;font-weight:600;color:#F2A65A">Obrigatório</h3>
+<ul style="font-size:28px;line-height:1.35">
+<li>Captura com hash e proveniência</li>
+<li>Normalização de contrato, licitação e fornecedor</li>
+<li>Dois tenants e dois perfis</li>
+<li>Pergunta em linguagem natural</li>
+<li>Resposta com âncora conferível</li>
+<li>Log de consultas e fontes</li>
+</ul>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFFFF;border:1px solid #DAD8CF;padding:40px;border-radius:16px">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:44px;font-weight:600;color:#9A3F16">Diferencial</h3>
+<ul style="font-size:28px;line-height:1.35">
+<li>Bloqueio entre perfis ao vivo</li>
+<li>3 ataques de prompt barrados</li>
+<li>Pessoa física só por hash</li>
+<li>IA declara o que não coletou</li>
+</ul>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#ECEAE1;padding:40px;border-radius:16px">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:44px;font-weight:600">Fora do MVP</h3>
+<ul style="font-size:28px;line-height:1.35;color:#3D4656">
+<li>Vários estados</li>
+<li>Score de risco do fornecedor</li>
+<li>Leitura dos PDFs anexos</li>
+<li>Conexão com produtos Bernhoeft</li>
+</ul>
+</div>
+</div>
+<p style="font-size:28px;color:#3D4656">Fontes previstas: portal de Garanhuns (capturado) e portal do Estado de PE (a confirmar se é coletável).</p>
+
+</section></div><div class="q"><section class="s" id="arquitetura" data-transition="fade" style="background:#F7F6F1;color:#14213D;font-family:'Inter', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<h2 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1">Arquitetura</h2>
+<div style="display:flex;align-items:stretch;gap:12px">
+<div style="flex:1;background:#FFFFFF;border:1px solid #DAD8CF;border-radius:16px;padding:28px 24px;display:flex;flex-direction:column;gap:12px"><h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:32px;font-weight:600">Portais</h3><p style="font-size:24px;line-height:1.3;color:#4A5568">Páginas e arquivos públicos</p></div>
+<span style="font-size:32px;align-self:center;padding:0 4px">→</span>
+<div style="flex:1;background:#FFFFFF;border:1px solid #DAD8CF;border-radius:16px;padding:28px 24px;display:flex;flex-direction:column;gap:12px"><h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:32px;font-weight:600">Captura</h3><p style="font-size:24px;line-height:1.3;color:#4A5568">Respeita robots e guarda o bruto com hash</p></div>
+<span style="font-size:32px;align-self:center;padding:0 4px">→</span>
+<div style="flex:1;background:#FFFFFF;border:1px solid #DAD8CF;border-radius:16px;padding:28px 24px;display:flex;flex-direction:column;gap:12px"><h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:32px;font-weight:600">Postgres</h3><p style="font-size:24px;line-height:1.3;color:#4A5568">Fatos append-only, sempre com âncora</p></div>
+<span style="font-size:32px;align-self:center;padding:0 4px">→</span>
+<div style="flex:1;background:#14213D;border-radius:16px;padding:28px 24px;display:flex;flex-direction:column;gap:12px;color:#F7F6F1"><h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:32px;font-weight:600;color:#F2A65A">Primitivas</h3><p style="font-size:24px;line-height:1.3">Consultas fixas, com filtro por perfil</p></div>
+<span style="font-size:32px;align-self:center;padding:0 4px">→</span>
+<div style="flex:1;background:#FFFFFF;border:1px solid #DAD8CF;border-radius:16px;padding:28px 24px;display:flex;flex-direction:column;gap:12px"><h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:32px;font-weight:600">Agente</h3><p style="font-size:24px;line-height:1.3;color:#4A5568">Escolhe a primitiva e cita a âncora</p></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:32px;flex:1">
+<div style="display:flex;flex-direction:column;gap:12px;border-top:4px solid #9A3F16;padding:28px 0 0 0">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:32px;font-weight:600">Prova</h3>
+<p style="font-size:28px;line-height:1.35;color:#3D4656">Fato sem âncora não entra no modelo. A resposta abre o trecho literal.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;border-top:4px solid #9A3F16;padding:28px 0 0 0">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:32px;font-weight:600">Acesso</h3>
+<p style="font-size:28px;line-height:1.35;color:#3D4656">O filtro roda antes da LLM. Dado não autorizado nunca chega a ela.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;border-top:4px solid #9A3F16;padding:28px 0 0 0">
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:32px;font-weight:600">Segurança</h3>
+<p style="font-size:28px;line-height:1.35;color:#3D4656">O agente não escreve SQL. Texto do portal é dado, nunca instrução.</p>
+</div>
+</div>
+
+</section></div><div class="q"><section class="s" id="dados" data-transition="fade" style="background:#F7F6F1;color:#14213D;font-family:'Inter', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<h2 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1">Ontologia v1</h2>
+<div style="display:flex;gap:48px;flex:1">
+<div style="width:700px;display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:600;color:#9A3F16">ENTIDADES, CADA FATO COM ÂNCORA</p>
+<div style="background:#14213D;color:#F7F6F1;border-radius:12px;padding:20px 28px"><p style="font-size:28px"><b>Ente</b> → Unidade Jurisdicionada</p></div>
+<div style="background:#FFFFFF;border:1px solid #DAD8CF;border-radius:12px;padding:20px 28px"><p style="font-size:28px"><b>Processo Licitatório</b> → Participação</p></div>
+<div style="background:#FFFFFF;border:1px solid #DAD8CF;border-radius:12px;padding:20px 28px"><p style="font-size:28px"><b>Contrato</b> → Aditivo</p></div>
+<div style="background:#FFFFFF;border:1px solid #DAD8CF;border-radius:12px;padding:20px 28px"><p style="font-size:28px"><b>Fornecedor</b> PJ ou PF</p></div>
+<div style="background:#FFFFFF;border:1px solid #DAD8CF;border-radius:12px;padding:20px 28px"><p style="font-size:28px"><b>Obra</b> → Medição</p></div>
+<div style="background:#ECEAE1;border:2px dashed #6A7179;border-radius:12px;padding:20px 28px"><p style="font-size:28px"><b>Despesa</b> · ligação a confirmar</p></div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:600;color:#9A3F16">REGRAS QUE VIERAM DOS DADOS REAIS</p>
+<table style="font-size:26px;color:#14213D">
+<tr><th style="width:52%">Achado</th><th style="width:48%">Regra</th></tr>
+<tr><td>Número de contrato se repete</td><td>Identidade pelo idc interno</td></tr>
+<tr><td>Documento vem mascarado</td><td>Ligar pelo CNPJ completo</td></tr>
+<tr><td>Grafias diferentes da empresa</td><td>Nome não é identidade</td></tr>
+<tr><td>Estimado, adjudicado e contratado divergem</td><td>Campos distintos, sem somar</td></tr>
+<tr><td>CPF completo na lista de fiscais</td><td>PF guardada só por hash</td></tr>
+</table>
+</div>
+</div>
+
+</section></div><div class="q"><section class="s" id="backlog" data-transition="fade" style="background:#F7F6F1;color:#14213D;font-family:'Inter', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<h2 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1">Backlog até o code freeze</h2>
+<table style="font-size:28px;color:#14213D">
+<tr><th style="width:22%">Quando</th><th style="width:58%">Entrega</th><th style="width:20%">Frente</th></tr>
+<tr><td>Hoje, até 19h</td><td>Repositório, pagamento × contrato, portal estadual</td><td>Dados · [nome]</td></tr>
+<tr><td>Hoje, 19h50–21h30</td><td>Ontologia, carga de contratos e 1ª resposta com âncora</td><td>Dados e agente · [nome]</td></tr>
+<tr><td>Noite, se houver fôlego</td><td>2º tenant, dois perfis e log de consultas</td><td>Acesso · [nome]</td></tr>
+<tr><td>Amanhã, 9h40–11h</td><td>Testes de acesso e de injeção, interface, README</td><td>Acesso e interface · [nome]</td></tr>
+<tr><td>Amanhã, 11h–12h</td><td>Ensaio, slides, riscos e limitações, envio</td><td>Pitch · [nome]</td></tr>
+</table>
+<p style="font-size:28px;color:#3D4656">Critério de pronto: uma pergunta real, resposta conferível, outro perfil bloqueado e tudo no log.</p>
+
+</section></div><div class="q"><section class="s" id="perguntas" data-transition="fade" style="background:#14213D;color:#F7F6F1;font-family:'Inter', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:48px">
+<h2 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:72px;font-weight:600;line-height:1.1;color:#F2A65A">O que precisamos do mentor</h2>
+<ol style="font-size:36px;line-height:1.4">
+<li>Portal municipal conta, ou o estadual é obrigatório?</li>
+<li>Onde o analista perde mais tempo: achar, confirmar a empresa ou documentar a fonte?</li>
+<li>Os fornecedores dos clientes aparecem nesses portais?</li>
+<li>Que decisão a resposta alimenta: homologar, bloquear ou renovar?</li>
+<li>Qual erro é inaceitável: sem fonte, vazamento ou dado desatualizado?</li>
+<li>O “Obrigatório (até 19h)” do slide 44 vale para hoje?</li>
+</ol>
+
+</section></div>
+<script>function a(){var k=Math.min(innerWidth,1920)/1920;document.querySelectorAll('.q').forEach(function(q){q.style.height=1080*k+'px';q.firstElementChild.style.transform='scale('+k+')'})}addEventListener('resize',a);a()</script></body></html>
