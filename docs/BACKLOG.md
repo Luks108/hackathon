@@ -22,7 +22,7 @@ Code freeze: **06/11/2026, 12h**. O que ficar de fora entra como próximo passo 
 
 ## Amanhã, 9h40–11h
 - [ ] Testar acesso entre perfis e ataques de prompt
-- [ ] Construir site e chat: ver [TAREFAS-SITE.md](TAREFAS-SITE.md)
+- [ ] Construir site e chat: ver [tasks](specs/001-site-e-chat/tasks.md)
 - [ ] Completar o README com as instruções de execução
 
 ## Amanhã, 11h–12h

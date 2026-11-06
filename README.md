@@ -6,7 +6,7 @@ Consulta em linguagem natural a dados públicos de contratação. Toda resposta 
 da fonte, e cada perfil vê só o que está autorizado a ver.
 
 > **Estado:** extração, Neo4j, consultas do agente e bot de WhatsApp existem. O site com chat em tempo real está em construção.
-> Veja [as tarefas do site](docs/TAREFAS-SITE.md).
+> Veja a [spec](docs/specs/001-site-e-chat/spec.md), o [plano técnico](docs/specs/001-site-e-chat/plan.md) e as [tasks](docs/specs/001-site-e-chat/tasks.md).
 
 ## Estrutura
 
@@ -60,7 +60,7 @@ minutos, com fonte conferível. Saberemos que é verdade se 3 especialistas conf
 ## Arquitetura
 
 ```text
-Site ── WebSocket ──> Servidor de chat ─┐
+Site ── fila ──> Worker no notebook ────┐
 WhatsApp ──> Gateway ──> Sessão ────────┴─> Agente ─> Consultas com perfil ─> Neo4j <─ Extração <─ Portais
 ```
 
@@ -94,6 +94,6 @@ Regras tiradas da captura real:
 
 ## Documentos
 
-- [Tarefas do site](docs/TAREFAS-SITE.md)
+- [Spec do site e do chat](docs/specs/001-site-e-chat/spec.md)
 - [Backlog](docs/BACKLOG.md)
 - [Apresentação do Checkpoint 1](docs/apresentacao/checkpoint-1.html): baixe o arquivo e abra no navegador.
