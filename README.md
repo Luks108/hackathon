@@ -162,7 +162,12 @@ python -m unittest discover -s consulta/testes -v                     # 43 teste
 
 ```bash
 .venv/bin/python coleta/extrair.py
-.venv/bin/python coleta/amostra.py
+.venv/bin/python coleta/estado.py contratos 2024     # intervalo de 10 s entre pedidos
+.venv/bin/python coleta/estado.py medir
+.venv/bin/python coleta/amostra.py                   # gera dados/amostra/cnpjs.txt
+.venv/bin/python coleta/estado.py execucao 2024 dados/amostra/cnpjs.txt
+.venv/bin/python coleta/estado.py execucao 2025 dados/amostra/cnpjs.txt
+.venv/bin/python coleta/extrair.py && .venv/bin/python coleta/amostra.py
 .venv/bin/python coleta/carregar_neo4j.py --zerar --amostra
 ```
 
@@ -261,8 +266,9 @@ Regras tiradas da captura real:
 
 ## Premissas, limitações e riscos
 
-- O desafio pede portal **estadual**. Até agora capturamos o municipal de Garanhuns; o portal de PE ainda será avaliado.
-- A captura cobre contratos, licitações, diárias, obras e legislação. Pagamentos a fornecedores ainda não foram coletados.
+- O desafio pede portal **estadual**. A base foca o Estado de Pernambuco: 2.047 contratos de 2024 estruturados, 25.947 medidos de 2019 a 2024, e uma amostra de 100 contratos no grafo (70 do Estado, 30 de Garanhuns).
+- Contratos do Estado desde 2025 estão no PE Integrado, protegido por reCAPTCHA. Não contornamos.
+- A execução financeira é agregada por fornecedor, órgão e ano, só para os CNPJs da amostra. Não diz quanto foi pago de um contrato.
 - Dado público não é automaticamente livre de LGPD. Dados brutos não são versionados.
 - A coleta respeita `robots.txt`, não forja identidade e não contorna bloqueios.
 - A tese de valor segue como hipótese até a validação com especialistas.
@@ -279,8 +285,8 @@ O que **não** está resolvido, para ninguém se surpreender na hora da demonstr
    [`docs/seguranca/ataques-de-prompt.md`](docs/seguranca/ataques-de-prompt.md#roteiro-de-teste-com-o-agente-real).
 3. **WhatsApp sem isolamento.** A sessão roda dentro do projeto, com ferramentas além das do `transparencia` (AP-07), e o plano
    de perfil por número tem corrida entre remetentes simultâneos (AP-18). Para a demonstração: um número por perfil, um de cada vez.
-4. **Portal estadual.** Só o CSV de sanções de PE entrou. A coleta dos painéis do Estado não foi testada (L02).
-5. **Pagamentos** não foram coletados, e a ligação com o contrato não foi confirmada (L03).
+4. **Portal estadual.** Painel de contratos de 2024 e execução da amostra coletados. Licitações do Estado têm só o número do processo, sem modalidade nem valores.
+5. **Pagamento individual.** A consulta de ordens bancárias devolveu 0 linhas, e a ligação com o contrato segue sem confirmação (L03).
 6. **Site em PHP: deploy e dispositivos reais.** As falhas que existiam no modelo antigo foram corrigidas (rota `PATCH` sem
    permissão removida; CSRF; limite de tentativas de login; login em tempo constante; `deploy.sh` com valores escapados). Falta
    publicar na Hostinger e testar lá, e testar em celular de verdade. Também faltam a página "Sobre nós" (A13, sem fotos nem textos) e
