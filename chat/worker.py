@@ -97,7 +97,10 @@ class Lote:
                 continue
             if status == 409:      # o site encerrou a pergunta por tempo
                 self.encerrada = True
-            break
+            if status < 500:       # erro do servidor é passageiro: repetir um seq é seguro
+                break
+            registrar("eventos: API respondeu", status)
+            time.sleep(1 + tentativa)
         self.fila, self.ultimo = [], time.monotonic()
 
 
