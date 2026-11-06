@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Assistente | Histórico de fornecedor com prova</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+
+<header class="topo">
+  <div class="miolo">
+    <a class="marca" href="/">Histórico de fornecedor <span>com prova</span></a>
+    <div class="topo-acoes" id="topo-acoes" hidden>
+      <span class="quem" id="quem"></span>
+      <button type="button" class="link-botao" id="sair">Sair</button>
+    </div>
+  </div>
+</header>
+
+<main class="miolo" id="conteudo">
+
+  <!-- Carregando -->
+  <section id="tela-carregando" aria-live="polite">
+    <p class="apoio">Carregando…</p>
+  </section>
+
+  <!-- Entrar ou criar conta -->
+  <section id="tela-entrar" class="estreito" hidden aria-labelledby="t-entrar">
+    <h1 id="t-entrar" class="vh">Entrar ou criar conta</h1>
+    <div class="cartao">
+      <div class="abas" role="tablist" aria-label="Acesso">
+        <button type="button" role="tab" id="aba-entrar" aria-selected="true" aria-controls="form-entrar">Entrar</button>
+        <button type="button" role="tab" id="aba-cadastro" aria-selected="false" aria-controls="form-cadastro">Criar conta</button>
+      </div>
+
+      <form id="form-entrar" role="tabpanel" aria-labelledby="aba-entrar" novalidate>
+        <p class="aviso-erro" id="erro-entrar" role="alert" hidden></p>
+        <div class="campo"><label for="entrar-email">E-mail</label><input id="entrar-email" type="email" autocomplete="email" required></div>
+        <div class="campo"><label for="entrar-senha">Senha</label><input id="entrar-senha" type="password" autocomplete="current-password" required></div>
+        <button class="botao cheio" type="submit">Entrar</button>
+      </form>
+
+      <form id="form-cadastro" role="tabpanel" aria-labelledby="aba-cadastro" novalidate hidden>
+        <p class="aviso-erro" id="erro-cadastro" role="alert" hidden></p>
+        <div class="campo"><label for="cad-nome">Nome</label><input id="cad-nome" type="text" autocomplete="name" maxlength="120" required></div>
+        <div class="campo"><label for="cad-email">E-mail</label><input id="cad-email" type="email" autocomplete="email" maxlength="190" required></div>
+        <div class="campo">
+          <label for="cad-senha">Senha</label>
+          <input id="cad-senha" type="password" autocomplete="new-password" minlength="8" maxlength="72" required aria-describedby="cad-senha-dica">
+          <small id="cad-senha-dica">Pelo menos 8 caracteres.</small>
+        </div>
+        <button class="botao cheio" type="submit">Criar conta</button>
+      </form>
+    </div>
+    <p class="apoio" style="margin-top:14px">Demonstração com dados fictícios. Não pedimos cartão nem cobramos nada.</p>
+  </section>
+
+  <!-- Escolher plano -->
+  <section id="tela-plano" hidden aria-labelledby="t-plano">
+    <h1 id="t-plano">Escolha um plano para começar</h1>
+    <p class="apoio" style="margin-top:8px">O plano define de quais entes o assistente pode consultar. Você pode trocar depois.</p>
+    <p class="aviso-erro" id="erro-plano" role="alert" hidden></p>
+    <div class="planos" id="lista-planos"></div>
+    <p class="apoio">Valores de demonstração, ainda não validados. Ativar um plano não pede pagamento nem cartão.</p>
+  </section>
+
+  <!-- Chat -->
+  <section id="tela-chat" class="chat" hidden aria-label="Conversa com o assistente">
+    <div class="conversa" id="conversa" role="log" aria-live="polite" aria-label="Conversa"></div>
+    <div class="rodape-chat"><span id="plano-info"></span><output id="contador" for="pergunta">0/500</output></div>
+    <form class="entrada" id="form-pergunta" autocomplete="off">
+      <label class="vh" for="pergunta">Sua pergunta, até 500 caracteres</label>
+      <textarea id="pergunta" rows="1" maxlength="500" placeholder="Escreva sua pergunta" enterkeyhint="send"></textarea>
+      <button class="enviar" id="enviar" type="submit" aria-label="Enviar pergunta">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </form>
+  </section>
+
+</main>
+
+<script src="assets/api.js"></script>
+<script src="assets/chat.js"></script>
+</body>
+</html>

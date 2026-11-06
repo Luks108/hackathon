@@ -1,6 +1,0 @@
-# Uploads são só imagens: nada aqui executa como script.
-php_flag engine off
-RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .phar
-<FilesMatch "\.(php|phtml|phar)$">
-  Require all denied
-</FilesMatch>
