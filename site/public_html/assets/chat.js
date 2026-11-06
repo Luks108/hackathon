@@ -77,6 +77,34 @@
     return true
   }
 
+  // ---------- plano no chat ----------
+  function mostrarPlanoAtual() {
+    $('#plano-info').textContent = 'Consulta: ' + estado.plano.tenants.map(nomeDoEnte).join(' e ')
+  }
+
+  // Demonstração: troca o plano pela mesma rota da assinatura, e o servidor continua decidindo o que cada plano vê.
+  async function montarSeletor() {
+    const caixa = $('#seletor-plano')
+    let planos
+    try { planos = await Api.planos() } catch { return }
+    const desenhar = () => caixa.replaceChildren(...planos.map(p => {
+      const b = el('button', '', p.nome)
+      b.type = 'button'
+      b.setAttribute('aria-pressed', String(p.nome === estado.plano.nome))
+      b.addEventListener('click', async () => {
+        if (estado.acompanhando || p.nome === estado.plano.nome) return
+        b.disabled = true
+        try {
+          estado.plano = (await Api.ativarPlano(p.id)).plano
+          mostrarPlanoAtual()
+          desenhar()
+        } catch { b.disabled = false }
+      })
+      return b
+    }))
+    desenhar()
+  }
+
   // ---------- entrar e criar conta ----------
   function trocarAba(qual) {
     const entrar = qual === 'entrar'
@@ -165,7 +193,8 @@
 
   async function abrirChat() {
     tela('chat')
-    $('#plano-info').textContent = 'Consulta: ' + estado.plano.tenants.map(nomeDoEnte).join(' e ')
+    mostrarPlanoAtual()
+    montarSeletor()
     travarEntrada(false)
     boasVindas()
     atualizarContador()

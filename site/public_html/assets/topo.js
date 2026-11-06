@@ -8,9 +8,9 @@
     topo.replaceChildren()
     const miolo = el('div', 'miolo')
 
-    const marca = el('a', 'marca', 'Histórico de fornecedor ')
+    const marca = el('a', 'marca', 'Fornex')
     marca.href = '/'
-    marca.append(el('span', '', 'com prova'))
+    marca.append(el('span', '', 'IA'))
 
     const links = el('nav', 'topo-links')
     links.setAttribute('aria-label', 'Páginas')

@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<title>Assistente | Histórico de fornecedor com prova</title>
+<meta name="color-scheme" content="light">
+<title>Assistente | FornexIA</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="icone.svg" type="image/svg+xml">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
 
 <header class="topo">
   <div class="miolo">
-    <a class="marca" href="/">Histórico de fornecedor <span>com prova</span></a>
+    <a class="marca" href="/">Fornex<span>IA</span></a>
     <div class="topo-acoes" id="topo-acoes" hidden>
       <a class="link-topo" href="conta.html" target="_top">Minha conta</a>
       <a class="link-topo" href="admin.html" id="link-admin" target="_top" hidden>Administração</a>
@@ -74,7 +74,7 @@
   <!-- Chat -->
   <section id="tela-chat" class="chat" hidden aria-label="Conversa com o assistente">
     <div class="conversa" id="conversa" role="log" aria-live="polite" aria-label="Conversa"></div>
-    <div class="rodape-chat"><span id="plano-info"></span><output id="contador" for="pergunta">0/500</output></div>
+    <div class="rodape-chat"><span id="plano-info"></span><span class="seletor-plano" id="seletor-plano" role="group" aria-label="Trocar o plano de demonstração"></span><output id="contador" for="pergunta">0/500</output></div>
     <form class="entrada" id="form-pergunta" autocomplete="off">
       <label class="vh" for="pergunta">Sua pergunta, até 500 caracteres</label>
       <textarea id="pergunta" rows="1" maxlength="500" placeholder="Escreva sua pergunta" enterkeyhint="send"></textarea>

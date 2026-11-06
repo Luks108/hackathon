@@ -1,9 +1,9 @@
 {
-  "name": "Hackathon",
-  "short_name": "Hackathon",
+  "name": "FornexIA",
+  "short_name": "FornexIA",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f1216",
-  "theme_color": "#0f766e",
+  "background_color": "#0b2545",
+  "theme_color": "#0b2545",
   "icons": [{ "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
 }
