@@ -11,7 +11,7 @@ from pathlib import Path
 from neo4j import GraphDatabase
 
 RAIZ = Path(__file__).resolve().parents[1]
-for linha in (RAIZ / ".env").read_text().splitlines():
+for linha in (RAIZ / ".env").read_text(encoding="utf-8").splitlines():
     if "=" in linha:
         k, v = linha.split("=", 1)
         os.environ.setdefault(k, v)
@@ -103,14 +103,14 @@ def main() -> int:
     with driver.session() as s:
         if "--zerar" in sys.argv:
             s.run("MATCH (n) CALL (n) { DETACH DELETE n } IN TRANSACTIONS OF 1000 ROWS").consume()
-        for comando in (RAIZ / "esquema/neo4j.cypher").read_text().split(";"):
+        for comando in (RAIZ / "esquema/neo4j.cypher").read_text(encoding="utf-8").split(";"):
             comando = "\n".join(l for l in comando.splitlines() if not l.strip().startswith("//")).strip()
             if comando:
                 s.run(comando).consume()
         s.run("UNWIND $linhas AS l MERGE (e:Ente {id: l.id}) SET e += l", linhas=ENTES).consume()
 
         for nome, consulta in CARGAS:
-            itens = [json.loads(l) for l in (DADOS / f"{nome}.jsonl").read_text().splitlines()]
+            itens = [json.loads(l) for l in (DADOS / f"{nome}.jsonl").read_text(encoding="utf-8").splitlines()]
             for lote in lotes(itens, LOTE):
                 for item in lote:
                     item["props"] = {k: v for k, v in item.items() if k not in LIGACOES}

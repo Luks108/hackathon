@@ -11,7 +11,7 @@ SAIDA = DADOS / "amostra"
 
 
 def ler(nome: str) -> list[dict]:
-    return [json.loads(l) for l in (DADOS / f"{nome}.jsonl").read_text().splitlines()]
+    return [json.loads(l) for l in (DADOS / f"{nome}.jsonl").read_text(encoding="utf-8").splitlines()]
 
 
 def main() -> None:

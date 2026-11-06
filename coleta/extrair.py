@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
-for linha in (RAIZ / ".env").read_text().splitlines():
+for linha in (RAIZ / ".env").read_text(encoding="utf-8").splitlines():
     if "=" in linha:
         k, v = linha.split("=", 1)
         os.environ.setdefault(k, v)
