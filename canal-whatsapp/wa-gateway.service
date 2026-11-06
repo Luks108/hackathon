@@ -1,0 +1,12 @@
+[Unit]
+Description=Gateway WhatsApp do hackathon (Baileys, dono unico da conexao)
+After=network-online.target
+
+[Service]
+WorkingDirectory=/home/luks108/Documentos/Lucas/Hackathon/canal-whatsapp
+ExecStart=/home/luks108/.bun/bin/bun gateway.ts
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

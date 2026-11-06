@@ -5,8 +5,32 @@ Projeto do **Desafio 1 — Portal Inteligente de Transparência com IA** do Hack
 Consulta em linguagem natural a dados públicos de contratação. Toda resposta aponta para o trecho literal
 da fonte, e cada perfil vê só o que está autorizado a ver.
 
-> **Estado:** planejamento (Checkpoint 1, 05/11/2026). Este repositório ainda não tem código executável.
-> As instruções de execução entram aqui junto com o MVP.
+> **Estado:** extração, Neo4j, consultas do agente e bot de WhatsApp existem. O site com chat em tempo real está em construção.
+> Veja [as tarefas do site](docs/TAREFAS-SITE.md).
+
+## Estrutura
+
+| Pasta | O quê |
+|---|---|
+| `coleta/` | Extrai fatos com evidência da captura bruta e carrega no Neo4j |
+| `consulta/` | Servidor MCP `transparencia` e página do grafo |
+| `esquema/`, `infra/` | Restrições do grafo e Docker Compose local |
+| `canal-whatsapp/` | Gateway Baileys, canal MCP e controle de acesso |
+| `site/` | Site PHP + MySQL na Hostinger |
+| `inferencia/`, `planilha/` | Ferramentas de visão, áudio e planilha |
+| `docs/` | Backlog, tarefas e apresentação |
+
+## Como rodar os dados
+
+Crie um `.env` na raiz com `NEO4J_SENHA`, `CHAVE_PF`, `NEO4J_URI=bolt://127.0.0.1:7689` e `BRUTO` apontando para a captura. A captura bruta não é versionada, porque pode conter dados pessoais.
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+docker compose --env-file .env -f infra/docker-compose.yml up -d neo4j
+.venv/bin/python coleta/extrair.py
+.venv/bin/python coleta/amostra.py
+.venv/bin/python coleta/carregar_neo4j.py --zerar --amostra
+```
 
 ## Problema
 
@@ -36,16 +60,13 @@ minutos, com fonte conferível. Saberemos que é verdade se 3 especialistas conf
 ## Arquitetura
 
 ```text
-Portais → Captura → Postgres → Primitivas → Agente
-          bruto      fatos      consultas    escolhe a primitiva
-          com hash   com        fixas, com   e cita a âncora
-                     âncora     filtro por
-                                perfil
+Site ── WebSocket ──> Servidor de chat ─┐
+WhatsApp ──> Gateway ──> Sessão ────────┴─> Agente ─> Consultas com perfil ─> Neo4j <─ Extração <─ Portais
 ```
 
 - **Prova:** fato sem âncora não entra no modelo. A resposta abre o trecho literal.
 - **Acesso:** o filtro roda antes da LLM. Dado não autorizado nunca chega a ela.
-- **Segurança:** o agente não escreve SQL, e o texto do portal é tratado como dado, nunca como instrução.
+- **Segurança:** o agente não escreve consultas, e o texto do portal é tratado como dado, nunca como instrução.
 
 ## Ontologia v1
 
@@ -73,5 +94,6 @@ Regras tiradas da captura real:
 
 ## Documentos
 
+- [Tarefas do site](docs/TAREFAS-SITE.md)
 - [Backlog](docs/BACKLOG.md)
 - [Apresentação do Checkpoint 1](docs/apresentacao/checkpoint-1.html): baixe o arquivo e abra no navegador.

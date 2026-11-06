@@ -1,0 +1,51 @@
+# Ambiente local. Postgres é a fonte da verdade; Neo4j é projeção reconstruível.
+#
+#   Subir:  docker compose --env-file .env -f infra/docker-compose.yml up -d neo4j
+#   Parar:  docker compose --env-file .env -f infra/docker-compose.yml stop
+#
+# Portas deslocadas de propósito: 7474/7687 já estão em uso nesta máquina.
+
+name: hackathon-transparencia
+
+services:
+  neo4j:
+    image: neo4j:5.26.0-community
+    container_name: hackathon-neo4j
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_SENHA:?defina NEO4J_SENHA no .env}
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+      NEO4J_server_memory_pagecache_size: 256m
+      NEO4J_db_tx__log_rotation_retention__policy: "100M size"
+    ports:
+      - "127.0.0.1:7476:7474"
+      - "127.0.0.1:7689:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: hackathon-postgres
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_USER: transparencia
+      POSTGRES_PASSWORD: ${NEO4J_SENHA:?defina NEO4J_SENHA no .env}
+      POSTGRES_DB: transparencia
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  postgres_data:

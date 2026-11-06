@@ -8,12 +8,13 @@ Code freeze: **06/11/2026, 12h**. O que ficar de fora entra como próximo passo 
 - [x] Capturar o portal de Garanhuns com hash
 - [x] Criar o repositório
 - [ ] Verificar se pagamento se liga a contrato
-- [ ] Verificar se o portal do Estado de PE é coletável
+- [x] Ler os painéis do portal do Estado de PE; coleta ainda não testada
 
 ## Hoje, 19h50–21h30
-- [ ] Implementar a ontologia v1
-- [ ] Carregar contratos, licitações e fornecedores
-- [ ] Responder a primeira pergunta com âncora
+- [x] Implementar a ontologia v1
+- [x] Carregar amostra de 10 contratos no Neo4j
+- [x] Criar as consultas com filtro de perfil
+- [ ] Validar a primeira resposta com âncora pelo WhatsApp
 
 ## Noite, se houver fôlego
 - [ ] Criar o segundo tenant e os dois perfis
@@ -21,7 +22,7 @@ Code freeze: **06/11/2026, 12h**. O que ficar de fora entra como próximo passo 
 
 ## Amanhã, 9h40–11h
 - [ ] Testar acesso entre perfis e ataques de prompt
-- [ ] Fazer a interface da demo
+- [ ] Construir site e chat: ver [TAREFAS-SITE.md](TAREFAS-SITE.md)
 - [ ] Completar o README com as instruções de execução
 
 ## Amanhã, 11h–12h

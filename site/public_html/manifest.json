@@ -1,0 +1,9 @@
+{
+  "name": "Hackathon",
+  "short_name": "Hackathon",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1216",
+  "theme_color": "#0f766e",
+  "icons": [{ "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

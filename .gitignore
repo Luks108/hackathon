@@ -10,3 +10,14 @@ portal/dados/bruto/
 node_modules/
 .venv/
 __pycache__/
+
+# Dados derivados da captura: podem conter dados pessoais
+dados/
+
+# Mídia real de teste (voz, cupom com dados pessoais)
+testes/
+
+# Arquivos gerados pelo site no servidor
+hackathon-config.php
+site/public_html/uploads/*
+!site/public_html/uploads/.htaccess

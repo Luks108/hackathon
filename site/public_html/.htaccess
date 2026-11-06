@@ -1,0 +1,10 @@
+RewriteEngine On
+
+# Força HTTPS
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Tudo em /api/* vai para o roteador
+RewriteRule ^api(/.*)?$ api/index.php [L,QSA]
+
+Options -Indexes
