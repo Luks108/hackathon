@@ -130,7 +130,7 @@ details.fonte .meta a { color: var(--verde); }
 .link-topo { color: var(--heroi-2); text-decoration: none; font: 500 14px var(--texto); padding: 6px 8px; border-radius: 4px; white-space: nowrap; }
 .link-topo:hover { color: var(--heroi-texto); background: var(--heroi-regra); }
 @media (max-width: 640px) { .link-topo { padding: 6px 4px; font-size: 13px; } }
-html.embutido .link-topo { display: none; }
+html.embutido .topo-links { display: none; }
 .topo-links { display: flex; gap: 4px; }
 .topo-links a { color: var(--heroi-2); text-decoration: none; font: 500 15px var(--texto); padding: 8px 12px; border-radius: 4px; }
 .topo-links a:hover { color: var(--heroi-texto); background: var(--heroi-regra); }

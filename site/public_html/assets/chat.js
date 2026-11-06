@@ -44,6 +44,7 @@
     for (const t of ['carregando', 'entrar', 'plano', 'chat']) mostrar('#tela-' + t, t === nome)
     document.body.classList.toggle('modo-chat', nome === 'chat')
     mostrar('#topo-acoes', !!estado.usuario)
+    mostrar('#topo-links', !!estado.usuario)
     $('#link-admin').hidden = !(estado.usuario && estado.usuario.papel === 'admin')
     if (estado.usuario) $('#quem').textContent = estado.usuario.nome + (ESCOLHER_PLANO && estado.plano ? ' · plano ' + estado.plano.nome : '')
   }

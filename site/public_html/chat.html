@@ -8,17 +8,20 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="icone.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="assets/site.css?v=20261106b">
+<link rel="stylesheet" href="assets/site.css?v=20261106c">
 </head>
 <body>
 
 <header class="topo">
   <div class="miolo">
     <a class="marca" href="/">Fornex<span>IA</span></a>
+    <nav class="topo-links" id="topo-links" aria-label="Páginas" hidden>
+      <a href="chat.html" target="_top" aria-current="page">Assistente</a>
+      <a href="tecnico.html" target="_top">Área técnica</a>
+      <a href="conta.html" target="_top">Minha conta</a>
+      <a href="admin.html" id="link-admin" target="_top" hidden>Administração</a>
+    </nav>
     <div class="topo-acoes" id="topo-acoes" hidden>
-      <a class="link-topo" href="tecnico.html" target="_top">Área técnica</a>
-      <a class="link-topo" href="conta.html" target="_top">Minha conta</a>
-      <a class="link-topo" href="admin.html" id="link-admin" target="_top" hidden>Administração</a>
       <span class="quem" id="quem"></span>
       <button type="button" class="link-botao" id="sair">Sair</button>
     </div>
@@ -87,7 +90,7 @@
 
 </main>
 
-<script src="assets/api.js?v=20261106b"></script>
-<script src="assets/chat.js?v=20261106b"></script>
+<script src="assets/api.js?v=20261106c"></script>
+<script src="assets/chat.js?v=20261106c"></script>
 </body>
 </html>
