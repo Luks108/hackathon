@@ -87,6 +87,22 @@ CARGAS = [
         WITH s, l
         MATCH (t:Ente {id: l.tenant})
         MERGE (s)-[:DO_ENTE]->(t)"""),
+    ("execucoes", """
+        UNWIND $linhas AS l
+        MERGE (x:ExecucaoFinanceira {id: l.id})
+        SET x += l.props
+        WITH x, l
+        OPTIONAL MATCH (u:UnidadeJurisdicionada {id: l.uj})
+        FOREACH (_ IN CASE WHEN u IS NULL THEN [] ELSE [1] END | MERGE (x)-[:EXECUTADA_POR]->(u))
+        WITH x, l
+        MATCH (t:Ente {id: l.tenant})
+        MERGE (x)-[:DO_ENTE]->(t)
+        WITH x, l
+        MATCH (f:Fornecedor {id: l.fornecedor})
+        MERGE (f)-[:TEM_EXECUCAO]->(x)
+        WITH x, l
+        MATCH (e:Evidencia {id: l.evidencia})
+        MERGE (x)-[:PROVADO_POR]->(e)"""),
 ]
 
 # Campos que viram relação não ficam repetidos como propriedade do nó.
@@ -110,7 +126,10 @@ def main() -> int:
         s.run("UNWIND $linhas AS l MERGE (e:Ente {id: l.id}) SET e += l", linhas=ENTES).consume()
 
         for nome, consulta in CARGAS:
-            itens = [json.loads(l) for l in (DADOS / f"{nome}.jsonl").read_text(encoding="utf-8").splitlines()]
+            caminho = DADOS / f"{nome}.jsonl"
+            if not caminho.exists():    # as fixtures não trazem execução financeira
+                continue
+            itens = [json.loads(l) for l in caminho.read_text(encoding="utf-8").splitlines()]
             for lote in lotes(itens, LOTE):
                 for item in lote:
                     item["props"] = {k: v for k, v in item.items() if k not in LIGACOES}
