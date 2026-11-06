@@ -100,6 +100,11 @@ class Leitor:
 
     def ler(self, bruto: dict) -> list[tuple[str, dict]]:
         tipo = bruto.get("type")
+        if tipo == "system" and bruto.get("subtype") == "init":
+            extras = [t for t in bruto.get("tools") or [] if t.replace(PREFIXO, "") not in PRIMITIVAS]
+            if extras:      # trava: tool fora da lista encerra a resposta antes de o modelo agir
+                raise RuntimeError(f"agente com tools não autorizadas: {extras}")
+            return []
         if tipo == "stream_event":
             return self._fluxo(bruto.get("event") or {})
         if tipo == "assistant":
@@ -168,6 +173,7 @@ def perguntar(texto: str, tenants: list[str], historico: list[tuple[str, str]] |
                 "--mcp-config", cfg.name, "--strict-mcp-config",
                 "--setting-sources", "",
                 "--system-prompt", REGRAS,
+                "--tools", "",     # sem isto, o modelo herda Artifacts, agendamentos e outras tools da conta
                 "--allowedTools", ",".join(PREFIXO + p for p in PRIMITIVAS),
                 "--disallowedTools", PROIBIDAS,
                 "--output-format", "stream-json", "--include-partial-messages", "--verbose",
