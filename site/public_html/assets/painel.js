@@ -95,8 +95,13 @@
   const NOMES = { Contrato: 'Contrato', Fornecedor: 'Fornecedor', Sancao: 'Sanção', ProcessoLicitatorio: 'Processo',
     UnidadeJurisdicionada: 'Unidade', Ente: 'Ente público', Evidencia: 'Evidência' }
   const RAIOS = { Ente: 15, Fornecedor: 11, Contrato: 9, ProcessoLicitatorio: 8, UnidadeJurisdicionada: 8, Sancao: 6, Evidencia: 4 }
-  const VERBOS = { CONTRATA: 'contrata', DECORRE_DE: 'decorre de', CELEBRADO_POR: 'celebrado por', PERTENCE_A: 'pertence a',
-    RECEBEU: 'recebeu', DO_ENTE: 'do ente', APARECE_EM: 'aparece em', PROVADO_POR: 'provado por' }
+  const PLURAIS = { Contrato: 'Contratos', Fornecedor: 'Fornecedores', Sancao: 'Sanções', ProcessoLicitatorio: 'Processos',
+    UnidadeJurisdicionada: 'Unidades', Ente: 'Entes públicos', Evidencia: 'Evidências' }
+  const dataBR = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? `${m[3]}/${m[2]}/${m[1]}` : '' }
+  // Várias ocorrências têm o mesmo tipo: a situação e a data dizem qual é qual.
+  const rotuloDe = n => n.t === 'Sancao'
+    ? [n.r, n.p.situacao === 'EM ABERTO' ? 'em aberto' : 'liberada', dataBR(n.p.publicada_em)].filter(Boolean).join(' · ')
+    : n.r
   const brl = v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   function campos(n) {
@@ -211,15 +216,25 @@
         a.href = n.p.url; a.target = '_blank'; a.rel = 'noopener noreferrer'
         d.append(a)
       }
-      const vistos = new Set()
+      // Ligações agrupadas por tipo do outro ponto, cada uma com um rótulo que a distingue.
+      const grupos = new Map()
       for (const e of arestas) {
         const outro = e.a === n ? e.b : e.b === n ? e.a : null
-        if (!outro || vistos.has(outro.id + e.rel)) continue
-        vistos.add(outro.id + e.rel)
-        const b = el('button', 'botao vazado pequeno', `${VERBOS[e.rel] || e.rel}: ${outro.r}`)
-        b.type = 'button'
-        b.addEventListener('click', () => { if (!visiveis[outro.t]) ligar(outro.t, true); detalhar(outro) })
-        d.append(b)
+        if (!outro) continue
+        if (!grupos.has(outro.t)) grupos.set(outro.t, new Map())
+        grupos.get(outro.t).set(outro.id, outro)
+      }
+      for (const [tipo, itens] of grupos) {
+        const caixa = el('details', 'grupo-grafo')
+        caixa.open = itens.size <= 5
+        caixa.append(el('summary', '', `${PLURAIS[tipo]} (${itens.size})`))
+        for (const outro of [...itens.values()].sort((a, b) => rotuloDe(a).localeCompare(rotuloDe(b), 'pt-BR'))) {
+          const b = el('button', 'item-grafo', rotuloDe(outro))
+          b.type = 'button'
+          b.addEventListener('click', () => { if (!visiveis[outro.t]) ligar(outro.t, true); detalhar(outro) })
+          caixa.append(b)
+        }
+        d.append(caixa)
       }
     }
     function ligar(tipo, valor) {
