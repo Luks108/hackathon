@@ -35,7 +35,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 76px; }
 .moldura { position: relative; border: 2px solid var(--marinho); border-radius: 30px; padding: 12px; }
 .moldura::before { content: ""; position: absolute; width: 62px; height: 62px; right: -20px; top: -20px; border: 4px solid var(--verde); border-radius: 15px; background: var(--cartao); }
 .zap { background: var(--marinho); border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
-.zap-topo { color: #fff; font-weight: 600; font-size: 14px; padding-bottom: 10px; border-bottom: 1px solid #16365f; margin: 0; }
+.zap-topo { color: #fff; font-weight: 600; font-size: 14px; padding: 0 44px 10px 0; border-bottom: 1px solid #16365f; margin: 0; }
 .bolha { background: #fff; color: var(--tinta); padding: 10px 13px; border-radius: 13px; font-size: 14.5px; line-height: 1.45; max-width: 92%; margin: 0; }
 .bolha.eu { align-self: flex-end; background: var(--verde-fraco); }
 .citacao { display: block; font: 400 12.5px/1.45 var(--mono); border-left: 3px solid var(--verde); padding-left: 9px; margin-top: 7px; color: var(--tinta-2); }
@@ -73,7 +73,7 @@ footer p { margin: 0; max-width: 66ch; }
   .heroi .faixa-centro, .passos, .planos { grid-template-columns: minmax(0, 1fr); }
   .quatro { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .limites { columns: 1; }
-  .moldura::before { right: -8px; }
+  .moldura::before { right: -6px; top: -14px; width: 40px; height: 40px; border-radius: 11px; }
   .topo-nav nav a.opcional { display: none; }
 }
 .assistente { position: fixed; z-index: 50; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
