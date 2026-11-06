@@ -41,6 +41,7 @@
   window.Api = {
     me,
     planos: () => enviar('GET', '/planos'),
+    painel: () => enviar('GET', '/painel'),
     cadastrar: (nome, email, senha) => enviar('POST', '/cadastro', { nome, email, senha }),
     entrar: (email, senha) => enviar('POST', '/login', { email, senha }),
     sair: () => enviar('POST', '/logout', {}),

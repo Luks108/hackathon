@@ -55,6 +55,7 @@ $rotas = [
     ['POST',   '#^admin/telefones/(\d+)/aprovar$#',   true,  'rota_admin_aprovar'],
     ['POST',   '#^admin/telefones/(\d+)/revogar$#',   true,  'rota_admin_revogar'],
     ['GET',  '#^perguntas/(\d+)/eventos$#',        true,  'rota_eventos'],
+    ['GET',  '#^painel$#',                         true,  'rota_painel'],
     ['POST', '#^worker/proxima$#',                 false, 'rota_worker_proxima'],
     ['POST', '#^worker/perguntas/(\d+)/eventos$#', false, 'rota_worker_eventos'],
     ['GET',  '#^worker/telefones$#',               false, 'rota_worker_telefones'],

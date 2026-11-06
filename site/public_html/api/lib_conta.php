@@ -26,6 +26,17 @@ function exigir_login(): array {
     return $u;
 }
 
+/** Área técnica: o conteúdo fica fora do public_html e só sai com login. */
+function rota_painel(): never {
+    exigir_login();
+    $arquivo = dirname(__DIR__, 2) . '/painel.json';
+    if (!is_file($arquivo)) erro(503, 'A área técnica ainda não foi publicada.');
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: private, no-store');
+    readfile($arquivo);
+    exit;
+}
+
 function exigir_admin(): array {
     $u = exigir_login();
     if ($u['papel'] !== 'admin') erro(403, 'Acesso restrito ao administrador.');

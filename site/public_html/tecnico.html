@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Área técnica | FornexIA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+
+<header class="topo" id="topo"></header>
+
+<main class="miolo pagina pagina-tecnica" id="conteudo">
+  <p class="apoio" id="carregando" aria-live="polite">Carregando…</p>
+  <p class="aviso-erro" id="erro-painel" role="alert" hidden></p>
+  <div id="pagina" hidden>
+    <header>
+      <h1>Área técnica</h1>
+      <p class="apoio">Como o FornexIA funciona, o que medimos e o que ainda falta.</p>
+    </header>
+    <div class="abas-painel" id="abas" role="tablist" aria-label="Seções da área técnica"></div>
+    <div class="conteudo-painel" id="conteudo-painel"></div>
+  </div>
+</main>
+
+<script src="assets/util.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/topo.js"></script>
+<script src="assets/painel.js"></script>
+</body>
+</html>

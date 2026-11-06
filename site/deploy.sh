@@ -33,6 +33,7 @@ PHP
 
 rsync -az --delete -e "$SSH" "$RAIZ/site/public_html/" "$ALVO:$DOMINIO_DIR/public_html/"
 rsync -az -e "$SSH" "$RAIZ/site/setup.php" "$ALVO:$DOMINIO_DIR/setup.php"
+[[ -f "$RAIZ/dados/painel.json" ]] && rsync -az --chmod=F600 -e "$SSH" "$RAIZ/dados/painel.json" "$ALVO:$DOMINIO_DIR/painel.json"
 $SSH "$ALVO" "rm -f $DOMINIO_DIR/public_html/default.php"
 
 if [[ "${1:-}" == "--setup" ]]; then

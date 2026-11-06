@@ -1,0 +1,142 @@
+<section data-aba="arquitetura">
+  <p class="rotulo-painel">Arquitetura</p>
+  <h2>Como uma pergunta vira resposta com prova</h2>
+  <p>O site fica na hospedagem. O notebook não abre nenhuma porta: ele sai para buscar perguntas e devolve as respostas em partes.</p>
+  <ol class="esteira">
+    <li><b>Site ou WhatsApp</b><span>Recebe a pergunta da pessoa.</span></li>
+    <li><b>Fila</b><span>Guarda a pergunta com os entes do plano.</span></li>
+    <li><b>Worker</b><span>Busca a pergunta e aplica o perfil.</span></li>
+    <li><b>Agente isolado</b><span>Só tem 6 consultas fixas.</span></li>
+    <li><b>Grafo</b><span>Filtra por perfil e devolve evidências.</span></li>
+  </ol>
+  <h3>Stack</h3>
+  <div class="tabela"><table>
+    <thead><tr><th>Camada</th><th>Tecnologia</th><th>Onde roda</th></tr></thead>
+    <tbody>
+      <tr><td>Site, conta e fila</td><td>PHP 8.2, MariaDB e JavaScript puro</td><td>Hostinger</td></tr>
+      <tr><td>Worker</td><td>Python 3.12, com 3 agentes no site e 1 no WhatsApp</td><td>Notebook</td></tr>
+      <tr><td>Agente</td><td>Claude Opus 5.5, por <code>claude -p</code>, com MCP</td><td>Notebook</td></tr>
+      <tr><td>Fatos e ontologia</td><td>Neo4j 5.26 e arquivos com evidência</td><td>Notebook</td></tr>
+      <tr><td>WhatsApp</td><td>Baileys e Bun</td><td>Notebook</td></tr>
+    </tbody>
+  </table></div>
+  <h3>MVP e operação corporativa</h3>
+  <div class="tabela"><table>
+    <thead><tr><th></th><th>MVP</th><th>Corporativo</th></tr></thead>
+    <tbody>
+      <tr><td>Canal</td><td>Baileys</td><td>WhatsApp Business API oficial</td></tr>
+      <tr><td>Servidor</td><td>Notebook</td><td>VPS</td></tr>
+      <tr><td>Tempo real</td><td>Fila com leitura a cada 0,7 s</td><td>WebSocket</td></tr>
+      <tr><td>Modelo</td><td>Claude Code</td><td>Claude API</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section data-aba="grafo" hidden>
+  <p class="rotulo-painel">Ontologia</p>
+  <h2>O grafo da amostra</h2>
+  <p>Arraste os pontos e clique para abrir o detalhe. Cada fato leva a uma evidência da fonte. Registros de pessoa física ficam fora desta visão.</p>
+  <div class="mesa-grafo">
+    <div class="quadro-grafo">
+      <canvas id="tela-grafo" tabindex="0" role="img" aria-label="Grafo de contratos, fornecedores, processos, sanções e evidências"></canvas>
+      <div class="legenda-grafo" id="legenda-grafo"></div>
+    </div>
+    <aside class="detalhe-grafo" id="detalhe-grafo" aria-live="polite"></aside>
+  </div>
+  <h3>Regras que vieram dos dados reais</h3>
+  <div class="tabela"><table>
+    <thead><tr><th>Achado</th><th>Regra</th></tr></thead>
+    <tbody>
+      <tr><td>Número de contrato se repete</td><td>Identidade pelo código interno do portal</td></tr>
+      <tr><td>Documento vem mascarado</td><td>Ligar pelo CNPJ completo</td></tr>
+      <tr><td>Mesma empresa com grafias diferentes</td><td>Nome não é identidade</td></tr>
+      <tr><td>Estimado, homologado e contratado divergem</td><td>Campos distintos, nunca somados</td></tr>
+      <tr><td>Arquivo de sanções repete linhas</td><td>Contar ocorrências distintas</td></tr>
+      <tr><td>CPF completo em uma lista pública</td><td>Pessoa física guardada só por código irreversível</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section data-aba="negocio" hidden>
+  <p class="rotulo-painel">Modelo de negócios</p>
+  <h2>Como o negócio se sustenta</h2>
+  <p class="aviso-info">Tudo aqui é hipótese até ser validado com especialistas.</p>
+  <div class="grade-negocio">
+    <div><h3>Problema</h3><p>Histórico espalhado por portais, empresa difícil de confirmar e resposta sem fonte.</p></div>
+    <div><h3>Segmento</h3><p>Times de compliance que avaliam fornecedores. Adotantes: gestoras de terceiros.</p></div>
+    <div><h3>Proposta de valor</h3><p>Histórico do fornecedor em minutos, com a fonte de cada número.</p></div>
+    <div><h3>Canais</h3><p>Venda direta e parceria com gestoras de terceiros.</p></div>
+    <div><h3>Receita</h3><p>Assinatura por estado com franquia, mais consulta excedente.</p></div>
+    <div><h3>Vantagem</h3><p>Histórico próprio com prova e empresas ligadas entre portais.</p></div>
+  </div>
+  <h3>Custo mensal estimado</h3>
+  <div class="tabela"><table>
+    <thead><tr><th>Item</th><th>1.000 perguntas</th><th>5.000 perguntas</th></tr></thead>
+    <tbody>
+      <tr><td>VPS KVM 4</td><td>R$ 197</td><td>R$ 197</td></tr>
+      <tr><td>WhatsApp API oficial</td><td>R$ 0</td><td>R$ 140</td></tr>
+      <tr><td>Claude API (Opus 5.5)</td><td>R$ 567</td><td>R$ 2.833</td></tr>
+      <tr><td><b>Total</b></td><td><b>≈ R$ 764</b></td><td><b>≈ R$ 3.170</b></td></tr>
+    </tbody>
+  </table></div>
+  <p class="apoio">Estimativa, com 20 mil tokens de entrada e 1,5 mil de saída por pergunta, ainda não medidos. Preço do WhatsApp vindo de fonte terceira. Sem equipe, suporte e impostos.</p>
+  <h3>A conta por unidade</h3>
+  <p>Plano Estado a R$ 1.990, com custo estimado de R$ 764: margem de 62% sobre a operação. O preço é hipótese de trabalho.</p>
+</section>
+
+<section data-aba="benchmark" hidden>
+  <p class="rotulo-painel">Benchmark</p>
+  <h2>O que medimos com gabarito</h2>
+  <p>O gabarito foi derivado do grafo e congelado antes de rodar. Comparamos o FornexIA com o mesmo modelo sem acesso aos dados.</p>
+  <div class="numeros-painel" id="numeros-bench"></div>
+  <h3>Como a nota funciona</h3>
+  <ul>
+    <li>Nota 1 só se a resposta tiver tudo que o gabarito exige e nada do que ele proíbe.</li>
+    <li>Em pergunta factual, resposta certa sem evidência conferida não recebe a nota.</li>
+    <li>O braço sem dados responde só às perguntas factuais.</li>
+  </ul>
+  <h3>Pergunta a pergunta</h3>
+  <div class="tabela"><table id="tabela-bench"></table></div>
+  <p class="apoio" id="rodape-bench"></p>
+  <p class="aviso-info">Amostra pequena: 14 perguntas sobre 10 contratos. O resultado mostra que o fluxo funciona, não mede o produto em escala.</p>
+</section>
+
+<section data-aba="carga" hidden>
+  <p class="rotulo-painel">Teste de carga</p>
+  <h2>8 pessoas ao mesmo tempo, em produção</h2>
+  <p>Oito contas fizeram perguntas reais no mesmo instante, com 3 agentes no site.</p>
+  <div class="numeros-painel" id="numeros-carga"></div>
+  <div class="tabela"><table id="tabela-carga"></table></div>
+  <p class="apoio" id="rodape-carga"></p>
+  <h3>O que isso ainda não prova</h3>
+  <ul>
+    <li>Foi uma rodada só.</li>
+    <li>O limite da assinatura do modelo não apareceu, mas não foi procurado.</li>
+    <li>O WhatsApp tem 1 agente e não entrou neste teste.</li>
+    <li>Um erro 500 do servidor ficou sem causa identificada.</li>
+  </ul>
+</section>
+
+<section data-aba="seguranca" hidden>
+  <p class="rotulo-painel">Segurança</p>
+  <h2>Camadas de proteção</h2>
+  <div class="tabela"><table>
+    <thead><tr><th>Camada</th><th>O que faz</th></tr></thead>
+    <tbody>
+      <tr><td>Perfil fora do modelo</td><td>Os entes vêm do banco e entram no ambiente do servidor de consultas.</td></tr>
+      <tr><td>Consultas fixas</td><td>O agente não escreve consulta. Só escolhe uma das 6 disponíveis.</td></tr>
+      <tr><td>Agente isolado</td><td>Diretório neutro, sem arquivos do projeto, e trava que recusa qualquer tool extra.</td></tr>
+      <tr><td>Dados pessoais</td><td>CPF nunca é gravado. Pessoa física vira código irreversível.</td></tr>
+      <tr><td>Site</td><td>Senha com hash, CSRF, limite de tentativas e texto sempre escapado na tela.</td></tr>
+      <tr><td>Notebook</td><td>Nenhuma porta aberta: só conexões de saída.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Falha real encontrada pelo benchmark</h3>
+  <p>Na primeira rodada, o braço sem dados citou um Artifact privado. Investigamos e vimos que o agente herdava 27 tools da conta, não só as 6 previstas. Restringimos para 6, criamos uma trava automática e descartamos a rodada.</p>
+  <h3>Limites conhecidos</h3>
+  <ul>
+    <li>Foram testados poucos ataques com o modelo real; o catálogo tem 20.</li>
+    <li>O Baileys não é oficial e tem risco de bloqueio.</li>
+    <li>O notebook é ponto único de falha.</li>
+  </ul>
+</section>

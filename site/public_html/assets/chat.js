@@ -15,8 +15,8 @@
     conferir_evidencia: 'Conferindo a fonte',
   }
   const SUGESTOES = [
-    'O que sabemos sobre a Construtora Exemplo?',
-    'Ela tem alguma sanção?',
+    'Quais contratos temos na base?',
+    'Algum fornecedor tem sanção em aberto?',
     'A base de dados é completa?',
   ]
   // Demonstração livre: a conta nova não escolhe plano e recebe o que cobre mais entes (Estado e Município).
