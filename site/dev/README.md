@@ -16,6 +16,30 @@ cp site/hackathon-config.exemplo.php site/hackathon-config.php
 php site/setup.php admin@local.test "Admin Local" senha-local-123
 ```
 
+## Administrador
+
+**Só para desenvolvimento** (banco local, nada disso vale no site publicado):
+
+| E-mail | Senha |
+|---|---|
+| `admin@local.test` | `senha-local-123` |
+
+Se a senha deixar de funcionar, o `setup.php` a redefine (rodar de novo com outra senha **troca** a senha do admin):
+
+```bash
+php site/setup.php admin@local.test "Admin Local" senha-local-123
+```
+
+**No site publicado não existe admin padrão.** O admin é criado pelo Lucas, no deploy, com uma senha só dele:
+
+1. No `.env` do notebook: `ADMIN_EMAIL=...` e `ADMIN_SENHA=...`. A senha precisa ter **12 caracteres ou mais** e não pode ser uma
+   senha comum. Em produção o `setup.php` recusa as fracas.
+2. `./site/deploy.sh --setup`
+
+Para testar no site publicado, peça a senha ao Lucas. Não a coloque em arquivo do repositório nem em mensagem de commit.
+
+Hoje o admin entra e usa o chat como qualquer conta, mas ainda não há tela nem rota de administrador (A09 e A16).
+
 Sem PHP no Windows: `winget install PHP.PHP.NTS.8.2`. Depois ative `pdo_mysql`, `curl`, `fileinfo`, `openssl` e `mbstring` no `php.ini`.
 
 ## Rodar

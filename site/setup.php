@@ -115,6 +115,19 @@ foreach ($planos as [$nome, $preco, $franquia, $excedente, $tenants]) {
 
 [$_, $email, $nome, $senha] = $argv + [null, null, null, null];
 if ($email && $senha) {
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        fwrite(STDERR, "E-mail do admin inválido: $email\n");
+        exit(1);
+    }
+    // No site publicado o admin tem poder sobre as contas de todos: nada de senha curta ou conhecida.
+    // Em desenvolvimento (AMBIENTE = 'dev') vale qualquer senha, para facilitar os testes.
+    if (!defined('AMBIENTE') || AMBIENTE !== 'dev') {
+        $conhecidas = ['admin', 'senha', 'password', '123456', '12345678', 'senha123', 'admin123', 'senha-local-123', 'trocar-esta-senha'];
+        if (strlen($senha) < 12 || in_array(strtolower($senha), $conhecidas, true)) {
+            fwrite(STDERR, "Senha do admin recusada: em produção ela precisa ter pelo menos 12 caracteres e não pode ser uma senha comum.\n");
+            exit(1);
+        }
+    }
     $st = $pdo->prepare('INSERT INTO usuarios (nome, email, senha_hash, papel) VALUES (?, ?, ?, "admin")
                          ON DUPLICATE KEY UPDATE nome = VALUES(nome), senha_hash = VALUES(senha_hash), papel = "admin"');
     $st->execute([$nome ?: 'Admin', strtolower($email), password_hash($senha, PASSWORD_DEFAULT)]);
