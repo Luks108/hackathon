@@ -14,8 +14,11 @@ __pycache__/
 # Dados derivados da captura: podem conter dados pessoais
 dados/
 
+# Registro de consultas: contém perguntas de usuários
+logs/
+
 # Mídia real de teste (voz, cupom com dados pessoais)
-testes/
+/testes/
 
 # Arquivos gerados pelo site no servidor
 hackathon-config.php

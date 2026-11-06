@@ -1,3 +1,6 @@
 {"id": "cnpj:11111111000111", "tipo": "PJ", "cnpj": "11111111000111", "nome": "Construtora Exemplo Ltda (fictícia)", "resolvido": true, "evidencia": "g1", "tenant": "pe-garanhuns"}
 {"id": "cnpj:11111111000111", "tipo": "PJ", "cnpj": "11111111000111", "nome": "Construtora Exemplo Ltda (fictícia)", "resolvido": true, "evidencia": "e1", "tenant": "pe-estado"}
+{"id": "cnpj:11111111000111", "tipo": "PJ", "cnpj": "11111111000111", "nome": "Construtora Exemplo Ltda (fictícia)", "resolvido": true, "evidencia": "x1", "tenant": "ex-estado"}
 {"id": "cnpj:22222222000122", "tipo": "PJ", "cnpj": "22222222000122", "nome": "Serviços Modelo Ltda (fictícia)", "resolvido": true, "evidencia": "g2", "tenant": "pe-garanhuns"}
+{"id": "cnpj:33333333000133", "tipo": "PJ", "cnpj": "33333333000133", "nome": "Obras Exemplares Ltda (fictícia)", "resolvido": true, "evidencia": "x2", "tenant": "ex-estado"}
+{"id": "pf:0123456789abcdef01234567", "tipo": "PF", "cnpj": null, "nome": null, "resolvido": true, "evidencia": "g4", "tenant": "pe-garanhuns"}

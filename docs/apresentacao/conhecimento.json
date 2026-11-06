@@ -1,0 +1,364 @@
+[
+  {
+    "id": "kb-22aaafb0",
+    "titulo": "Pregão eletrônico",
+    "texto": "Modalidade usada para bens e serviços comuns, com disputa de lances pela internet. Vence a proposta de menor preço ou de maior desconto.",
+    "origem": "Glossário de licitações (documento fictício de apoio; confirme na legislação vigente)",
+    "arquivo": "glossario-de-licitacoes.txt",
+    "criado": "2026-11-06",
+    "pergunta": "O que é pregão eletrônico?"
+  },
+  {
+    "id": "kb-4623cb76",
+    "titulo": "Concorrência",
+    "texto": "Modalidade para contratações de maior complexidade, como obras e serviços especiais, com regras de habilitação mais detalhadas.",
+    "origem": "Glossário de licitações (documento fictício de apoio; confirme na legislação vigente)",
+    "arquivo": "glossario-de-licitacoes.txt",
+    "criado": "2026-11-06"
+  },
+  {
+    "id": "kb-eac73bd1",
+    "titulo": "Dispensa de licitação",
+    "texto": "Contratação direta permitida nas hipóteses previstas em lei, como valores baixos ou emergência. Precisa de justificativa registrada no processo.",
+    "origem": "Glossário de licitações (documento fictício de apoio; confirme na legislação vigente)",
+    "arquivo": "glossario-de-licitacoes.txt",
+    "criado": "2026-11-06",
+    "pergunta": "O que é dispensa de licitação?"
+  },
+  {
+    "id": "kb-b4655059",
+    "titulo": "Inexigibilidade",
+    "texto": "Contratação direta quando a competição é inviável, por exemplo quando só existe um fornecedor possível. Também exige justificativa registrada.",
+    "origem": "Glossário de licitações (documento fictício de apoio; confirme na legislação vigente)",
+    "arquivo": "glossario-de-licitacoes.txt",
+    "criado": "2026-11-06"
+  },
+  {
+    "id": "kb-7cac5152",
+    "titulo": "Aditivo contratual",
+    "texto": "Alteração formal de um contrato em andamento, para mudar o prazo, o valor ou os dois, dentro dos limites da lei.",
+    "origem": "Glossário de licitações (documento fictício de apoio; confirme na legislação vigente)",
+    "arquivo": "glossario-de-licitacoes.txt",
+    "criado": "2026-11-06"
+  },
+  {
+    "id": "kb-5c690cf9",
+    "titulo": "Valor estimado, adjudicado e contratado",
+    "texto": "O valor estimado é a previsão do órgão antes da disputa. O adjudicado é o valor da proposta vencedora. O contratado é o que consta no contrato assinado. Eles costumam divergir e não devem ser somados.",
+    "origem": "Glossário de licitações (documento fictício de apoio; confirme na legislação vigente)",
+    "arquivo": "glossario-de-licitacoes.txt",
+    "criado": "2026-11-06"
+  },
+  {
+    "id": "kb-0391d3a7",
+    "titulo": "Impedimento de licitar",
+    "texto": "Sanção que impede a empresa de participar de licitações e de contratar com o ente que a aplicou, por prazo determinado.",
+    "origem": "Glossário de licitações (documento fictício de apoio; confirme na legislação vigente)",
+    "arquivo": "glossario-de-licitacoes.txt",
+    "criado": "2026-11-06"
+  },
+  {
+    "id": "kb-1b9d47f4",
+    "titulo": "Declaração de inidoneidade",
+    "texto": "Sanção mais grave, que impede a empresa de licitar e contratar com a administração pública em geral, por prazo determinado.",
+    "origem": "Glossário de licitações (documento fictício de apoio; confirme na legislação vigente)",
+    "arquivo": "glossario-de-licitacoes.txt",
+    "criado": "2026-11-06"
+  },
+  {
+    "id": "kb-64c1a79c",
+    "titulo": "Número de contrato repetido",
+    "texto": "Alguns portais reiniciam a numeração a cada exercício ou por unidade. Por isso o identificador do contrato é o código interno do portal, e não o número exibido. Nunca una dois contratos só porque o número é igual.",
+    "origem": "Guia de leitura dos portais (documento fictício)",
+    "arquivo": "guia-de-leitura-dos-portais.md",
+    "criado": "2026-11-06",
+    "tags": "contrato, numero, identificador, duplicado",
+    "pergunta": "Por que dois contratos diferentes têm o mesmo número?"
+  },
+  {
+    "id": "kb-f4628f92",
+    "titulo": "Contrato sem licitação informada",
+    "texto": "O portal pode deixar o campo vazio mesmo quando houve licitação, ou a contratação pode ter sido direta, por dispensa ou inexigibilidade. Registre \"processo não informado\" e não conclua que há irregularidade. Quando o valor for relevante, peça a confirmação ao órgão.",
+    "origem": "Guia de leitura dos portais (documento fictício)",
+    "arquivo": "guia-de-leitura-dos-portais.md",
+    "criado": "2026-11-06",
+    "tags": "licitacao, processo, dispensa, inexigibilidade",
+    "pergunta": "O que significa um contrato sem processo licitatório informado?"
+  },
+  {
+    "id": "kb-7c170945",
+    "titulo": "Aditivos e prorrogações",
+    "texto": "A lista de contratos indica a quantidade de aditivos. Um aditivo pode alterar o prazo, o valor ou os dois, então abra o detalhe antes de citar o valor atualizado. O valor contratado original e o valor depois dos aditivos são números diferentes.",
+    "origem": "Guia de leitura dos portais (documento fictício)",
+    "arquivo": "guia-de-leitura-dos-portais.md",
+    "criado": "2026-11-06",
+    "tags": "aditivo, prorrogacao, valor, prazo",
+    "pergunta": "Como saber se um contrato teve aditivo?"
+  },
+  {
+    "id": "kb-cc873c9e",
+    "titulo": "Atualização e data de captura dos portais",
+    "texto": "Cada portal atualiza no seu próprio ritmo, e alguns ficam semanas sem mudança. Toda resposta deve informar a data em que a captura foi feita. O cadastro de sanções, em especial, pode estar defasado em vários meses.",
+    "origem": "Guia de leitura dos portais (documento fictício)",
+    "arquivo": "guia-de-leitura-dos-portais.md",
+    "criado": "2026-11-06",
+    "tags": "atualizacao, captura, defasagem, data",
+    "pergunta": "Com que frequência os portais são atualizados?"
+  },
+  {
+    "id": "kb-d8f68f5d",
+    "titulo": "Contratos com pessoa física",
+    "texto": "Contratos com pessoa física trazem o CPF, que é dado pessoal. O relatório identifica o contrato e o valor sem expor o documento nem o nome completo, e só quando o cliente tem base legal para receber a informação.",
+    "origem": "Guia de leitura dos portais (documento fictício)",
+    "arquivo": "guia-de-leitura-dos-portais.md",
+    "criado": "2026-11-06",
+    "tags": "pessoa fisica, cpf, privacidade, lgpd",
+    "pergunta": "O que fazer com contratos firmados com pessoa física?"
+  },
+  {
+    "id": "kb-41747648",
+    "titulo": "Como iniciar um levantamento de fornecedor",
+    "texto": "Comece sempre pelo CNPJ completo, nunca pelo nome da empresa. Confirme a razão social no cadastro da Receita Federal e só então consulte contratos, licitações e sanções. Anote a data e a hora de cada consulta, porque os portais mudam sem aviso.",
+    "origem": "Manual do analista (documento fictício, versão 2.1)",
+    "arquivo": "manual-do-analista.md",
+    "criado": "2026-11-06",
+    "tags": "levantamento, cnpj, inicio, receita",
+    "pergunta": "Por onde começo o levantamento de um fornecedor?"
+  },
+  {
+    "id": "kb-8ac7233f",
+    "titulo": "Registrar a fonte de cada informação",
+    "texto": "Todo número do relatório precisa trazer o portal, a data da captura e o trecho literal. Dado sem fonte não entra no relatório, mesmo que pareça óbvio. Quando o portal não permitir copiar o trecho, anexe uma captura de tela com a data visível.",
+    "origem": "Manual do analista (documento fictício, versão 2.1)",
+    "arquivo": "manual-do-analista.md",
+    "criado": "2026-11-06",
+    "tags": "fonte, evidencia, relatorio, captura",
+    "pergunta": "Como devo citar a fonte de um dado no relatório?"
+  },
+  {
+    "id": "kb-7ce864b7",
+    "titulo": "Quando escalar um caso para o gestor",
+    "texto": "Escale o caso quando houver sanção em aberto, divergência de valores acima de 10% entre licitação e contrato, ou fornecedor com dois CNPJs ativos. O gestor decide se o caso segue para o parecer jurídico do cliente.",
+    "origem": "Manual do analista (documento fictício, versão 2.1)",
+    "arquivo": "manual-do-analista.md",
+    "criado": "2026-11-06",
+    "tags": "escalar, gestor, sancao, divergencia",
+    "pergunta": "Quando devo escalar um caso para o gestor?"
+  },
+  {
+    "id": "kb-8084a074",
+    "titulo": "Revisão por um segundo analista",
+    "texto": "Todo relatório que cite sanção em aberto passa por um segundo analista antes do envio. O revisor confere as fontes, não apenas o texto. A revisão fica registrada no sistema, com a data e o nome de quem revisou.",
+    "origem": "Manual do analista (documento fictício, versão 2.1)",
+    "arquivo": "manual-do-analista.md",
+    "criado": "2026-11-06",
+    "tags": "revisao, segundo analista, sancao",
+    "pergunta": "Preciso de revisão antes de enviar o relatório?"
+  },
+  {
+    "id": "kb-bca940a3",
+    "titulo": "Prazo de resposta ao cliente",
+    "texto": "O prazo padrão é de dois dias úteis. Consultas marcadas como urgentes pelo cliente têm prazo de seis horas úteis. Qualquer exceção a esses prazos precisa da aprovação do gestor.",
+    "origem": "Manual do analista (documento fictício, versão 2.1)",
+    "arquivo": "manual-do-analista.md",
+    "criado": "2026-11-06",
+    "tags": "prazo, resposta, urgente, sla",
+    "pergunta": "Qual é o prazo para responder uma consulta de fornecedor?"
+  },
+  {
+    "id": "kb-90e4ef3e",
+    "titulo": "Sigilo dos relatórios",
+    "texto": "Relatórios de risco só podem ser enviados a pessoas autorizadas pelo cliente. O envio a terceiros exige aprovação do gestor e o registro do motivo.",
+    "origem": "Manual do analista (documento fictício, versão 2.1)",
+    "arquivo": "manual-do-analista.md",
+    "criado": "2026-11-06",
+    "tags": "sigilo, envio, confidencial, terceiros",
+    "pergunta": "Posso enviar o relatório para alguém de fora da equipe do cliente?"
+  },
+  {
+    "id": "kb-bd6b1c9d",
+    "titulo": "O relatório substitui um parecer jurídico?",
+    "texto": "Não. O relatório reúne fatos de fontes públicas e traz a fonte de cada um. A interpretação jurídica continua sendo do jurídico do cliente.",
+    "origem": "Perguntas frequentes de clientes (documento fictício)",
+    "arquivo": "perguntas-frequentes-de-clientes.md",
+    "criado": "2026-11-06",
+    "tags": "parecer, juridico, relatorio, responsabilidade",
+    "pergunta": "O relatório substitui um parecer jurídico?"
+  },
+  {
+    "id": "kb-2b65bc2a",
+    "titulo": "O que significa uma sanção em aberto",
+    "texto": "Significa que o cadastro do órgão ainda listava a sanção como vigente ou em andamento na data da captura. Isso não prova irregularidade nem impede, por si só, a contratação. Confirme a situação diretamente no órgão antes de decidir.",
+    "origem": "Perguntas frequentes de clientes (documento fictício)",
+    "arquivo": "perguntas-frequentes-de-clientes.md",
+    "criado": "2026-11-06",
+    "tags": "sancao, aberto, situacao, cadastro",
+    "pergunta": "O que significa uma sanção em aberto no relatório?"
+  },
+  {
+    "id": "kb-eaded357",
+    "titulo": "Como corrigir um dado errado",
+    "texto": "Envie o número do relatório e o trecho em questão. Conferimos a fonte e, se o erro vier do portal, registramos a ressalva e avisamos o órgão. As correções ficam no histórico do relatório.",
+    "origem": "Perguntas frequentes de clientes (documento fictício)",
+    "arquivo": "perguntas-frequentes-de-clientes.md",
+    "criado": "2026-11-06",
+    "tags": "erro, correcao, dado, contestar",
+    "pergunta": "Encontrei um dado errado no relatório, o que eu faço?"
+  },
+  {
+    "id": "kb-e51d914f",
+    "titulo": "Quais empresas podem ser consultadas",
+    "texto": "Consultamos empresas com CNPJ que apareçam em portais públicos dos entes cobertos pelo seu plano. Pessoas físicas não são consultadas.",
+    "origem": "Perguntas frequentes de clientes (documento fictício)",
+    "arquivo": "perguntas-frequentes-de-clientes.md",
+    "criado": "2026-11-06",
+    "tags": "consulta, cnpj, cobertura, empresa",
+    "pergunta": "Posso consultar qualquer empresa?"
+  },
+  {
+    "id": "kb-01b53bce",
+    "titulo": "Quanto custa cada consulta",
+    "texto": "Os valores dos planos mostrados nesta demonstração, R$ 990 e R$ 1.990 por mês, são hipóteses e ainda não foram validados. Não há cobrança real nesta versão.",
+    "origem": "Perguntas frequentes de clientes (documento fictício)",
+    "arquivo": "perguntas-frequentes-de-clientes.md",
+    "criado": "2026-11-06",
+    "tags": "preco, plano, assinatura, custo",
+    "pergunta": "Quanto custa a assinatura do serviço?"
+  },
+  {
+    "id": "kb-12589cdd",
+    "titulo": "Dados pessoais em portais públicos",
+    "texto": "Dado publicado em portal público continua sendo dado pessoal. Coletamos apenas o necessário para identificar o contrato e o fornecedor, e nunca guardamos o CPF em texto aberto. Quando for preciso ligar registros, usamos um código irreversível no lugar do documento.",
+    "origem": "Política de privacidade (documento fictício)",
+    "arquivo": "politica-de-privacidade.docx",
+    "criado": "2026-11-06",
+    "tags": "lgpd, cpf, dado pessoal, portal publico",
+    "pergunta": "Posso guardar o CPF que aparece num portal público?"
+  },
+  {
+    "id": "kb-229be3d9",
+    "titulo": "Prazo de guarda das informações",
+    "texto": "Os relatórios ficam guardados por cinco anos, para fins de auditoria. As capturas brutas dos portais ficam guardadas por 12 meses e depois são apagadas.",
+    "origem": "Política de privacidade (documento fictício)",
+    "arquivo": "politica-de-privacidade.docx",
+    "criado": "2026-11-06",
+    "tags": "retencao, guarda, prazo, captura",
+    "pergunta": "Por quanto tempo os relatórios e as capturas ficam guardados?"
+  },
+  {
+    "id": "kb-89f4a9c6",
+    "titulo": "Incidente de segurança",
+    "texto": "Qualquer suspeita de vazamento deve ser comunicada ao encarregado de dados em até 24 horas. O encarregado decide se é preciso avisar os titulares e a autoridade de proteção de dados.",
+    "origem": "Política de privacidade (documento fictício)",
+    "arquivo": "politica-de-privacidade.docx",
+    "criado": "2026-11-06",
+    "tags": "incidente, vazamento, seguranca, encarregado",
+    "pergunta": "O que fazer se houver suspeita de vazamento de dados?"
+  },
+  {
+    "id": "kb-4c680353",
+    "titulo": "Pedido de um titular de dados",
+    "texto": "Quando uma pessoa pedir acesso ou correção dos seus dados, encaminhe o pedido ao encarregado no mesmo dia. O prazo para responder é de 15 dias.",
+    "origem": "Política de privacidade (documento fictício)",
+    "arquivo": "politica-de-privacidade.docx",
+    "criado": "2026-11-06",
+    "tags": "titular, acesso, correcao, pedido",
+    "pergunta": "Como tratar o pedido de uma pessoa que quer ver ou corrigir seus dados?"
+  },
+  {
+    "id": "kb-abaff1f9",
+    "titulo": "Mesma empresa com grafias diferentes",
+    "texto": "Problema: O nome do fornecedor aparece com grafias diferentes nos portais. Juntar pelo nome mistura ou separa empresas.\nSolução: Usar o CNPJ completo como identidade. O nome serve só para exibição.",
+    "origem": "Captura do portal de Garanhuns",
+    "arquivo": "problemas-e-solucoes.md",
+    "criado": "2026-11-06",
+    "problema": "O nome do fornecedor aparece com grafias diferentes nos portais. Juntar pelo nome mistura ou separa empresas.",
+    "solucao": "Usar o CNPJ completo como identidade. O nome serve só para exibição.",
+    "tags": "identidade, cnpj, nome",
+    "pergunta": "Como evitar misturar empresas com nomes parecidos?"
+  },
+  {
+    "id": "kb-0c8059d0",
+    "titulo": "Documento mascarado nos contratos",
+    "texto": "Problema: O portal de contratos mostra o CPF ou CNPJ com asteriscos, o que impede ligar o contrato ao cadastro de sanções.\nSolução: Recuperar o documento completo em outra tela do portal e aceitar só se a máscara conferir. Sem confirmação, marcar a identidade como não resolvida.",
+    "origem": "Captura do portal de Garanhuns",
+    "arquivo": "problemas-e-solucoes.md",
+    "criado": "2026-11-06",
+    "problema": "O portal de contratos mostra o CPF ou CNPJ com asteriscos, o que impede ligar o contrato ao cadastro de sanções.",
+    "solucao": "Recuperar o documento completo em outra tela do portal e aceitar só se a máscara conferir. Sem confirmação, marcar a identidade como não resolvida.",
+    "tags": "documento, mascara, cnpj, identidade",
+    "pergunta": "O que fazer quando o documento do fornecedor vem mascarado?"
+  },
+  {
+    "id": "kb-803e4f08",
+    "titulo": "Valores estimado, adjudicado e contratado",
+    "texto": "Problema: Os três valores divergem para a mesma contratação. Somá-los gera um total que não existe.\nSolução: Guardar cada valor em um campo próprio e nunca somar nem trocar um pelo outro na resposta.",
+    "origem": "Captura do portal de Garanhuns",
+    "arquivo": "problemas-e-solucoes.md",
+    "criado": "2026-11-06",
+    "problema": "Os três valores divergem para a mesma contratação. Somá-los gera um total que não existe.",
+    "solucao": "Guardar cada valor em um campo próprio e nunca somar nem trocar um pelo outro na resposta.",
+    "tags": "valor, licitacao, contrato",
+    "pergunta": "Posso somar o valor estimado com o contratado?"
+  },
+  {
+    "id": "kb-b97f2f3a",
+    "titulo": "Pagamentos ainda não ligados a contratos",
+    "texto": "Problema: Os pagamentos não foram coletados, e ainda não se sabe se dá para ligá-los ao contrato.\nSolução: Declarar na resposta que pagamentos não foram coletados e confirmar a regra de ligação antes de incluí-los.",
+    "origem": "Backlog do projeto",
+    "arquivo": "problemas-e-solucoes.md",
+    "criado": "2026-11-06",
+    "problema": "Os pagamentos não foram coletados, e ainda não se sabe se dá para ligá-los ao contrato.",
+    "solucao": "Declarar na resposta que pagamentos não foram coletados e confirmar a regra de ligação antes de incluí-los.",
+    "tags": "pagamento, empenho, lacuna",
+    "pergunta": "Por que a resposta não traz o que foi pago ao fornecedor?"
+  },
+  {
+    "id": "kb-f8fb100e",
+    "titulo": "Fiscal de contrato com CPF publicado",
+    "texto": "Problema: A lista de fiscais publica o CPF completo, que é dado pessoal.\nSolução: Guardar pessoa física só como código irreversível (HMAC) e retirar o nome do trecho da evidência.",
+    "origem": "Captura do portal de Garanhuns",
+    "arquivo": "problemas-e-solucoes.md",
+    "criado": "2026-11-06",
+    "problema": "A lista de fiscais publica o CPF completo, que é dado pessoal.",
+    "solucao": "Guardar pessoa física só como código irreversível (HMAC) e retirar o nome do trecho da evidência.",
+    "tags": "lgpd, cpf, pessoa fisica, privacidade",
+    "pergunta": "Como tratar o CPF dos fiscais publicado no portal?"
+  },
+  {
+    "id": "kb-33c2145e",
+    "titulo": "Sanção em aberto não é prova de irregularidade",
+    "texto": "Problema: Analistas podem ler uma sanção em aberto como condenação definitiva.\nSolução: Relatar o que a fonte diz, com a data do cadastro, sem julgar. A decisão é do analista.",
+    "origem": "Regras do assistente",
+    "arquivo": "problemas-e-solucoes.md",
+    "criado": "2026-11-06",
+    "problema": "Analistas podem ler uma sanção em aberto como condenação definitiva.",
+    "solucao": "Relatar o que a fonte diz, com a data do cadastro, sem julgar. A decisão é do analista.",
+    "tags": "sancao, compliance, irregularidade",
+    "pergunta": "Uma sanção em aberto prova que a empresa é irregular?"
+  },
+  {
+    "id": "kb-a6a58704",
+    "titulo": "Resposta de IA sem fonte",
+    "texto": "Problema: Um resumo da IA sem fonte não pode ser conferido e não serve para compliance.\nSolução: Aceitar na resposta só fatos com evidência: linha, trecho, data da captura e hash do arquivo.",
+    "origem": "Regras do assistente",
+    "arquivo": "problemas-e-solucoes.md",
+    "criado": "2026-11-06",
+    "problema": "Um resumo da IA sem fonte não pode ser conferido e não serve para compliance.",
+    "solucao": "Aceitar na resposta só fatos com evidência: linha, trecho, data da captura e hash do arquivo.",
+    "tags": "evidencia, prova, compliance, ia",
+    "pergunta": "Como garantir que a IA não invente números?"
+  },
+  {
+    "id": "kb-aff04275",
+    "titulo": "Analista perde tempo juntando telas",
+    "texto": "Problema: Contrato, licitação e sanção ficam em telas diferentes. O levantamento de um fornecedor leva mais de 30 minutos, o que é uma hipótese a validar.\nSolução: Consultar o grafo por CNPJ e devolver contratos, processo e sanções na mesma resposta, cada um com a sua fonte.",
+    "origem": "Entrevista com especialistas (pendente)",
+    "arquivo": "problemas-e-solucoes.md",
+    "criado": "2026-11-06",
+    "problema": "Contrato, licitação e sanção ficam em telas diferentes. O levantamento de um fornecedor leva mais de 30 minutos, o que é uma hipótese a validar.",
+    "solucao": "Consultar o grafo por CNPJ e devolver contratos, processo e sanções na mesma resposta, cada um com a sua fonte.",
+    "tags": "tempo, analista, grafo, hipotese",
+    "pergunta": "Como reduzir o tempo de levantamento de um fornecedor?"
+  }
+]

@@ -17,13 +17,16 @@ Code freeze: **06/11/2026, 12h**. O que ficar de fora entra como próximo passo 
 - [ ] Validar a primeira resposta com âncora pelo WhatsApp
 
 ## Noite, se houver fôlego
-- [ ] Criar o segundo tenant e os dois perfis
-- [ ] Registrar consultas e fontes no log
+- [x] Criar o segundo tenant e os dois perfis (três perfis em `consulta/perfis.json`, testados no Neo4j com dados fictícios)
+- [x] Registrar consultas e fontes no log (`logs/consultas.jsonl`)
 
 ## Amanhã, 9h40–11h
-- [ ] Testar acesso entre perfis e ataques de prompt
+- [x] Testar acesso entre perfis (43 testes automáticos, ver `docs/testes-seguranca.md`)
+- [ ] Rodar os ataques de prompt com o agente real e registrar (catálogo em `docs/seguranca/ataques-de-prompt.md`)
+- [ ] Isolar as ferramentas do agente no WhatsApp e resolver a corrida de perfil (AP-07, AP-18)
+- [ ] Confirmar com o mentor o que "por estado" exige (um estado a mais, ou município mais Estado)
 - [ ] Construir site e chat: ver [tasks](specs/001-site-e-chat/tasks.md)
-- [ ] Completar o README com as instruções de execução
+- [x] Completar o README com as instruções de execução
 
 ## Amanhã, 11h–12h
 - [ ] Ensaiar a demo

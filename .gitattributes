@@ -1,0 +1,2 @@
+# O hash do arquivo bruto de exemplo precisa ser o mesmo em qualquer máquina: sem conversão de quebra de linha.
+fixtures/exemplo/bruto/* -text

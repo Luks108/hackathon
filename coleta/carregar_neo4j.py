@@ -25,6 +25,8 @@ ENTES = [
     {"id": "pe-garanhuns", "nome": "Município de Garanhuns", "esfera": "municipal", "uf": "PE"},
     {"id": "pe-estado", "nome": "Estado de Pernambuco", "esfera": "estadual", "uf": "PE"},
 ]
+if "--exemplo" in sys.argv:  # segundo estado, fictício, para provar o isolamento entre estados
+    ENTES.append({"id": "ex-estado", "nome": "Estado Exemplo (fictício)", "esfera": "estadual", "uf": "EX"})
 
 # Um fornecedor pode ter nome só numa fonte: coalesce não apaga o nome já gravado.
 CARGAS = [
@@ -100,7 +102,7 @@ def main() -> int:
     driver = GraphDatabase.driver(os.environ["NEO4J_URI"], auth=("neo4j", os.environ["NEO4J_SENHA"]))
     with driver.session() as s:
         if "--zerar" in sys.argv:
-            s.run("MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS OF 1000 ROWS").consume()
+            s.run("MATCH (n) CALL (n) { DETACH DELETE n } IN TRANSACTIONS OF 1000 ROWS").consume()
         for comando in (RAIZ / "esquema/neo4j.cypher").read_text().split(";"):
             comando = "\n".join(l for l in comando.splitlines() if not l.strip().startswith("//")).strip()
             if comando:
