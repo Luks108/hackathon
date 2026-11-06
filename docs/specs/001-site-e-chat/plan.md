@@ -75,19 +75,21 @@ Respostas em JSON. Erros usam `{ "erro": "mensagem legível" }`.
 
 ### Navegador
 
-Rotas de escrita exigem o cabeçalho `X-CSRF-Token`.
+Todas as rotas de escrita (`POST`, `DELETE`), inclusive cadastro e login, exigem o cabeçalho `X-CSRF-Token`. O token vem de
+`GET /api/me`, que responde `200` também sem login. Sem token ou com token errado: `403`. Não logado: `401`.
 
 | Método | Rota | Uso |
 |---|---|---|
-| POST | `/api/cadastro` | `{nome, email, senha}` cria a conta |
-| POST | `/api/login`, `/api/logout` | Entrar e sair |
-| GET | `/api/me` | Usuário, plano e token CSRF |
-| GET | `/api/planos` | Lista pública |
-| POST | `/api/assinatura` | `{plano_id}` ativa o plano de demonstração |
-| GET, POST | `/api/telefones` | Listar e cadastrar `{numero}` |
-| DELETE | `/api/telefones/{id}` | Remover |
-| POST | `/api/perguntas` | `{texto}` devolve `{id}` |
-| GET | `/api/perguntas/{id}/eventos?desde=0` | Só o dono lê; devolve eventos e `status` |
+| POST | `/api/cadastro` | `{nome, email, senha}` cria a conta e já entra. Senha de 8 a 72 caracteres. E-mail repetido: `409` |
+| POST | `/api/login`, `/api/logout` | Entrar e sair. Erro de login não diz qual campo falhou. Depois de 5 falhas em 15 min: `429` com `Retry-After` |
+| GET | `/api/me` | `{usuario, plano, csrf}`. `usuario` é `null` sem login |
+| GET | `/api/planos` | Lista pública, com `tenants` como lista |
+| POST | `/api/assinatura` | `{plano_id}` ativa o plano de demonstração. Troca de plano cancela o anterior |
+| GET, POST | `/api/telefones` | Listar e cadastrar `{numero}` (A08, ainda não feita) |
+| DELETE | `/api/telefones/{id}` | Remover (A08, ainda não feita) |
+| POST | `/api/perguntas` | `{texto}` devolve `{id}`. Sem plano: `403`. Mais de 500 caracteres: `400`. Já há uma aberta: `409` com `{erro, pergunta_id}` |
+| GET | `/api/perguntas/aberta` | `{pergunta}`: a pergunta em andamento do usuário, ou `null`. Serve para retomar ao recarregar a página |
+| GET | `/api/perguntas/{id}/eventos?desde=0` | Só o dono lê (outro usuário: `404`). Devolve `{status, duracao_ms, eventos}` |
 
 ### Administrador
 
@@ -99,13 +101,25 @@ Rotas de escrita exigem o cabeçalho `X-CSRF-Token`.
 
 ### Worker
 
-Todas exigem `X-Worker-Key`, com a chave em `WORKER_KEY`.
+Todas exigem `X-Worker-Key`, com a chave em `WORKER_KEY` (mínimo 24 caracteres). Sem chave ou com chave errada: `401`.
+Não usam sessão nem cookie.
 
 | Método | Rota | Uso |
 |---|---|---|
-| POST | `/api/worker/proxima` | Reserva uma pergunta ou devolve `204` |
-| POST | `/api/worker/perguntas/{id}/eventos` | Grava `{eventos:[{seq,tipo,dados}]}`, sem duplicar `seq` |
-| GET | `/api/worker/telefones` | Números aprovados e entes do plano |
+| POST | `/api/worker/proxima` | Reserva a pergunta mais antiga da fila e devolve `{id, usuario_id, plano_id, texto, tenants, ver_pessoal}`, ou `204` se não há nenhuma. Dois workers nunca recebem a mesma |
+| POST | `/api/worker/perguntas/{id}/eventos` | Grava `{eventos:[{seq,tipo,dados}]}` (1 a 100 por lote, até 20 KB cada). Um `seq` repetido é ignorado. Responde `{gravados, ignorados, status}`. `fim` ou `erro` encerram a pergunta |
+| GET | `/api/worker/telefones` | `[{numero, tenants}]` dos números aprovados cujo dono tem plano ativo |
+
+**O worker precisa tratar `409`** em `/eventos`: significa que o site já encerrou a pergunta (por tempo), e o worker deve parar de
+trabalhar nela. Reenviar um lote que já foi gravado depois de a pergunta terminar devolve `200` com `gravados: 0`, então repetir
+um envio por falha de rede é seguro.
+
+**Limites de tempo, aplicados pelo site** (o navegador sempre recebe um evento `erro` com mensagem legível):
+
+| Situação | Limite | Mensagem |
+|---|---|---|
+| Ninguém pegou a pergunta (notebook fora do ar) | 120 s na fila | "O serviço de consulta está indisponível no momento..." |
+| Pegaram, mas não terminaram | 180 s em processamento | "A consulta demorou mais que o esperado..." |
 
 ### Eventos
 

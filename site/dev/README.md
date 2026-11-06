@@ -1,0 +1,52 @@
+# Desenvolvimento local do site
+
+PHP 8.2 e MariaDB, os mesmos da hospedagem. Tudo roda na sua máquina.
+
+## Primeira vez
+
+```bash
+# 1. Banco (Docker). Escuta só em 127.0.0.1:3307
+docker compose -f site/dev/docker-compose.yml up -d
+
+# 2. Configuração local (o arquivo é ignorado pelo git)
+cp site/hackathon-config.exemplo.php site/hackathon-config.php
+#    troque WORKER_KEY por uma chave aleatória de 24+ caracteres
+
+# 3. Tabelas, planos e um administrador de teste
+php site/setup.php admin@local.test "Admin Local" senha-local-123
+```
+
+Sem PHP no Windows: `winget install PHP.PHP.NTS.8.2`. Depois ative `pdo_mysql`, `curl`, `fileinfo`, `openssl` e `mbstring` no `php.ini`.
+
+## Rodar
+
+```bash
+php -S 127.0.0.1:8080 -t site/public_html site/dev/router.php     # o site em http://127.0.0.1:8080
+python site/dev/worker_falso.py                                   # responde às perguntas com um roteiro fixo
+```
+
+Abra `http://127.0.0.1:8080/chat.html`, crie uma conta, ative um plano e pergunte. O `router.php` faz o papel do `.htaccess`
+(manda `/api/*` para `api/index.php`).
+
+O worker falso muda de roteiro conforme a pergunta: "erro" termina com um evento de erro, "lento" não responde (para ver o
+limite de tempo) e "sem fonte" responde sem citar fonte. O worker real, do Dev B, usa as mesmas rotas.
+
+## Testes
+
+```bash
+python site/dev/test_api.py       # 51 testes contra PHP e MariaDB de verdade; PHP_BIN=/caminho/php.exe se preciso
+```
+
+Os testes sobem os próprios servidores PHP e limpam o que criam. Cobrem os critérios de aceite de A01 a A07, incluindo a
+corrida entre dois workers, a abertura simultânea de perguntas e os limites de tempo.
+
+## Rotas
+
+O contrato completo está em [`docs/specs/001-site-e-chat/plan.md`](../../docs/specs/001-site-e-chat/plan.md).
+
+## Zerar o banco
+
+```bash
+docker compose -f site/dev/docker-compose.yml down -v && docker compose -f site/dev/docker-compose.yml up -d
+php site/setup.php
+```

@@ -23,16 +23,16 @@ Baseadas na [spec](spec.md) e no [plano técnico](plan.md). Se a tarefa mudar o 
 
 ### Base
 
-- [ ] **A01.** Criar as tabelas e os planos no `setup.php`. *Aceite:* banco limpo recebe tudo; repetir não duplica.
-- [ ] **A02.** Criar `POST /api/cadastro`. RF-05. *Aceite:* conta criada entra; e-mail repetido recebe erro.
-- [ ] **A03.** Proteger login e escrita. RF-06, RNF-06. *Aceite:* CSRF ausente recebe 403; tentativas seguidas são limitadas.
-- [ ] **A04.** Criar planos e assinatura. RF-07, RF-08. *Aceite:* ativa sem pagamento; `/api/me` mostra o plano.
+- [x] **A01.** Criar as tabelas e os planos no `setup.php`. *Aceite:* banco limpo recebe tudo; repetir não duplica.
+- [x] **A02.** Criar `POST /api/cadastro`. RF-05. *Aceite:* conta criada entra; e-mail repetido recebe erro.
+- [x] **A03.** Proteger login e escrita. RF-06, RNF-06. *Aceite:* CSRF ausente recebe 403; tentativas seguidas são limitadas.
+- [x] **A04.** Criar planos e assinatura. RF-07, RF-08. *Aceite:* ativa sem pagamento; `/api/me` mostra o plano.
 
 ### Fila
 
-- [ ] **A05.** Criar `POST /api/perguntas`. RF-08, RF-13. *Aceite:* copia os entes do plano; segunda pergunta aberta recebe 409; mais de 500 caracteres recebe 400.
-- [ ] **A06.** Criar leitura de eventos. RF-09. *Aceite:* devolve só `seq` maior que `desde`; outro usuário recebe 404.
-- [ ] **A07.** Criar rotas do worker. *Aceite:* sem chave recebe 401; dois pedidos não pegam a mesma pergunta; `seq` repetido é ignorado.
+- [x] **A05.** Criar `POST /api/perguntas`. RF-08, RF-13. *Aceite:* copia os entes do plano; segunda pergunta aberta recebe 409; mais de 500 caracteres recebe 400.
+- [x] **A06.** Criar leitura de eventos. RF-09. *Aceite:* devolve só `seq` maior que `desde`; outro usuário recebe 404.
+- [x] **A07.** Criar rotas do worker. *Aceite:* sem chave recebe 401; dois pedidos não pegam a mesma pergunta; `seq` repetido é ignorado.
 
 ### Telefones
 
@@ -41,12 +41,12 @@ Baseadas na [spec](spec.md) e no [plano técnico](plan.md). Se a tarefa mudar o 
 
 ### Telas
 
-- [ ] **A10.** Criar layout comum e landing. RF-01, RNF-08. *Aceite:* funciona com 400 px e no teclado.
+- [ ] **A10.** Criar layout comum e landing. *(landing pronta em `index.html`; falta o layout comum)* RF-01, RNF-08. *Aceite:* funciona com 400 px e no teclado.
 - [ ] **A11.** Criar planos. RF-02. *Aceite:* lê `/api/planos` e mostra o aviso de demonstração.
 - [ ] **A12.** Criar modelo de negócios. RF-04. *Aceite:* marca os valores como hipótese.
 - [ ] **A13.** Criar sobre nós. RF-03. *Depende de:* fotos, textos e autorização do time.
 - [ ] **A14.** Criar login, cadastro e conta. RF-05 a RF-08, RF-17. *Aceite:* conta mostra plano e estado do telefone.
-- [ ] **A15.** Criar chatbox. RF-09, RF-10, RF-14. *Aceite:* mostra consulta, texto parcial, fontes e erro; para de consultar ao terminar.
+- [x] **A15.** Criar chatbox. RF-09, RF-10, RF-14. *Aceite:* mostra consulta, texto parcial, fontes e erro; para de consultar ao terminar.
 - [ ] **A16.** Criar tela do administrador. RF-18. *Aceite:* aprova e revoga em um clique.
 
 ## Dev B: worker, agente e WhatsApp

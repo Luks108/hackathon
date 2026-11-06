@@ -1,0 +1,32 @@
+# Banco local para desenvolver o site. Só escuta em 127.0.0.1.
+#
+#   Subir:   docker compose -f site/dev/docker-compose.yml up -d
+#   Parar:   docker compose -f site/dev/docker-compose.yml stop
+#   Apagar:  docker compose -f site/dev/docker-compose.yml down -v
+#
+# A senha abaixo é só de desenvolvimento e vale apenas neste contêiner local.
+
+name: hackathon-site-dev
+
+services:
+  db:
+    image: mariadb:10.11
+    container_name: hackathon-site-db
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_SENHA:-dev-root}
+      MARIADB_DATABASE: hackathon
+      MARIADB_USER: hackathon
+      MARIADB_PASSWORD: ${DB_SENHA:-dev-senha}
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - site_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  site_db:
