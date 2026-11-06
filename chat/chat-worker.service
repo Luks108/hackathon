@@ -4,6 +4,7 @@ After=network-online.target wa-gateway.service
 
 [Service]
 WorkingDirectory=/home/luks108/Documentos/Lucas/Hackathon/projeto
+Environment=AGENTES_SITE=3
 Environment=PATH=/home/luks108/.local/bin:/home/luks108/.bun/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=/home/luks108/Documentos/Lucas/Hackathon/projeto/.venv/bin/python chat/worker.py
 Restart=always

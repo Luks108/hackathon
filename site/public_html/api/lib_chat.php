@@ -122,5 +122,13 @@ function rota_eventos(int $id): never {
         'dados' => $e['dados'] === null ? null : json_decode((string)$e['dados'], true),
     ], $st->fetchAll());
 
-    responder(200, ['status' => $p['status'], 'duracao_ms' => $p['duracao_ms'] === null ? null : (int)$p['duracao_ms'], 'eventos' => $eventos]);
+    // Posição na fila: só faz sentido enquanto ninguém pegou a pergunta.
+    $fila = null;
+    if ($p['status'] === 'fila') {
+        $st = db()->prepare('SELECT COUNT(*) FROM perguntas WHERE status = "fila" AND id <= ?');
+        $st->execute([$id]);
+        $fila = (int)$st->fetchColumn();
+    }
+
+    responder(200, ['fila' => $fila, 'status' => $p['status'], 'duracao_ms' => $p['duracao_ms'] === null ? null : (int)$p['duracao_ms'], 'eventos' => $eventos]);
 }

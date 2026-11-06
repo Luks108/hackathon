@@ -317,6 +317,8 @@
           await esperar(INTERVALO_MS * falhas)
           continue
         }
+        if (dados.status === 'fila' && dados.fila > 1) resp.rotulo.textContent = `Você é o ${dados.fila}º da fila…`
+        else if (dados.status === 'processando' && !dados.eventos.length && resp.rotulo.textContent.includes('da fila')) resp.rotulo.textContent = 'Consultando a base…'
         const seguir = noFim(conversa)
         for (const ev of dados.eventos) {
           desde = ev.seq

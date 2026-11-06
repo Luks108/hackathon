@@ -39,6 +39,7 @@ PYTHON_AUDIO = RAIZ.parent / "inferencia" / ".venv" / "bin" / "python"
 TRANSCRITOR = RAIZ.parent / "inferencia" / "transcrever.py"
 PERFIL_MANUAL = ["pe-estado", "pe-garanhuns"]   # números liberados pelo dono no terminal
 ERRO_PADRAO = "Não consegui concluir agora. Tente de novo em instantes."
+AGENTES_SITE = int(os.environ.get("AGENTES_SITE", "3"))   # o WhatsApp tem o próprio agente, um por vez
 
 parar = threading.Event()
 historicos: dict[str, collections.deque] = collections.defaultdict(lambda: collections.deque(maxlen=3))
@@ -127,7 +128,8 @@ def atender_site(p: dict):
                primeiro_sinal_ms=primeiro, duracao_ms=int((time.monotonic() - inicio) * 1000))
 
 
-def laco_site():
+def laco_site(atraso: float = 0):
+    parar.wait(atraso)      # espalha as buscas: os agentes não consultam a fila no mesmo instante
     espera = 1.5
     while not parar.is_set():
         try:
@@ -296,10 +298,11 @@ def main() -> int:
         return 0
     signal.signal(signal.SIGTERM, lambda *_: parar.set())
     signal.signal(signal.SIGINT, lambda *_: parar.set())
-    laços = [threading.Thread(target=f, daemon=True) for f in (laco_site, laco_whatsapp, laco_telefones)]
+    laços = [threading.Thread(target=laco_site, args=(i * 0.5,), daemon=True) for i in range(AGENTES_SITE)]
+    laços += [threading.Thread(target=f, daemon=True) for f in (laco_whatsapp, laco_telefones)]
     for t in laços:
         t.start()
-    registrar("worker no ar:", API)
+    registrar("worker no ar:", API, f"com {AGENTES_SITE} agentes no site")
     parar.wait()
     return 0
 
