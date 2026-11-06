@@ -273,8 +273,8 @@ Regras tiradas da captura real:
 
 O que **não** está resolvido, para ninguém se surpreender na hora da demonstração:
 
-1. **Agente isolado (worker).** O chat do site funciona de ponta a ponta, mas só com o worker falso. O worker real, que roda o
-   agente, ainda não existe (tasks B01 a B07). A página de demonstração é simulada.
+1. **Worker no notebook.** `chat/worker.py` atende o site e o WhatsApp com um agente isolado por pergunta. Não rode junto da sessão de
+   canal do WhatsApp: as duas responderiam. Sem o notebook ligado, o site mostra erro e o bot não responde.
 2. **Ataques com o modelo real.** Nenhum foi executado. A camada de dados está testada, mas a resposta do modelo não. Roteiro em
    [`docs/seguranca/ataques-de-prompt.md`](docs/seguranca/ataques-de-prompt.md#roteiro-de-teste-com-o-agente-real).
 3. **WhatsApp sem isolamento.** A sessão roda dentro do projeto, com ferramentas além das do `transparencia` (AP-07), e o plano

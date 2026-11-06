@@ -53,26 +53,26 @@ Baseadas na [spec](spec.md) e no [plano técnico](plan.md). Se a tarefa mudar o 
 
 ### Agente
 
-- [ ] **B01.** Criar `chat/agente.py` a partir do exemplo do Polis. RNF-03, RNF-04. *Aceite:* roda em diretório neutro e só chama tools do `transparencia`.
-- [ ] **B02.** Traduzir o `stream-json` para eventos. RF-09, RF-10. *Aceite:* gera `consulta`, `texto`, `fonte` e `fim`.
-- [ ] **B03.** Criar regras do agente. RF-11, RF-12. *Aceite:* cita evidência; sem dado, chama `cobertura` antes de negar.
-- [ ] **B04.** Fazer `conferir_evidencia` chegar à resposta. RF-10. *Aceite:* cada fato traz trecho, data e link.
+- [x] **B01.** Criar `chat/agente.py` a partir do exemplo do Polis. RNF-03, RNF-04. *Aceite:* roda em diretório neutro e só chama tools do `transparencia`.
+- [x] **B02.** Traduzir o `stream-json` para eventos. RF-09, RF-10. *Aceite:* gera `consulta`, `texto`, `fonte` e `fim`.
+- [x] **B03.** Criar regras do agente. RF-11, RF-12. *Aceite:* cita evidência; sem dado, chama `cobertura` antes de negar.
+- [x] **B04.** Fazer `conferir_evidencia` chegar à resposta. RF-10. *Aceite:* cada fato traz trecho, data e link.
 
 ### Worker
 
-- [ ] **B05.** Criar `chat/worker.py`. RF-14, RF-15, RNF-02. *Aceite:* pega a pergunta, envia lotes e encerra em até 120 s.
+- [x] **B05.** Criar `chat/worker.py`. RF-14, RF-15, RNF-02. *Aceite:* pega a pergunta, envia lotes e encerra em até 120 s.
 - [ ] **B06.** Testar com API falsa. *Aceite:* funciona antes de A07 ficar pronta.
-- [ ] **B07.** Medir o tempo. RNF-01. *Aceite:* registra primeiro sinal e duração total.
+- [x] **B07.** Medir o tempo. RNF-01. *Aceite:* registra primeiro sinal e duração total.
 
 ### WhatsApp
 
-- [ ] **B08.** Sincronizar telefones. RF-19, RF-20. *Aceite:* aprovar libera e revogar corta em até 30 s; o dono nunca sai.
+- [x] **B08.** Sincronizar telefones. RF-19, RF-20. *Aceite:* aprovar libera e revogar corta em até 30 s; o dono nunca sai.
 - [ ] **B09.** Atualizar `CLAUDE.md` e o texto do `canal.ts` sobre acesso. RF-20. *Aceite:* continua proibido liberar por mensagem.
-- [ ] **B10.** Aplicar perfil por número. RF-21. *Aceite:* dois números veem resultados diferentes.
+- [x] **B10.** Aplicar perfil por número. RF-21. *Aceite:* dois números veem resultados diferentes.
 
 ### Operação e testes
 
-- [ ] **B11.** Criar o arquivo de serviço do worker. RNF-09. *Aceite:* sobe com um comando; o Lucas ativa no notebook.
+- [x] **B11.** Criar o arquivo de serviço do worker. RNF-09. *Aceite:* sobe com um comando; o Lucas ativa no notebook.
 - [ ] **B13.** Rodar testes de perfil e injeção. *Aceite:* resultados registrados em `docs/testes-seguranca.md`.
 
 ## Lucas: dados, ontologia e banco
