@@ -26,7 +26,7 @@ Baseadas na [spec](spec.md) e no [plano técnico](plan.md). Se a tarefa mudar o 
 - [x] **A01.** Criar as tabelas e os planos no `setup.php`. *Aceite:* banco limpo recebe tudo; repetir não duplica.
 - [x] **A02.** Criar `POST /api/cadastro`. RF-05. *Aceite:* conta criada entra; e-mail repetido recebe erro.
 - [x] **A03.** Proteger login e escrita. RF-06, RNF-06. *Aceite:* CSRF ausente recebe 403; tentativas seguidas são limitadas.
-- [x] **A04.** Criar planos e assinatura. RF-07, RF-08. *Aceite:* ativa sem pagamento; `/api/me` mostra o plano.
+- [x] **A04.** Criar planos e assinatura. RF-07, RF-08. *(a escolha de plano na interface está desligada na demonstração: `ESCOLHER_PLANO` em `assets/chat.js`; a conta nova recebe o plano que cobre mais entes)* *Aceite:* ativa sem pagamento; `/api/me` mostra o plano.
 
 ### Fila
 

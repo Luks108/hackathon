@@ -19,6 +19,9 @@
     'Ela tem alguma sanção?',
     'A base de dados é completa?',
   ]
+  // Demonstração livre: a conta nova não escolhe plano e recebe o que cobre mais entes (Estado e Município).
+  // A regra de plano continua valendo no servidor. Ligue isto para voltar a pedir a escolha na tela.
+  const ESCOLHER_PLANO = false
   const INTERVALO_MS = 700          // o plano pede leitura a cada 0,7 s
   const LIMITE_MS = 130000          // RF-14: depois disso, mensagem legível
   const ESTADOS_FINAIS = ['concluida', 'erro']
@@ -41,7 +44,7 @@
     for (const t of ['carregando', 'entrar', 'plano', 'chat']) mostrar('#tela-' + t, t === nome)
     document.body.classList.toggle('modo-chat', nome === 'chat')
     mostrar('#topo-acoes', !!estado.usuario)
-    if (estado.usuario) $('#quem').textContent = estado.usuario.nome + (estado.plano ? ' · plano ' + estado.plano.nome : '')
+    if (estado.usuario) $('#quem').textContent = estado.usuario.nome + (ESCOLHER_PLANO && estado.plano ? ' · plano ' + estado.plano.nome : '')
   }
 
   function erroEm(id, mensagem) {
@@ -57,8 +60,25 @@
 
   async function decidirTela() {
     if (!estado.usuario) { tela('entrar'); return }
-    if (!estado.plano) { await mostrarPlanos(); return }
+    if (!estado.plano) {
+      if (!ESCOLHER_PLANO && await ativarPlanoPadrao()) { await abrirChat(); return }
+      await mostrarPlanos()   // escolha manual, ou saída de emergência se a ativação automática falhar
+      return
+    }
     await abrirChat()
+  }
+
+  // Sem pedir nada, a conta recebe o plano que cobre mais entes. Se algo falhar, cai na escolha manual.
+  async function ativarPlanoPadrao() {
+    try {
+      const planos = await Api.planos()
+      const padrao = planos.slice().sort((a, b) => b.tenants.length - a.tenants.length || b.preco_mensal - a.preco_mensal)[0]
+      if (!padrao) return false
+      estado.plano = (await Api.ativarPlano(padrao.id)).plano
+      return true
+    } catch {
+      return false
+    }
   }
 
   // ---------- entrar e criar conta ----------
@@ -313,7 +333,7 @@
     } catch (e) {
       travarEntrada(false)
       if (e.status === 401) { estado.usuario = null; tela('entrar'); return }
-      if (e.status === 403 && /plano/i.test(e.message)) { estado.plano = null; await mostrarPlanos(); return }
+      if (e.status === 403 && /plano/i.test(e.message)) { estado.plano = null; await decidirTela(); return }
       if (e.status === 409 && e.dados && e.dados.pergunta_id) {
         // já havia uma em andamento: mostra e continua acompanhando
         const { pergunta } = await Api.perguntaAberta()

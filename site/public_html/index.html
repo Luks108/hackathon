@@ -244,11 +244,11 @@ footer p { max-width: 80ch; margin: 0; }
     <div class="cabeca">
       <p class="rotulo">Planos</p>
       <h2 id="t-planos">O plano define o que o assistente pode consultar.</h2>
-      <p class="lide">Cada plano cobre entes diferentes. A mesma pergunta pode ter respostas diferentes, e a resposta diz o que ficou de fora.</p>
+      <p class="lide">Há duas abordagens: o plano Município consulta só Garanhuns, e o plano Estado consulta também o Estado de Pernambuco. A mesma pergunta pode ter respostas diferentes, e a resposta diz o que ficou de fora.</p>
     </div>
     <div class="planos" id="lista-planos" aria-live="polite"><p class="planos-estado">Carregando os planos…</p></div>
     <noscript><p class="planos-estado">Ative o JavaScript para ver os planos, ou <a href="chat.html">abra o assistente</a>.</p></noscript>
-    <p class="nota-planos"><strong>Valores de demonstração.</strong> São hipóteses para o hackathon, ainda não validadas. Ativar um plano não pede pagamento nem cartão.</p>
+    <p class="nota-planos"><strong>Valores de demonstração.</strong> São hipóteses para o hackathon, ainda não validadas. Nesta demonstração você não escolhe plano: o assistente consulta com acesso completo, para mostrar todas as respostas.</p>
   </div>
 </section>
 
@@ -302,7 +302,7 @@ footer p { max-width: 80ch; margin: 0; }
 <section class="bloco final" aria-labelledby="t-final">
   <div class="miolo">
     <h2 id="t-final">Faça a sua pergunta e confira a fonte.</h2>
-    <p class="lide">Crie uma conta, escolha um plano e veja a mesma pergunta ter respostas diferentes.</p>
+    <p class="lide">Crie uma conta e pergunte. Cada resposta traz o trecho da fonte para você conferir.</p>
     <div class="acoes"><a class="botao" href="chat.html" data-abrir>Criar conta e perguntar</a></div>
   </div>
 </section>
@@ -374,9 +374,8 @@ footer p { max-width: 80ch; margin: 0; }
 
   function mostrarPlanos(planos) {
     lista.replaceChildren();
-    var maior = planos.reduce(function (m, p) { return p.preco_mensal > m ? p.preco_mensal : m; }, 0);
     planos.forEach(function (p) {
-      var c = el('div', 'plano-card' + (p.preco_mensal === maior && planos.length > 1 ? ' destaque' : ''));
+      var c = el('div', 'plano-card');
       c.appendChild(el('h3', '', p.nome));
       var preco = el('p', 'preco', brl(p.preco_mensal, 0) + ' ');
       preco.appendChild(el('small', '', '/ mês'));
@@ -386,11 +385,6 @@ footer p { max-width: 80ch; margin: 0; }
       ul.appendChild(el('li', '', 'Excedente: ' + brl(p.preco_excedente, 2) + ' por pergunta'));
       ul.appendChild(el('li', '', 'Consulta: ' + p.tenants.map(function (t) { return ENTES[t] || t; }).join(' e ')));
       c.appendChild(ul);
-      var b = el('a', 'botao', 'Começar com este plano');
-      b.href = 'chat.html';
-      b.setAttribute('data-abrir', '');
-      b.addEventListener('click', function (e) { e.preventDefault(); abrir(true); });
-      c.appendChild(b);
       lista.appendChild(c);
     });
   }
