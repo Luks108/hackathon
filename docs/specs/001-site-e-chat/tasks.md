@@ -11,7 +11,8 @@ Baseadas na [spec](spec.md) e no [plano técnico](plan.md). Se a tarefa mudar o 
 - O Lucas revisa, faz o merge, sobe na Hostinger com `./site/deploy.sh` e liga o worker no notebook.
 - Dev B usa os dados fictícios de `fixtures/exemplo`: copie `.env.exemplo` para `.env` e rode `coleta/carregar_neo4j.py --zerar --exemplo`.
 - Dev A testa o site com PHP e MySQL locais e uma `WORKER_KEY` própria.
-- **Prazo de entrega ao Lucas: 06/11, 9h30.** Depois disso, só correção.
+- **Prévia: 06/11, 4h.** Abra o pull request com o que estiver pronto, mesmo incompleto.
+- **Prazo de entrega ao Lucas: 06/11, 5h.** Depois disso, só correção.
 
 ## Comece aqui
 
@@ -104,8 +105,8 @@ T00 ─┬─ A01 → A02 → A03 → A04 → A05 → A06 → A07 ─┐
 
 | Quando | Dev A | Dev B | Marco |
 |---|---|---|---|
-| Hoje à noite | A01 a A07 | B01 a B06 | Fila e agente prontos |
-| 06/11, até 9h30 | A08 a A16 | B07 a B11 e B13 | **Entrega ao Lucas** |
+| 06/11, até 4h | A01 a A07 e A15 | B01 a B06 | **Prévia:** fila, agente e chatbox |
+| 06/11, até 5h | A08 a A16 | B07 a B11 e B13 | **Entrega ao Lucas** |
 | 06/11, até 11h | Correções | Correções | **I01 a I04:** deploy e demo completa |
 | 06/11, até 12h | I05 | I05 | Code freeze |
 
