@@ -58,11 +58,11 @@ limite de tempo) e "sem fonte" responde sem citar fonte. O worker real, do Dev B
 ## Testes
 
 ```bash
-python site/dev/test_api.py       # 51 testes contra PHP e MariaDB de verdade; PHP_BIN=/caminho/php.exe se preciso
+python site/dev/test_api.py       # 78 testes contra PHP e MariaDB de verdade; PHP_BIN=/caminho/php.exe se preciso
 ```
 
-Os testes sobem os próprios servidores PHP e limpam o que criam. Cobrem os critérios de aceite de A01 a A07, incluindo a
-corrida entre dois workers, a abertura simultânea de perguntas e os limites de tempo.
+Os testes sobem os próprios servidores PHP e limpam o que criam. Cobrem os critérios de aceite de A01 a A09, incluindo a
+corrida entre dois workers, a abertura simultânea de perguntas e de telefones, os limites de tempo e o acesso do administrador.
 
 ## Rotas
 

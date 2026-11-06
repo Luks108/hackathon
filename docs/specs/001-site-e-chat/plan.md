@@ -85,8 +85,9 @@ Todas as rotas de escrita (`POST`, `DELETE`), inclusive cadastro e login, exigem
 | GET | `/api/me` | `{usuario, plano, csrf}`. `usuario` é `null` sem login |
 | GET | `/api/planos` | Lista pública, com `tenants` como lista |
 | POST | `/api/assinatura` | `{plano_id}` ativa o plano de demonstração. Troca de plano cancela o anterior |
-| GET, POST | `/api/telefones` | Listar e cadastrar `{numero}` (A08, ainda não feita) |
-| DELETE | `/api/telefones/{id}` | Remover (A08, ainda não feita) |
+| GET | `/api/telefones` | Os telefones do usuário: `[{id, numero, status, criado_em}]` |
+| POST | `/api/telefones` | `{numero}` cadastra e devolve `201 {id, numero, status: "pendente"}`. Exige plano ativo. Aceita `(87) 99999-9999`, `+55 87 99999-9999` e variações, e guarda sempre `55` + DDD + `9` + 8 dígitos (13 dígitos). Só celular brasileiro; letras ou texto junto do número: `400`. Número já cadastrado, em qualquer conta e em qualquer forma de escrever (inclusive sem o 9): `409`, sem revelar de quem é. Limite de 3 por conta: `400` |
+| DELETE | `/api/telefones/{id}` | Remove o próprio telefone (`204`). De outra conta ou inexistente: `404`. Se estava aprovado, o worker deixa de listá-lo |
 | POST | `/api/perguntas` | `{texto}` devolve `{id}`. Sem plano: `403`. Mais de 500 caracteres: `400`. Já há uma aberta: `409` com `{erro, pergunta_id}` |
 | GET | `/api/perguntas/aberta` | `{pergunta}`: a pergunta em andamento do usuário, ou `null`. Serve para retomar ao recarregar a página |
 | GET | `/api/perguntas/{id}/eventos?desde=0` | Só o dono lê (outro usuário: `404`). Devolve `{status, duracao_ms, eventos}` |
@@ -95,9 +96,14 @@ Todas as rotas de escrita (`POST`, `DELETE`), inclusive cadastro e login, exigem
 
 | Método | Rota | Uso |
 |---|---|---|
-| GET | `/api/admin/telefones?status=pendente` | Fila de aprovação |
-| POST | `/api/admin/telefones/{id}/aprovar` | Aprova |
-| POST | `/api/admin/telefones/{id}/revogar` | Revoga |
+| GET | `/api/admin/telefones?status=pendente` | Fila de aprovação, do mais antigo ao mais novo. `status`: `pendente` (padrão), `aprovado`, `revogado` ou `todos`. Cada item traz o número, o dono (nome, e-mail e plano) e quem decidiu por último |
+| POST | `/api/admin/telefones/{id}/aprovar` | Aprova (também reconsidera um revogado). Registra o admin em `aprovado_por` e a hora em `atualizado_em` |
+| POST | `/api/admin/telefones/{id}/revogar` | Revoga (também recusa um pendente). Mesmo registro |
+
+Só o papel `admin` acessa: sem login `401`, usuário comum `403`, e `POST` sem `X-CSRF-Token` `403`. O papel é lido do banco a cada
+requisição, então perder o papel corta o acesso na hora. Repetir a mesma decisão devolve `200` e **não troca** quem decidiu
+primeiro. O número só chega ao worker (`GET /api/worker/telefones`) enquanto estiver `aprovado` **e** o dono tiver plano ativo.
+`aprovado_por` guarda o administrador da última decisão, seja aprovação ou revogação.
 
 ### Worker
 

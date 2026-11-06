@@ -10,6 +10,13 @@
 //   POST /api/perguntas                   {texto}
 //   GET  /api/perguntas/aberta
 //   GET  /api/perguntas/{id}/eventos?desde=N
+//   GET  /api/telefones                   os telefones do usuário
+//   POST /api/telefones                   {numero}: nasce "pendente"
+//   DELETE /api/telefones/{id}
+//
+// Administrador (papel "admin"):
+//   GET  /api/admin/telefones?status=pendente|aprovado|revogado|todos
+//   POST /api/admin/telefones/{id}/aprovar  e  /revogar
 //
 // Worker (cabeçalho X-Worker-Key, sem sessão):
 //   POST /api/worker/proxima
@@ -20,7 +27,7 @@ declare(strict_types=1);
 define('API', true);
 
 require dirname(__DIR__, 2) . '/hackathon-config.php';   // fora do public_html
-foreach (['base', 'conta', 'chat', 'worker'] as $modulo) {
+foreach (['base', 'conta', 'chat', 'telefones', 'worker'] as $modulo) {
     require __DIR__ . "/lib_$modulo.php";
 }
 
@@ -41,6 +48,12 @@ $rotas = [
     ['POST', '#^assinatura$#',                     true,  'rota_assinatura'],
     ['POST', '#^perguntas$#',                      true,  'rota_perguntas_criar'],
     ['GET',  '#^perguntas/aberta$#',               true,  'rota_pergunta_aberta'],
+    ['GET',    '#^telefones$#',                       true,  'rota_telefones_listar'],
+    ['POST',   '#^telefones$#',                       true,  'rota_telefones_criar'],
+    ['DELETE', '#^telefones/(\d+)$#',                 true,  'rota_telefones_remover'],
+    ['GET',    '#^admin/telefones$#',                 true,  'rota_admin_telefones'],
+    ['POST',   '#^admin/telefones/(\d+)/aprovar$#',   true,  'rota_admin_aprovar'],
+    ['POST',   '#^admin/telefones/(\d+)/revogar$#',   true,  'rota_admin_revogar'],
     ['GET',  '#^perguntas/(\d+)/eventos$#',        true,  'rota_eventos'],
     ['POST', '#^worker/proxima$#',                 false, 'rota_worker_proxima'],
     ['POST', '#^worker/perguntas/(\d+)/eventos$#', false, 'rota_worker_eventos'],

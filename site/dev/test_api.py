@@ -19,6 +19,7 @@ import threading
 import time
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
@@ -556,6 +557,259 @@ class TestA07Worker(Base):
         r = worker(self.base, "GET", "/api/worker/telefones")
         self.assertEqual({t["numero"]: t["tenants"] for t in r.corpo},
                          {"5587999990001": ["pe-garanhuns"], "5587999990002": ["pe-estado", "pe-garanhuns"]})
+
+
+def numero_unico() -> str:
+    """Celular de teste único, em formato canônico (55 + DDD + 9 + 8 dígitos)."""
+    return "5587" + "9" + f"{uuid.uuid4().int % 10**8:08d}"
+
+
+class TestA08Telefones(Base):
+    def test_exige_login_csrf_e_plano(self):
+        anon = Cliente(self.base); anon.me()
+        self.assertEqual(anon.req("GET", "/api/telefones", csrf=False).status, 401)
+        self.assertEqual(anon.req("POST", "/api/telefones", {"numero": numero_unico()}).status, 401)
+        self.assertEqual(anon.req("DELETE", "/api/telefones/1").status, 401)
+        sem_plano = Cliente(self.base); sem_plano.cadastrar()
+        r = sem_plano.req("POST", "/api/telefones", {"numero": numero_unico()})
+        self.assertEqual(r.status, 403)
+        self.assertIn("plano", r["erro"])
+        c = self.cliente_com_plano()
+        self.assertEqual(c.req("POST", "/api/telefones", {"numero": numero_unico()}, csrf=False).status, 403)
+        self.assertEqual(c.req("DELETE", "/api/telefones/1", csrf=False).status, 403)
+
+    def test_normaliza_o_numero_e_comeca_pendente(self):
+        c = self.cliente_com_plano()
+        formas = ["(87) 98888-7777", "+55 87 98888-7777", "87988887777", "558788887777", "087 98888-7777", "0055 87 98888-7777"]
+        r = c.req("POST", "/api/telefones", {"numero": formas[0]})
+        self.assertEqual((r.status, r["numero"], r["status"]), (201, "5587988887777", "pendente"))
+        lista = c.req("GET", "/api/telefones", csrf=False)
+        self.assertEqual([(t["numero"], t["status"]) for t in lista.corpo], [("5587988887777", "pendente")])
+        for forma in formas[1:]:   # qualquer outra forma de escrever o mesmo número é duplicado
+            self.assertEqual(c.req("POST", "/api/telefones", {"numero": forma}).status, 409, forma)
+
+    def test_numeros_invalidos_recebem_400(self):
+        c = self.cliente_com_plano()
+        for ruim in ["", "abc", "123", "(87) 3761-1234", "87 5999-9999", "+1 415 555 2671", "0", "9" * 40,
+                     "(00) 99999-9999", "(87) 89999-9999", 5587999990000, None, ["5587999990000"], {"n": 1}]:
+            self.assertEqual(c.req("POST", "/api/telefones", {"numero": ruim}).status, 400, repr(ruim))
+        self.assertEqual(c.req("POST", "/api/telefones", {}).status, 400)
+        self.assertEqual(c.req("GET", "/api/telefones", csrf=False).corpo, [])
+
+    def test_espacos_e_quebra_de_linha_nas_pontas_sao_toleradas(self):
+        c = self.cliente_com_plano()
+        n = numero_unico()
+        r = c.req("POST", "/api/telefones", {"numero": f"  {n}\n"})   # número colado de outro lugar
+        self.assertEqual((r.status, r["numero"]), (201, n))
+
+    def test_numero_ja_cadastrado_por_outra_conta_recebe_409_sem_revelar_o_dono(self):
+        a, b = self.cliente_com_plano(), self.cliente_com_plano()
+        n = numero_unico()
+        self.assertEqual(a.req("POST", "/api/telefones", {"numero": n}).status, 201)
+        dele = b.req("POST", "/api/telefones", {"numero": n})
+        meu = a.req("POST", "/api/telefones", {"numero": n})
+        self.assertEqual((dele.status, meu.status), (409, 409))
+        self.assertEqual(dele["erro"], meu["erro"])
+        self.assertEqual(b.req("GET", "/api/telefones", csrf=False).corpo, [])
+
+    def test_variacao_do_nono_digito_tambem_e_duplicada(self):
+        a, b = self.cliente_com_plano(), self.cliente_com_plano()
+        com9 = "5587" + "9" + "70000001"
+        sem9 = "5587" + "70000001"
+        self.assertEqual(a.req("POST", "/api/telefones", {"numero": com9}).status, 201)
+        self.assertEqual(b.req("POST", "/api/telefones", {"numero": sem9}).status, 409)
+
+    def test_limite_de_telefones_por_conta(self):
+        c = self.cliente_com_plano()
+        for _ in range(3):
+            self.assertEqual(c.req("POST", "/api/telefones", {"numero": numero_unico()}).status, 201)
+        r = c.req("POST", "/api/telefones", {"numero": numero_unico()})
+        self.assertEqual(r.status, 400)
+        self.assertIn("3", r["erro"])
+
+    def test_limite_vale_com_seis_requisicoes_ao_mesmo_tempo(self):
+        c = self.cliente_com_plano()
+        abas = []
+        for i in range(6):
+            aba = Cliente(SERVIDORES[i % 3][1])
+            self.assertEqual(aba.req("POST", "/api/login", {"email": c.email, "senha": c.senha}).status, 200)
+            abas.append(aba)
+        for rodada in range(8):
+            sql(f"DELETE t FROM telefones t JOIN usuarios u ON u.id=t.usuario_id WHERE u.email='{c.email}'")
+            barreira = threading.Barrier(6)
+            status = []
+
+            def disparar(aba):
+                barreira.wait()
+                status.append(aba.req("POST", "/api/telefones", {"numero": numero_unico()}).status)
+
+            ts = [threading.Thread(target=disparar, args=(a,)) for a in abas]
+            [t.start() for t in ts]; [t.join() for t in ts]
+            self.assertEqual(sorted(status), [201, 201, 201, 400, 400, 400], f"rodada {rodada}")
+
+    def test_cada_um_ve_so_os_proprios_telefones(self):
+        a, b = self.cliente_com_plano(), self.cliente_com_plano()
+        na, nb = numero_unico(), numero_unico()
+        a.req("POST", "/api/telefones", {"numero": na}); b.req("POST", "/api/telefones", {"numero": nb})
+        self.assertEqual([t["numero"] for t in a.req("GET", "/api/telefones", csrf=False).corpo], [na])
+        self.assertEqual([t["numero"] for t in b.req("GET", "/api/telefones", csrf=False).corpo], [nb])
+
+    def test_remover_o_proprio_telefone(self):
+        c = self.cliente_com_plano()
+        tid = c.req("POST", "/api/telefones", {"numero": numero_unico()})["id"]
+        self.assertEqual(c.req("DELETE", f"/api/telefones/{tid}").status, 204)
+        self.assertEqual(c.req("GET", "/api/telefones", csrf=False).corpo, [])
+        self.assertEqual(c.req("DELETE", f"/api/telefones/{tid}").status, 404)   # já removido
+
+    def test_nao_remove_telefone_de_outra_conta(self):
+        a, intruso = self.cliente_com_plano(), self.cliente_com_plano()
+        tid = a.req("POST", "/api/telefones", {"numero": numero_unico()})["id"]
+        inexistente = intruso.req("DELETE", "/api/telefones/999999")
+        r = intruso.req("DELETE", f"/api/telefones/{tid}")
+        self.assertEqual((r.status, inexistente.status), (404, 404))
+        self.assertEqual(r["erro"], inexistente["erro"])   # não confirma que o telefone existe
+        self.assertEqual(len(a.req("GET", "/api/telefones", csrf=False).corpo), 1)
+
+    def test_numero_removido_pode_ser_cadastrado_por_outra_conta(self):
+        a, b = self.cliente_com_plano(), self.cliente_com_plano()
+        n = numero_unico()
+        tid = a.req("POST", "/api/telefones", {"numero": n})["id"]
+        a.req("DELETE", f"/api/telefones/{tid}")
+        self.assertEqual(b.req("POST", "/api/telefones", {"numero": n}).status, 201)
+
+    def test_remover_aprovado_tira_o_numero_da_lista_do_worker(self):
+        c = self.cliente_com_plano(2)
+        n = numero_unico()
+        tid = c.req("POST", "/api/telefones", {"numero": n})["id"]
+        sql(f"UPDATE telefones SET status='aprovado' WHERE id={tid}")
+        self.assertIn(n, [t["numero"] for t in worker(self.base, "GET", "/api/worker/telefones").corpo])
+        c.req("DELETE", f"/api/telefones/{tid}")
+        self.assertNotIn(n, [t["numero"] for t in worker(self.base, "GET", "/api/worker/telefones").corpo])
+
+    def test_injecao_no_numero_nao_chega_ao_banco(self):
+        c = self.cliente_com_plano()
+        for ruim in ["5587999990000'; DROP TABLE telefones;--", "5587999990000 OR 1=1", "55879999900\x0000",
+                     "me ligue no 5587999990000", "<b>5587999990000</b>"]:
+            self.assertEqual(c.req("POST", "/api/telefones", {"numero": ruim}).status, 400, repr(ruim))
+        self.assertIn("telefones", sql("SHOW TABLES"))
+        self.assertEqual(c.req("GET", "/api/telefones", csrf=False).corpo, [])   # nada foi guardado
+
+
+class TestA09Admin(Base):
+    def admin(self):
+        c = Cliente(self.base); c.cadastrar(nome="Admin Teste")
+        sql(f"UPDATE usuarios SET papel='admin' WHERE email='{c.email}'")
+        return c
+
+    def telefone_pendente(self, plano_id=1):
+        dono = self.cliente_com_plano(plano_id)
+        n = numero_unico()
+        tid = dono.req("POST", "/api/telefones", {"numero": n})["id"]
+        return dono, tid, n
+
+    def test_usuario_comum_recebe_403_em_todas_as_rotas(self):
+        dono, tid, _ = self.telefone_pendente()
+        for metodo, caminho in [("GET", "/api/admin/telefones"), ("GET", "/api/admin/telefones?status=todos"),
+                                ("POST", f"/api/admin/telefones/{tid}/aprovar"), ("POST", f"/api/admin/telefones/{tid}/revogar")]:
+            r = dono.req(metodo, caminho, {} if metodo == "POST" else None, csrf=(metodo == "POST"))
+            self.assertEqual(r.status, 403, caminho)
+        self.assertEqual(sql(f"SELECT status FROM telefones WHERE id={tid}"), "pendente")   # o dono não se aprovou
+
+    def test_sem_login_recebe_401(self):
+        anon = Cliente(self.base); anon.me()
+        self.assertEqual(anon.req("GET", "/api/admin/telefones", csrf=False).status, 401)
+        self.assertEqual(anon.req("POST", "/api/admin/telefones/1/aprovar", {}).status, 401)
+
+    def test_post_do_admin_sem_csrf_recebe_403(self):
+        adm = self.admin()
+        _, tid, _ = self.telefone_pendente()
+        self.assertEqual(adm.req("POST", f"/api/admin/telefones/{tid}/aprovar", {}, csrf=False).status, 403)
+        self.assertEqual(adm.req("POST", f"/api/admin/telefones/{tid}/aprovar", {}, token="falso").status, 403)
+        self.assertEqual(sql(f"SELECT status FROM telefones WHERE id={tid}"), "pendente")
+
+    def test_fila_de_aprovacao_mostra_dono_plano_e_numero(self):
+        adm = self.admin()
+        dono, tid, n = self.telefone_pendente(2)
+        fila = adm.req("GET", "/api/admin/telefones", csrf=False)
+        self.assertEqual(fila.status, 200)
+        item = next(t for t in fila.corpo if t["id"] == tid)
+        self.assertEqual((item["numero"], item["status"]), (n, "pendente"))
+        self.assertEqual((item["usuario"]["email"], item["usuario"]["plano"]), (dono.email, "Estado"))
+        self.assertIsNone(item["decidido_por"])
+
+    def test_filtro_por_status(self):
+        adm = self.admin()
+        _, a, _ = self.telefone_pendente(); _, b, _ = self.telefone_pendente(); _, c, _ = self.telefone_pendente()
+        adm.req("POST", f"/api/admin/telefones/{b}/aprovar", {}); adm.req("POST", f"/api/admin/telefones/{c}/revogar", {})
+        ids = lambda s: {t["id"] for t in adm.req("GET", f"/api/admin/telefones?status={s}", csrf=False).corpo}
+        self.assertEqual((a in ids("pendente"), b in ids("pendente"), c in ids("pendente")), (True, False, False))
+        self.assertEqual((b in ids("aprovado"), a in ids("aprovado")), (True, False))
+        self.assertEqual((c in ids("revogado"), a in ids("revogado")), (True, False))
+        self.assertTrue({a, b, c} <= ids("todos"))
+        self.assertEqual(adm.req("GET", "/api/admin/telefones?status=qualquer", csrf=False).status, 400)
+        self.assertEqual(adm.req("GET", "/api/admin/telefones?status=" + urllib.parse.quote("' OR 1=1 --"), csrf=False).status, 400)
+
+    def test_aprovar_registra_quem_decidiu_e_libera_o_worker(self):
+        adm = self.admin()
+        dono, tid, n = self.telefone_pendente(2)
+        self.assertNotIn(n, [t["numero"] for t in worker(self.base, "GET", "/api/worker/telefones").corpo])   # pendente não entra
+        r = adm.req("POST", f"/api/admin/telefones/{tid}/aprovar", {})
+        self.assertEqual((r.status, r["status"]), (200, "aprovado"))
+        self.assertEqual(r["decidido_por"]["email"], adm.email)
+        self.assertNotEqual(sql(f"SELECT aprovado_por FROM telefones WHERE id={tid}"), "NULL")
+        no_worker = {t["numero"]: t["tenants"] for t in worker(self.base, "GET", "/api/worker/telefones").corpo}
+        self.assertEqual(no_worker[n], ["pe-estado", "pe-garanhuns"])
+        self.assertEqual(dono.req("GET", "/api/telefones", csrf=False).corpo[0]["status"], "aprovado")   # o dono vê o resultado
+
+    def test_revogar_corta_o_acesso(self):
+        adm = self.admin()
+        _, tid, n = self.telefone_pendente()
+        adm.req("POST", f"/api/admin/telefones/{tid}/aprovar", {})
+        self.assertIn(n, [t["numero"] for t in worker(self.base, "GET", "/api/worker/telefones").corpo])
+        r = adm.req("POST", f"/api/admin/telefones/{tid}/revogar", {})
+        self.assertEqual((r.status, r["status"]), (200, "revogado"))
+        self.assertNotIn(n, [t["numero"] for t in worker(self.base, "GET", "/api/worker/telefones").corpo])
+
+    def test_recusar_um_pendente_e_reconsiderar_um_revogado(self):
+        adm = self.admin()
+        _, tid, n = self.telefone_pendente()
+        self.assertEqual(adm.req("POST", f"/api/admin/telefones/{tid}/revogar", {})["status"], "revogado")
+        self.assertEqual(adm.req("POST", f"/api/admin/telefones/{tid}/aprovar", {})["status"], "aprovado")
+        self.assertIn(n, [t["numero"] for t in worker(self.base, "GET", "/api/worker/telefones").corpo])
+
+    def test_repetir_a_decisao_nao_troca_quem_decidiu(self):
+        primeiro, segundo = self.admin(), self.admin()
+        _, tid, _ = self.telefone_pendente()
+        a = primeiro.req("POST", f"/api/admin/telefones/{tid}/aprovar", {})
+        b = segundo.req("POST", f"/api/admin/telefones/{tid}/aprovar", {})
+        self.assertEqual((a.status, b.status), (200, 200))
+        self.assertEqual(b["decidido_por"]["email"], primeiro.email)
+        self.assertEqual(a["atualizado_em"], b["atualizado_em"])
+
+    def test_telefone_inexistente_recebe_404(self):
+        adm = self.admin()
+        self.assertEqual(adm.req("POST", "/api/admin/telefones/999999/aprovar", {}).status, 404)
+        self.assertEqual(adm.req("POST", "/api/admin/telefones/999999/revogar", {}).status, 404)
+
+    def test_aprovado_sem_plano_ativo_nao_aparece_para_o_worker(self):
+        adm = self.admin()
+        dono, tid, n = self.telefone_pendente()
+        adm.req("POST", f"/api/admin/telefones/{tid}/aprovar", {})
+        sql(f"UPDATE assinaturas a JOIN usuarios u ON u.id=a.usuario_id SET a.status='cancelada' WHERE u.email='{dono.email}'")
+        self.assertNotIn(n, [t["numero"] for t in worker(self.base, "GET", "/api/worker/telefones").corpo])
+
+    def test_perder_o_papel_de_admin_corta_o_acesso_na_hora(self):
+        adm = self.admin()
+        self.assertEqual(adm.req("GET", "/api/admin/telefones", csrf=False).status, 200)
+        sql(f"UPDATE usuarios SET papel='usuario' WHERE email='{adm.email}'")
+        self.assertEqual(adm.req("GET", "/api/admin/telefones", csrf=False).status, 403)
+
+    def test_papel_nao_pode_ser_alterado_pela_api(self):
+        c = Cliente(self.base)
+        r = c.req("POST", "/api/cadastro", {"nome": "x", "email": f"{uuid.uuid4().hex[:8]}@teste.local", "senha": "senha-segura-123", "papel": "admin"})
+        self.assertEqual(r.status, 201)
+        self.assertEqual(r["usuario"]["papel"], "usuario")
+        self.assertEqual(c.req("GET", "/api/admin/telefones", csrf=False).status, 403)
 
 
 class TestPerguntasVencidas(Base):

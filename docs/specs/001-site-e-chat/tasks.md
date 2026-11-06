@@ -36,8 +36,8 @@ Baseadas na [spec](spec.md) e no [plano técnico](plan.md). Se a tarefa mudar o 
 
 ### Telefones
 
-- [ ] **A08.** Criar rotas de telefone do usuário. RF-17. *Aceite:* normaliza o número e não aceita duplicado.
-- [ ] **A09.** Criar aprovação do administrador. RF-18. *Aceite:* usuário comum recebe 403; aprovação fica registrada.
+- [x] **A08.** Criar rotas de telefone do usuário. RF-17. *Aceite:* normaliza o número e não aceita duplicado.
+- [x] **A09.** Criar aprovação do administrador. RF-18. *Aceite:* usuário comum recebe 403; aprovação fica registrada.
 
 ### Telas
 
