@@ -29,6 +29,8 @@ def rotulo(tipo: str, p: dict) -> str:
         return "Processo " + p.get("numero", "")
     if tipo == "Sancao":
         return (p.get("tipo") or "Sanção").split(" ")[0].capitalize()
+    if tipo == "ExecucaoFinanceira":
+        return f'Execução {p.get("ano")}'
     if tipo == "Evidencia":
         return f'{p.get("tabela")}, linha {p.get("linha")}'
     return p.get("nome") or p.get("id", "")
@@ -42,6 +44,17 @@ def ler_grafo() -> dict:
         arestas = [dict(r) for r in s.run(
             "MATCH (a)-[r]->(b) RETURN elementId(a) AS a, elementId(b) AS b, type(r) AS rel")]
     driver.close()
+
+    # Na tela fica a maior linha por fornecedor e ano. O agente continua consultando todas.
+    maiores: dict[tuple, str] = {}
+    for e in arestas:
+        if e["rel"] == "TEM_EXECUCAO":
+            chave = (e["a"], nos[e["b"]]["p"]["ano"])
+            if chave not in maiores or nos[e["b"]]["p"]["pago"] > nos[maiores[chave]]["p"]["pago"]:
+                maiores[chave] = e["b"]
+    for i in [i for i, n in nos.items() if n["t"] == "ExecucaoFinanceira" and i not in maiores.values()]:
+        del nos[i]
+    arestas = [e for e in arestas if e["a"] in nos and e["b"] in nos]
 
     def visivel(n: dict) -> bool:
         p = n["p"]
@@ -73,7 +86,7 @@ MOLDE = r"""<title>Grafo de Fornecedores</title>
   --papel:#f7f6f3; --papel-2:#edece6; --regra:#d6d3c9;
   --latao:#8f6428; --latao-fraco:#f0e6d5; --ruim:#a3372a;
   --Contrato:#3f7fc2; --Fornecedor:#3d9a78; --Sancao:#c2603f; --ProcessoLicitatorio:#8a6dba;
-  --UnidadeJurisdicionada:#b5801f; --Ente:#54707d; --Evidencia:#9a978b;
+  --UnidadeJurisdicionada:#b5801f; --Ente:#54707d; --Evidencia:#9a978b; --ExecucaoFinanceira:#2a8c8c;
   --serif:"Source Serif 4",Georgia,serif; --slab:"Zilla Slab",Rockwell,Georgia,serif;
   --mono:"IBM Plex Mono",Consolas,monospace;
 }

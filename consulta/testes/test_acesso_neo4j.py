@@ -131,6 +131,31 @@ class TestIsolamentoEntrePerfis(unittest.TestCase):
             self.assertNotIn("pf:", texto, nome)
             self.assertNotIn("Consultoria", texto, nome)
 
+    # ---------- Consultas de contrato por termo e de execução financeira ----------
+
+    def test_busca_de_contratos_respeita_ente_e_dado_pessoal(self):
+        m = self.perfil("municipio")
+        self.assertEqual([c["numero"] for c in m.buscar_contratos("reforma")], ["1/2026"])
+        self.assertEqual(m.buscar_contratos("consultoria"), [])      # só existe em contrato de pessoa física
+        self.assertEqual(m.buscar_contratos("pavimentação"), [])     # só existe em outro estado
+        x = self.perfil("estado-exemplo")
+        self.assertEqual([c["numero"] for c in x.buscar_contratos("pavimentação")], ["1/2026"])
+        self.assertEqual(x.buscar_contratos("reforma"), [])
+
+    def test_execucao_so_do_ente_do_perfil(self):
+        self.assertEqual(self.perfil("municipio").execucao_do_fornecedor(A), [])
+        self.assertEqual([x["pago"] for x in self.perfil("estado").execucao_do_fornecedor(A)], [7000.0])
+        self.assertEqual([x["pago"] for x in self.perfil("estado-exemplo").execucao_do_fornecedor(A)], [9000.0])
+
+    def test_evidencia_da_execucao_nao_cruza_estados(self):
+        e = self.perfil("estado")
+        self.assertIn("erro", e.conferir_evidencia("x3"))
+        self.assertNotIn("erro", e.conferir_evidencia("e2"))
+
+    def test_cobertura_so_lista_orgaos_do_perfil(self):
+        nomes = [o["orgao"] for o in self.perfil("municipio").cobertura()["orgaos"]]
+        self.assertEqual(nomes, ["SECRETARIA DE EXEMPLO"])
+
     # ---------- Texto do portal é dado ----------
 
     def test_texto_malicioso_do_portal_volta_como_dado_inerte(self):
