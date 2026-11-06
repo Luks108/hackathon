@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Minha conta | Histórico de fornecedor com prova</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+
+<header class="topo" id="topo"></header>
+
+<main class="miolo pagina" id="conteudo">
+  <p class="apoio" id="carregando" aria-live="polite">Carregando…</p>
+
+  <div id="pagina" class="pagina" hidden>
+    <header>
+      <h1>Minha conta</h1>
+      <p>Seus dados, o acesso ao assistente e os telefones liberados para o WhatsApp.</p>
+    </header>
+
+    <section class="cartao secao" aria-labelledby="t-dados">
+      <h2 id="t-dados">Seus dados</h2>
+      <dl class="dados">
+        <dt>Nome</dt><dd id="dado-nome"></dd>
+        <dt>E-mail</dt><dd id="dado-email"></dd>
+      </dl>
+    </section>
+
+    <section class="cartao secao" aria-labelledby="t-acesso">
+      <h2 id="t-acesso">Acesso ao assistente</h2>
+      <dl class="dados">
+        <dt>Plano</dt><dd id="dado-plano"></dd>
+        <dt>Consulta</dt><dd id="dado-entes"></dd>
+      </dl>
+      <p class="apoio" style="margin:14px 0 0">Nesta demonstração, todas as contas consultam com acesso completo.</p>
+    </section>
+
+    <section class="cartao secao" aria-labelledby="t-whatsapp">
+      <h2 id="t-whatsapp">Telefones do WhatsApp</h2>
+      <p class="apoio">Cadastre o celular com que você vai falar com o assistente. Um administrador precisa aprovar o número antes de liberá-lo. Cada conta pode ter até 3 telefones.</p>
+      <p class="aviso-erro" id="erro-tel" role="alert" hidden></p>
+      <p class="aviso-ok" id="ok-tel" role="status" hidden></p>
+      <form class="linha-form" id="form-tel" novalidate>
+        <div class="campo">
+          <label for="tel-numero">Celular com DDD</label>
+          <input id="tel-numero" type="tel" inputmode="tel" autocomplete="tel" placeholder="(87) 99999-9999" maxlength="30" required>
+        </div>
+        <button class="botao" type="submit" id="tel-enviar">Cadastrar telefone</button>
+      </form>
+      <ul class="lista" id="lista-tel" aria-live="polite"></ul>
+      <p class="vazio" id="vazio-tel" hidden>Você ainda não cadastrou nenhum telefone.</p>
+    </section>
+  </div>
+</main>
+
+<script src="assets/util.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/topo.js"></script>
+<script src="assets/conta.js"></script>
+</body>
+</html>

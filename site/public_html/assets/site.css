@@ -125,6 +125,48 @@ details.fonte .meta a { color: var(--verde); }
 .rodape-chat { display: flex; justify-content: space-between; gap: 12px; padding: 0 22px 12px; font-size: 13px; color: var(--tinta-3); }
 .rodape-chat output.perto { color: var(--ambar); }
 
+/* ---------- Páginas internas: conta e administração ---------- */
+.link-topo { color: var(--heroi-2); text-decoration: none; font: 500 14px var(--texto); padding: 6px 8px; border-radius: 4px; white-space: nowrap; }
+.link-topo:hover { color: var(--heroi-texto); background: var(--heroi-regra); }
+@media (max-width: 640px) { .link-topo { padding: 6px 4px; font-size: 13px; } }
+html.embutido .link-topo { display: none; }
+.topo-links { display: flex; gap: 4px; }
+.topo-links a { color: var(--heroi-2); text-decoration: none; font: 500 15px var(--texto); padding: 8px 12px; border-radius: 4px; }
+.topo-links a:hover { color: var(--heroi-texto); background: var(--heroi-regra); }
+.topo-links a[aria-current="page"] { color: var(--heroi-texto); box-shadow: inset 0 -2px 0 var(--heroi-verde); border-radius: 4px 4px 0 0; }
+@media (max-width: 640px) { .topo .marca { display: none; } .topo .miolo { justify-content: space-between; } }
+
+.pagina { display: grid; gap: 22px; align-content: start; }
+.pagina > header p { margin: 6px 0 0; color: var(--tinta-2); }
+.secao h2 { font-size: 22px; margin-bottom: 14px; }
+.dados { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; margin: 0; }
+.dados dt { color: var(--tinta-3); font-size: 15px; }
+.dados dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .dados { grid-template-columns: 1fr; gap: 2px; } .dados dd { margin-bottom: 10px; } }
+
+.linha-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.linha-form .campo { flex: 1 1 240px; margin: 0; }
+.linha-form .botao { flex: none; }
+.lista { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; }
+.item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 14px 16px; background: var(--papel); border: 1px solid var(--regra); border-radius: 8px; }
+.item .principal { min-width: 0; flex: 1 1 240px; }
+.item .numero { font: 600 19px var(--serifa); }
+.item .detalhe { font-size: 14px; color: var(--tinta-3); overflow-wrap: anywhere; }
+.item .detalhe + .detalhe { margin-top: 2px; }
+.acoes-item { display: flex; flex-wrap: wrap; gap: 8px; }
+.botao.pequeno { min-height: 40px; padding: 6px 16px; font-size: 15px; }
+.botao.perigo { background: transparent; color: var(--vermelho); border-color: var(--vermelho); }
+.botao.perigo:hover:not(:disabled) { background: var(--vermelho-fraco); border-color: var(--vermelho); }
+.status { display: inline-block; font: 600 12px var(--texto); letter-spacing: .06em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; margin-bottom: 4px; }
+.status.pendente { background: var(--ambar-fraco); color: var(--ambar); }
+.status.aprovado { background: var(--verde-fraco); color: var(--verde); }
+.status.revogado { background: var(--vermelho-fraco); color: var(--vermelho); }
+.vazio { padding: 22px; text-align: center; color: var(--tinta-3); border: 1px dashed var(--regra); border-radius: 8px; margin-top: 18px; }
+.aviso-ok { margin: 0 0 14px; padding: 10px 12px; border-left: 3px solid var(--verde); background: var(--verde-fraco); color: var(--tinta); font-size: 15px; border-radius: 0 4px 4px 0; }
+.filtros { margin-bottom: 4px; flex-wrap: wrap; }
+.topo-da-lista { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.atualizado { font-size: 13px; color: var(--tinta-3); }
+
 /* Dentro do painel da página inicial (chat.html?embutido=1): sem marca no topo e sem margens, o chat ocupa tudo. */
 html.embutido .topo .marca { display: none; }
 html.embutido .topo .miolo { min-height: 44px; justify-content: flex-end; padding-left: 12px; padding-right: 12px; }

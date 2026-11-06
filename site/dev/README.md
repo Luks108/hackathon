@@ -74,3 +74,15 @@ O contrato completo está em [`docs/specs/001-site-e-chat/plan.md`](../../docs/s
 docker compose -f site/dev/docker-compose.yml down -v && docker compose -f site/dev/docker-compose.yml up -d
 php site/setup.php
 ```
+
+## Páginas do site
+
+| Página | O que é |
+|---|---|
+| `/` | Página inicial, com o assistente flutuante |
+| `/chat.html` | Chat em tela cheia (entrar, criar conta e conversar) |
+| `/conta.html` | Minha conta: dados, plano e telefones do WhatsApp com o estado de cada um |
+| `/admin.html` | Administração (só papel `admin`): fila de telefones, aprovar e bloquear em um clique |
+
+O link "Administração" só aparece para quem é admin, e o servidor recusa as rotas de qualquer jeito (`403`).
+Para testar como administrador em desenvolvimento, use a conta da seção "Administrador" acima.

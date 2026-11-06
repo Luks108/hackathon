@@ -41,13 +41,13 @@ Baseadas na [spec](spec.md) e no [plano técnico](plan.md). Se a tarefa mudar o 
 
 ### Telas
 
-- [ ] **A10.** Criar layout comum e landing. *(landing pronta em `index.html`; falta o layout comum)* RF-01, RNF-08. *Aceite:* funciona com 400 px e no teclado.
+- [ ] **A10.** Criar layout comum e landing. *(landing em `index.html` e topo comum nas páginas de conta e administração, em `assets/topo.js`; o chat ainda tem o próprio topo)* RF-01, RNF-08. *Aceite:* funciona com 400 px e no teclado.
 - [ ] **A11.** Criar planos. RF-02. *Aceite:* lê `/api/planos` e mostra o aviso de demonstração.
 - [ ] **A12.** Criar modelo de negócios. RF-04. *Aceite:* marca os valores como hipótese.
 - [ ] **A13.** Criar sobre nós. RF-03. *Depende de:* fotos, textos e autorização do time.
-- [ ] **A14.** Criar login, cadastro e conta. RF-05 a RF-08, RF-17. *Aceite:* conta mostra plano e estado do telefone.
+- [x] **A14.** Criar login, cadastro e conta. RF-05 a RF-08, RF-17. *Aceite:* conta mostra plano e estado do telefone.
 - [x] **A15.** Criar chatbox. RF-09, RF-10, RF-14. *Aceite:* mostra consulta, texto parcial, fontes e erro; para de consultar ao terminar.
-- [ ] **A16.** Criar tela do administrador. RF-18. *Aceite:* aprova e revoga em um clique.
+- [x] **A16.** Criar tela do administrador. RF-18. *Aceite:* aprova e revoga em um clique.
 
 ## Dev B: worker, agente e WhatsApp
 

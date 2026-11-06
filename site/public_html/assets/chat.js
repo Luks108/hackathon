@@ -44,6 +44,7 @@
     for (const t of ['carregando', 'entrar', 'plano', 'chat']) mostrar('#tela-' + t, t === nome)
     document.body.classList.toggle('modo-chat', nome === 'chat')
     mostrar('#topo-acoes', !!estado.usuario)
+    $('#link-admin').hidden = !(estado.usuario && estado.usuario.papel === 'admin')
     if (estado.usuario) $('#quem').textContent = estado.usuario.nome + (ESCOLHER_PLANO && estado.plano ? ' · plano ' + estado.plano.nome : '')
   }
 
@@ -70,15 +71,10 @@
 
   // Sem pedir nada, a conta recebe o plano que cobre mais entes. Se algo falhar, cai na escolha manual.
   async function ativarPlanoPadrao() {
-    try {
-      const planos = await Api.planos()
-      const padrao = planos.slice().sort((a, b) => b.tenants.length - a.tenants.length || b.preco_mensal - a.preco_mensal)[0]
-      if (!padrao) return false
-      estado.plano = (await Api.ativarPlano(padrao.id)).plano
-      return true
-    } catch {
-      return false
-    }
+    const plano = await Api.garantirPlano()
+    if (!plano) return false
+    estado.plano = plano
+    return true
   }
 
   // ---------- entrar e criar conta ----------

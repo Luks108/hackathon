@@ -48,5 +48,22 @@
     perguntar: texto => enviar('POST', '/perguntas', { texto }),
     perguntaAberta: () => enviar('GET', '/perguntas/aberta'),
     eventos: (id, desde) => enviar('GET', `/perguntas/${id}/eventos?desde=${desde}`),
+    telefones: () => enviar('GET', '/telefones'),
+    cadastrarTelefone: numero => enviar('POST', '/telefones', { numero }),
+    removerTelefone: id => enviar('DELETE', `/telefones/${id}`),
+    adminTelefones: status => enviar('GET', `/admin/telefones?status=${encodeURIComponent(status)}`),
+    aprovarTelefone: id => enviar('POST', `/admin/telefones/${id}/aprovar`, {}),
+    revogarTelefone: id => enviar('POST', `/admin/telefones/${id}/revogar`, {}),
+    // Demonstração livre: sem escolha de plano, a conta recebe o que cobre mais entes. Devolve o plano, ou null se falhar.
+    async garantirPlano() {
+      try {
+        const planos = await enviar('GET', '/planos')
+        const padrao = planos.slice().sort((a, b) => b.tenants.length - a.tenants.length || b.preco_mensal - a.preco_mensal)[0]
+        if (!padrao) return null
+        return (await enviar('POST', '/assinatura', { plano_id: padrao.id })).plano
+      } catch {
+        return null
+      }
+    },
   }
 })()
