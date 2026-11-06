@@ -1,0 +1,17 @@
+{
+  "municipio": {
+    "nome": "Município",
+    "tenants": ["pe-garanhuns"],
+    "ver_pessoal": false
+  },
+  "estado": {
+    "nome": "Estado",
+    "tenants": ["pe-estado", "pe-garanhuns"],
+    "ver_pessoal": false
+  },
+  "estado-exemplo": {
+    "nome": "Estado Exemplo (fictício)",
+    "tenants": ["ex-estado"],
+    "ver_pessoal": false
+  }
+}
