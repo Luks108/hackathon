@@ -1,6 +1,6 @@
 """Projeta os fatos extraídos no Neo4j. O grafo é descartável: --zerar reconstrói tudo.
 
-    .venv/bin/python coleta/carregar_neo4j.py [--zerar] [--amostra]
+    .venv/bin/python coleta/carregar_neo4j.py [--zerar] [--amostra | --exemplo]
 """
 
 import json
@@ -17,6 +17,8 @@ for linha in (RAIZ / ".env").read_text().splitlines():
         os.environ.setdefault(k, v)
 
 DADOS = RAIZ / "dados" / ("amostra" if "--amostra" in sys.argv else "")
+if "--exemplo" in sys.argv:  # dados fictícios, versionados, para quem não tem a captura
+    DADOS = RAIZ / "fixtures" / "exemplo"
 LOTE = 500
 
 ENTES = [

@@ -2,12 +2,21 @@
 
 Baseadas na [spec](spec.md) e no [plano técnico](plan.md). Se a tarefa mudar o contrato, atualize o plano no mesmo pull request.
 
-**Dev A:** site e conta, em PHP · **Dev B:** worker, agente e WhatsApp, em Python
+**Dev A:** site e conta, em PHP · **Dev B:** worker, agente e WhatsApp, em Python · **Lucas:** dados, ontologia, banco, revisão e deploy
+
+## Como trabalhamos
+
+- Dev A e Dev B desenvolvem na própria máquina, em branch, e abrem pull request para `main`.
+- Ninguém além do Lucas acessa o notebook, a captura real, os segredos ou a Hostinger.
+- O Lucas revisa, faz o merge, sobe na Hostinger com `./site/deploy.sh` e liga o worker no notebook.
+- Dev B usa os dados fictícios de `fixtures/exemplo`: copie `.env.exemplo` para `.env` e rode `coleta/carregar_neo4j.py --zerar --exemplo`.
+- Dev A testa o site com PHP e MySQL locais e uma `WORKER_KEY` própria.
+- **Prazo de entrega ao Lucas: 06/11, 9h30.** Depois disso, só correção.
 
 ## Comece aqui
 
 - [ ] **T00.** Dev A e Dev B leem spec e plano, e confirmam o contrato. 20 min.
-- [ ] **T01.** Dono gera `WORKER_KEY` e coloca no `.env` e no `deploy.sh`. Depende de T00.
+- [ ] **T01.** Lucas gera a `WORKER_KEY` de produção e coloca no `.env` e no `deploy.sh`. Depende de T00.
 
 ## Dev A: site e conta
 
@@ -62,14 +71,23 @@ Baseadas na [spec](spec.md) e no [plano técnico](plan.md). Se a tarefa mudar o 
 
 ### Operação e testes
 
-- [ ] **B11.** Criar serviço do worker e ativar o `wa-gateway` no login. RNF-09. *Aceite:* reiniciar o notebook não exige comando manual.
-- [ ] **B12.** Validar base e fontes. *Aceite:* perguntas do roteiro batem com a evidência.
+- [ ] **B11.** Criar o arquivo de serviço do worker. RNF-09. *Aceite:* sobe com um comando; o Lucas ativa no notebook.
 - [ ] **B13.** Rodar testes de perfil e injeção. *Aceite:* resultados registrados em `docs/testes-seguranca.md`.
+
+## Lucas: dados, ontologia e banco
+
+- [ ] **L01.** Definir a base da demo: amostra ou carga completa. *Aceite:* perguntas do roteiro têm resposta com evidência conferida.
+- [ ] **L02.** Testar a coleta dos painéis de PE, com intervalo de 10 s. *Aceite:* volumes medidos e amostra com hash.
+- [ ] **L03.** Confirmar a ligação entre pagamento e contrato. *Aceite:* regra escrita ou limitação registrada.
+- [ ] **L04.** Evoluir a ontologia: `Empenho`, `Pagamento`, `Aditivo`, `Participacao`. *Aceite:* todo fato novo tem evidência.
+- [ ] **L05.** Publicar novas consultas no MCP sem quebrar as atuais. *Aceite:* Dev B avisado de qualquer mudança no contrato.
+- [ ] **L06.** Decidir o Postgres depois do MVP. *Aceite:* decisão registrada e slide coerente.
+- [ ] **L07.** Ativar serviços no notebook. RNF-09. *Aceite:* reiniciar não exige comando manual.
 
 ## Integração
 
-- [ ] **I01.** Deploy na Hostinger com `./site/deploy.sh --setup`. Depende de A01 a A07.
-- [ ] **I02.** Pergunta real do chat, de ponta a ponta. Depende de A15, B05 e I01.
+- [ ] **I01.** Lucas faz o deploy com `./site/deploy.sh --setup`. Depende de A01 a A07.
+- [ ] **I02.** Lucas liga o worker, e o time testa uma pergunta real. Depende de A15, B05 e I01.
 - [ ] **I03.** Telefone aprovado fala no WhatsApp. Depende de A16 e B08.
 - [ ] **I04.** Roteiro completo com duas contas. Depende de I02, I03 e B10.
 - [ ] **I05.** README, limitações, ajuste dos slides e ensaio. Depende de I04.
@@ -87,8 +105,8 @@ T00 ─┬─ A01 → A02 → A03 → A04 → A05 → A06 → A07 ─┐
 | Quando | Dev A | Dev B | Marco |
 |---|---|---|---|
 | Hoje à noite | A01 a A07 | B01 a B06 | Fila e agente prontos |
-| 06/11, até 9h40 | A08 a A15 | B07 a B09 | **I02:** chat real |
-| 06/11, até 11h | A16 | B10 a B13 | **I03 e I04:** demo completa |
+| 06/11, até 9h30 | A08 a A16 | B07 a B11 e B13 | **Entrega ao Lucas** |
+| 06/11, até 11h | Correções | Correções | **I01 a I04:** deploy e demo completa |
 | 06/11, até 12h | I05 | I05 | Code freeze |
 
 ## Ordem de corte
