@@ -4,7 +4,7 @@
   'use strict'
   const { el } = window.U
   const $ = s => document.querySelector(s)
-  const ABAS = [['arquitetura', 'Arquitetura'], ['ontologia', 'Ontologia'], ['grafo', 'Grafo'], ['negocio', 'Modelo de negócios'],
+  const ABAS = [['arquitetura', 'Arquitetura'], ['dados', 'Dados'], ['ontologia', 'Ontologia'], ['grafo', 'Grafo'], ['negocio', 'Modelo de negócios'],
     ['benchmark', 'Benchmark'], ['carga', 'Teste de carga'], ['seguranca', 'Segurança']]
   const TIPOS = { fato: 'Fato', ausencia: 'Ausência', isolamento: 'Isolamento', ataque: 'Ataque' }
 
@@ -70,6 +70,21 @@
       corpo.append(tr, detalhe)
     }
     $('#rodape-bench').textContent = `Modelo ${b.modelo}. Gabarito ${b.gabarito}. Rodada de ${b.em.slice(8, 10)}/${b.em.slice(5, 7)}/${b.em.slice(0, 4)}.`
+  }
+
+  // ---------- dados ----------
+  function desenharDados(inventario, ex) {
+    const corpo = tabela($('#tabela-inventario'), ['Fonte', 'Formato', 'Tamanho', 'Volume', 'Situação'])
+    for (const i of inventario) {
+      corpo.append(linha([i.nome, i.formato, { texto: i.tamanho, classe: 'num' }, i.volume, { no: el('span', 'selo ' + i.selo, i.estado) }]))
+    }
+    const json = v => JSON.stringify(v, null, 2)
+    $('#cru-contrato').textContent = ex.cru_contrato
+    $('#cru-sancao').textContent = ex.cru_sancao
+    $('#fato-contrato').textContent = json(ex.fato_contrato)
+    $('#fato-sancao').textContent = json(ex.fato_sancao)
+    $('#fato-evidencia').textContent = json(ex.evidencia)
+    $('#caminho-grafo').textContent = ex.caminho.join('\n')
   }
 
   // ---------- teste de carga ----------
@@ -320,6 +335,7 @@
       $('#conteudo-painel').innerHTML = dados.html   // texto nosso, gerado no deploy
       desenharBenchmark(dados.benchmark)
       desenharCarga(dados.carga)
+      desenharDados(dados.inventario, dados.exemplo)
       montarAbas(criarGrafo(dados.grafo))
       $('#pagina').hidden = false
       const aberta = document.querySelector('#abas [aria-selected="true"]')

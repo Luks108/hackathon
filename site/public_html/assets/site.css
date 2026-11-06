@@ -236,6 +236,14 @@ html.embutido .topo-links { display: none; }
 .referencias a { color: var(--verde); }
 @media (max-width: 860px) { .camadas { grid-template-columns: minmax(0, 1fr); } }
 
+.cru { margin: 0; max-height: 340px; overflow: auto; background: var(--marinho); color: #e8eef6; border-radius: 12px; padding: 14px; font: 400 12.5px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.duas-colunas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.duas-colunas h4, .conteudo-painel > section > h4 { margin: 0 0 6px; color: var(--marinho); font-size: 16px; }
+.processo { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+.processo li { background: var(--cartao); border: 1px solid var(--regra); border-radius: 10px; padding: 9px 12px; font-size: 15px; color: var(--tinta-2); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 9px; }
+.processo b { color: var(--marinho); }
+@media (max-width: 860px) { .duas-colunas { grid-template-columns: minmax(0, 1fr); } }
+
 /* Dentro do painel da página inicial (chat.html?embutido=1): sem marca no topo e sem margens, o chat ocupa tudo. */
 html.embutido .topo .marca { display: none; }
 html.embutido .topo .miolo { min-height: 44px; justify-content: flex-end; padding-left: 12px; padding-right: 12px; }

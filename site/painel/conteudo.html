@@ -32,6 +32,63 @@
   </table></div>
 </section>
 
+<section data-aba="dados" hidden>
+  <p class="rotulo-painel">Dados</p>
+  <h2>Do dado cru ao fato com prova</h2>
+  <p>Aqui está o que recebemos dos portais, como isso foi estruturado e o que ainda falta. O exemplo abaixo é real: o mesmo fornecedor aparece no portal de Garanhuns e no cadastro do Estado.</p>
+
+  <h3><span class="passo-num">1</span> O que temos hoje</h3>
+  <div class="tabela"><table id="tabela-inventario"></table></div>
+  <p class="apoio">Todo arquivo capturado tem hash SHA-256. Dados brutos ficam fora do repositório, porque alguns trazem dados pessoais.</p>
+
+  <h3><span class="passo-num">2</span> Como o dado chega</h3>
+  <p>O portal de Garanhuns entrega uma página HTML, sem API. Esta é uma linha da tabela de contratos, como veio. Só removemos o nome do fiscal.</p>
+  <pre class="cru" id="cru-contrato"></pre>
+  <p>O Estado publica um arquivo CSV, com uma coluna por campo e a mesma ocorrência repetida por telefone e endereço. Removemos os dados de contato.</p>
+  <pre class="cru" id="cru-sancao"></pre>
+
+  <h3><span class="passo-num">3</span> Como estruturamos</h3>
+  <p>Cada fonte vira registros com os mesmos nomes de campo, valores numéricos, datas padronizadas e uma evidência.</p>
+  <div class="duas-colunas">
+    <div><h4>Contrato</h4><pre class="cru" id="fato-contrato"></pre></div>
+    <div><h4>Sanção</h4><pre class="cru" id="fato-sancao"></pre></div>
+  </div>
+  <h4>Evidência</h4>
+  <p>É o que permite voltar à origem: arquivo, linha, trecho, data e hash.</p>
+  <pre class="cru" id="fato-evidencia"></pre>
+
+  <h3><span class="passo-num">4</span> Como vira grafo</h3>
+  <p>O CNPJ completo liga as duas fontes. Nenhum dos portais mostra essa ligação sozinho.</p>
+  <pre class="cru" id="caminho-grafo"></pre>
+
+  <h3><span class="passo-num">5</span> O que tratamos</h3>
+  <div class="tabela"><table>
+    <thead><tr><th>No dado cru</th><th>O que fizemos</th><th>Por quê</th></tr></thead>
+    <tbody>
+      <tr><td>Valores em "208.748,30", "0.00" e "511.633.34"</td><td>Convertidos para número</td><td>O portal usa três formatos</td></tr>
+      <tr><td>Data 01/01/1900</td><td>Tratada como ausente</td><td>É um valor padrão, não uma data real</td></tr>
+      <tr><td>Documento mascarado</td><td>Completado pela lista de fiscais, com conferência</td><td>Sem CNPJ, empresas se misturam</td></tr>
+      <tr><td>Nome do fiscal no objeto do contrato</td><td>Removido</td><td>Não interessa à análise do fornecedor</td></tr>
+      <tr><td>CPF de pessoa física</td><td>Trocado por código irreversível</td><td>LGPD</td></tr>
+      <tr><td>Telefone e endereço no CSV</td><td>Descartados</td><td>Não são necessários</td></tr>
+      <tr><td>Linhas repetidas no CSV</td><td>Uma ocorrência por código</td><td>Evita contar sanção em dobro</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3><span class="passo-num">6</span> O processo até agora</h3>
+  <ol class="processo">
+    <li><span class="selo lido">Feito</span><b>Captura de Garanhuns</b> Contratos, licitações, diárias, obras e legislação.</li>
+    <li><span class="selo lido">Feito</span><b>Sanções do Estado</b> CSV carregado, com repetições tratadas.</li>
+    <li><span class="selo lido">Feito</span><b>Extração com evidência</b> 755 contratos, 240 licitações e 3.071 sanções estruturados.</li>
+    <li><span class="selo lido">Feito</span><b>Identidade do fornecedor</b> 671 de 755 contratos ligados a um documento completo.</li>
+    <li><span class="selo lido">Feito</span><b>Grafo com amostra</b> 10 contratos carregados no Neo4j e consultados pelo agente.</li>
+    <li><span class="selo derivado">Pendente</span><b>Carga completa</b> A extração cobre tudo, mas o grafo publicado usa só a amostra.</li>
+    <li><span class="selo derivado">Pendente</span><b>Painéis do Estado</b> Conhecemos os campos de pagamentos, fornecedores e contratos, mas não coletamos os dados.</li>
+    <li><span class="selo derivado">Pendente</span><b>Pagamento e contrato</b> Falta confirmar a ligação entre os dois.</li>
+    <li><span class="selo nosso">Bloqueado</span><b>Contratos do Estado desde 2025</b> O sistema estava em manutenção na consulta.</li>
+  </ol>
+</section>
+
 <section data-aba="ontologia" hidden>
   <p class="rotulo-painel">Ontologia</p>
   <h2>Como a ontologia foi construída</h2>
