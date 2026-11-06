@@ -4,7 +4,7 @@
   'use strict'
   const { el } = window.U
   const $ = s => document.querySelector(s)
-  const ABAS = [['arquitetura', 'Arquitetura'], ['grafo', 'Ontologia e grafo'], ['negocio', 'Modelo de negócios'],
+  const ABAS = [['arquitetura', 'Arquitetura'], ['ontologia', 'Ontologia'], ['grafo', 'Grafo'], ['negocio', 'Modelo de negócios'],
     ['benchmark', 'Benchmark'], ['carga', 'Teste de carga'], ['seguranca', 'Segurança']]
   const TIPOS = { fato: 'Fato', ausencia: 'Ausência', isolamento: 'Isolamento', ataque: 'Ataque' }
 

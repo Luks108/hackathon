@@ -220,6 +220,22 @@ html.embutido .topo-links { display: none; }
 .detalhe-grafo .trecho { background: var(--papel); border-left: 3px solid var(--verde); padding: 7px 9px; font: 400 13px/1.5 var(--mono); }
 @media (max-width: 860px) { .esteira, .grade-negocio, .mesa-grafo { grid-template-columns: minmax(0, 1fr); } #tela-grafo { height: 420px; } }
 
+.passo-num { display: inline-grid; place-items: center; width: 26px; height: 26px; margin-right: 6px; border-radius: 7px; background: var(--marinho); color: #fff; font: 600 14px var(--mono); }
+.camadas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.camada { background: var(--cartao); border: 1px solid var(--regra); border-radius: 14px; padding: 16px; display: grid; gap: 7px; align-content: start; }
+.camada.nossa { border: 2px solid var(--verde); }
+.camada .rot { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--verde); }
+.camada h4 { margin: 0; font-size: 17px; color: var(--marinho); }
+.camada p { font-size: 15px; }
+.selo { display: inline-block; font-size: 13px; font-weight: 600; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+.selo.lido { background: var(--ok-fraco); color: var(--ok); }
+.selo.derivado { background: var(--ambar-fraco); color: var(--ambar); }
+.selo.nosso { background: var(--verde-fraco); color: var(--verde); }
+.conteudo-painel code { font: 400 13px var(--mono); background: var(--papel); padding: 1px 4px; border-radius: 4px; overflow-wrap: anywhere; }
+.referencias { display: grid; gap: 7px; }
+.referencias a { color: var(--verde); }
+@media (max-width: 860px) { .camadas { grid-template-columns: minmax(0, 1fr); } }
+
 /* Dentro do painel da página inicial (chat.html?embutido=1): sem marca no topo e sem margens, o chat ocupa tudo. */
 html.embutido .topo .marca { display: none; }
 html.embutido .topo .miolo { min-height: 44px; justify-content: flex-end; padding-left: 12px; padding-right: 12px; }

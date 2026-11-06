@@ -32,18 +32,89 @@
   </table></div>
 </section>
 
-<section data-aba="grafo" hidden>
+<section data-aba="ontologia" hidden>
   <p class="rotulo-painel">Ontologia</p>
-  <h2>O grafo da amostra</h2>
-  <p>Arraste os pontos e clique para abrir o detalhe. Cada fato leva a uma evidência da fonte. Registros de pessoa física ficam fora desta visão.</p>
-  <div class="mesa-grafo">
-    <div class="quadro-grafo">
-      <canvas id="tela-grafo" tabindex="0" role="img" aria-label="Grafo de contratos, fornecedores, processos, sanções e evidências"></canvas>
-      <div class="legenda-grafo" id="legenda-grafo"></div>
+  <h2>Como a ontologia foi construída</h2>
+  <p>Não inventamos vocabulário. A ordem é <b>fonte, referência e só então o que é nosso</b>. O que as duas primeiras cobrem não vira acréscimo, e cada acréscimo tem motivo escrito.</p>
+
+  <h3><span class="passo-num">1</span> De onde o vocabulário veio</h3>
+  <div class="camadas">
+    <div class="camada">
+      <span class="rot">A fonte</span>
+      <h4>O vocabulário dos portais</h4>
+      <p>Onde o portal já nomeia, usamos o nome dele: modalidade, fase, situação da ocorrência, tipo de penalidade e unidade.</p>
+      <p>Traduzir seria acrescentar interpretação onde já existe definição.</p>
     </div>
-    <aside class="detalhe-grafo" id="detalhe-grafo" aria-live="polite"></aside>
+    <div class="camada">
+      <span class="rot">A referência</span>
+      <h4>Padrões públicos</h4>
+      <p><b>SAT-Graph</b>, de Hudson de Martim, do Senado Federal: coisa com identidade estável e relação tipada.</p>
+      <p><b>OCDS</b>: a divisão entre partes, licitação, adjudicação, contrato e execução.</p>
+      <p><b>Leis 14.133 e 4.320</b>: o sentido jurídico de homologação, adjudicação, empenho e pagamento.</p>
+    </div>
+    <div class="camada nossa">
+      <span class="rot">Nosso</span>
+      <h4>O que faltava</h4>
+      <p><b>Evidência obrigatória:</b> todo fato aponta para arquivo, linha, trecho, data e hash.</p>
+      <p><b>Tenant e sensibilidade:</b> todo fato diz a qual ente pertence e quem pode ver.</p>
+      <p><b>Fornecedor resolvido entre portais:</b> o CNPJ completo é o que liga Garanhuns ao Estado.</p>
+    </div>
   </div>
-  <h3>Regras que vieram dos dados reais</h3>
+
+  <h3><span class="passo-num">2</span> As peças, e a origem de cada uma</h3>
+  <div class="tabela"><table>
+    <thead><tr><th>Peça</th><th>O que é</th><th>Fonte</th><th>Referência</th><th>Origem</th></tr></thead>
+    <tbody>
+      <tr><td><b>Ente</b></td><td>Quem publica: município ou estado</td><td>Portal publicador</td><td>OCDS: comprador</td><td><span class="selo lido">Adotada</span></td></tr>
+      <tr><td><b>Unidade Jurisdicionada</b></td><td>Secretaria ou órgão dentro do ente</td><td>Campo UJ</td><td>OCDS: parte</td><td><span class="selo lido">Adotada</span></td></tr>
+      <tr><td><b>Processo Licitatório</b></td><td>Licitação, dispensa ou inexigibilidade</td><td>Tela de licitações</td><td>OCDS: tender; Lei 14.133</td><td><span class="selo lido">Adotada</span></td></tr>
+      <tr><td><b>Contrato</b></td><td>Instrumento assinado, com valor e vigência</td><td>Tela de contratos</td><td>OCDS: contracts</td><td><span class="selo lido">Adotada</span></td></tr>
+      <tr><td><b>Fornecedor</b></td><td>Empresa ou pessoa contratada</td><td>CPF/CNPJ e razão social</td><td>OCDS: parte com papel de fornecedor</td><td><span class="selo nosso">Estendida</span></td></tr>
+      <tr><td><b>Sanção</b></td><td>Ocorrência no cadastro de fornecedores</td><td>CSV do Estado</td><td>Sem classe no OCDS</td><td><span class="selo nosso">Nossa</span></td></tr>
+      <tr><td><b>Evidência</b></td><td>Onde, na fonte, aquele fato foi lido</td><td>Arquivo capturado</td><td>Âncora do projeto Polis</td><td><span class="selo nosso">Nossa, obrigatória</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3><span class="passo-num">3</span> Como o campo do portal virou nó</h3>
+  <p>Cada linha mostra o que veio da fonte e o que precisou de regra nossa. <b>Lido</b> é tradução literal. <b>Derivado</b> exige uma regra escrita.</p>
+  <div class="tabela"><table>
+    <thead><tr><th>O que a fonte entrega</th><th>Vira</th><th>Como</th></tr></thead>
+    <tbody>
+      <tr><td><code>NÚMERO / NOME / RAZÃO SOCIAL</code>, <code>OBJETO</code>, <code>VIGÊNCIA</code>, <code>VALOR CONTRATUAL</code></td><td>Contrato</td><td><span class="selo lido">Lido</span></td></tr>
+      <tr><td>Parâmetro <code>idc</code> no link do aditivo</td><td>Identidade do Contrato</td><td><span class="selo lido">Lido</span></td></tr>
+      <tr><td>Parâmetro <code>cod</code> no link da licitação</td><td>Contrato → Processo</td><td><span class="selo lido">Lido</span></td></tr>
+      <tr><td><code>MODALIDADE</code>, <code>OBJETO</code>, <code>FASE/VALORES</code></td><td>Processo Licitatório</td><td><span class="selo lido">Lido</span></td></tr>
+      <tr><td><code>CPF/CNPJ</code> mascarado + lista de fiscais</td><td>Fornecedor resolvido</td><td><span class="selo derivado">Derivado</span></td></tr>
+      <tr><td><code>FORNOCORR_CD</code>, <code>GBPTPOCORR_NM</code>, <code>SITUACAO_OCORRENCIA</code></td><td>Sanção</td><td><span class="selo lido">Lido</span></td></tr>
+      <tr><td><code>PESSDOC_NU_DOCUMENTO</code></td><td>Fornecedor → Sanção</td><td><span class="selo derivado">Derivado</span></td></tr>
+      <tr><td>Linha da tabela + SHA-256 do arquivo</td><td>Evidência</td><td><span class="selo derivado">Derivado</span></td></tr>
+    </tbody>
+  </table></div>
+  <p class="apoio"><b>A regra que mais pesa:</b> a tela de contratos esconde parte do documento. Buscamos o documento completo na lista de fiscais, por número, vigência e valor, e só aceitamos se ele bater com a máscara.</p>
+
+  <h3><span class="passo-num">4</span> Da captura ao grafo, com o que cada etapa rendeu</h3>
+  <div class="tabela"><table>
+    <thead><tr><th>Etapa</th><th>O que acontece</th><th>Resultado medido</th></tr></thead>
+    <tbody>
+      <tr><td><b>Captura</b></td><td>Guarda o arquivo original com hash, respeitando as regras do portal</td><td>756 linhas de contrato, 240 licitações e 4.458 linhas de sanções</td></tr>
+      <tr><td><b>Normalização</b></td><td>Lê valores e datas; descarta data 01/01/1900</td><td>755 contratos; 1 linha fora do padrão</td></tr>
+      <tr><td><b>Sanções distintas</b></td><td>Conta uma vez a ocorrência repetida por telefone e endereço</td><td>3.071 ocorrências; 1.387 linhas repetidas</td></tr>
+      <tr><td><b>Identidade</b></td><td>Liga o fornecedor ao documento completo, conferindo a máscara</td><td>671 de 755 resolvidos (89%); 77 ligações recusadas</td></tr>
+      <tr><td><b>Privacidade</b></td><td>Troca CPF por código irreversível e tira o nome do fiscal</td><td>97 pessoas físicas identificadas por código</td></tr>
+      <tr><td><b>Amostra</b></td><td>Escolhe casos que cobrem a demo</td><td>10 contratos: 9 visíveis e 1 de pessoa física</td></tr>
+      <tr><td><b>Grafo</b></td><td>Carrega no Neo4j. O grafo pode ser reconstruído a qualquer momento</td><td>Ver a aba Grafo</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3><span class="passo-num">5</span> O que ainda não produzimos</h3>
+  <p>Estas peças aparecem no plano, mas não estão no grafo. Ficaram de fora porque criar estrutura sem dado conferido seria inventar.</p>
+  <div class="camadas">
+    <div class="camada"><h4>Pagamento e Empenho</h4><p>O painel do Estado tem os campos, mas não coletamos os dados. Falta confirmar como ligar pagamento a contrato.</p></div>
+    <div class="camada"><h4>Aditivo</h4><p>Hoje é só uma marca no Contrato. Falta coletar a página de cada aditivo.</p></div>
+    <div class="camada"><h4>Participação e Adjudicação</h4><p>Ficam no detalhe de cada licitação, que só abrimos em uma amostra manual.</p></div>
+  </div>
+
+  <h3><span class="passo-num">6</span> Regras que vieram dos dados reais</h3>
   <div class="tabela"><table>
     <thead><tr><th>Achado</th><th>Regra</th></tr></thead>
     <tbody>
@@ -55,6 +126,34 @@
       <tr><td>CPF completo em uma lista pública</td><td>Pessoa física guardada só por código irreversível</td></tr>
     </tbody>
   </table></div>
+
+  <h3>Fontes de dados</h3>
+  <ul class="referencias">
+    <li><a href="https://portaltransparencia.app.br/carregaPortalPM.aspx?p_i=64&amp;p_t=0" target="_blank" rel="noopener">Portal da Transparência de Garanhuns</a>: contratos, licitações e fiscais, capturados em 05/11/2026.</li>
+    <li><a href="https://transparencia.pe.gov.br/licitacoes-e-contratos/fornecedores/fornecedores-sancionados/" target="_blank" rel="noopener">Fornecedores Sancionados, Estado de Pernambuco</a>: arquivo CSV de 05/06/2025.</li>
+  </ul>
+
+  <h3>Referências</h3>
+  <ul class="referencias">
+    <li>Hudson de Martim, <a href="https://arxiv.org/abs/2505.00039" target="_blank" rel="noopener">SAT-Graph RAG, arXiv 2505.00039</a>, e o <a href="https://github.com/hmartim/sat-graph-api" target="_blank" rel="noopener">esquema da SAT-Graph API</a>. Vieram da área legislativa; usamos a ideia de identidade e relação tipada.</li>
+    <li><a href="https://standard.open-contracting.org/latest/en/primer/how/" target="_blank" rel="noopener">Open Contracting Data Standard (OCDS)</a>. Mapeamos nossas peças às seções dele; não validamos contra o esquema oficial.</li>
+    <li><a href="https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm" target="_blank" rel="noopener">Lei 14.133/2021</a> e <a href="https://www.planalto.gov.br/ccivil_03/leis/l4320.htm" target="_blank" rel="noopener">Lei 4.320/1964</a>: licitações, contratos, empenho e pagamento.</li>
+    <li><a href="https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm" target="_blank" rel="noopener">Lei 13.709/2018 (LGPD)</a>: tratamento de dados pessoais.</li>
+    <li>Projeto Polis: a Âncora e a captura com hash, reaproveitadas de um projeto anterior da equipe.</li>
+  </ul>
+</section>
+
+<section data-aba="grafo" hidden>
+  <p class="rotulo-painel">Grafo</p>
+  <h2>O grafo da amostra</h2>
+  <p>Arraste os pontos e clique para abrir o detalhe. Cada fato leva a uma evidência da fonte. Registros de pessoa física ficam fora desta visão.</p>
+  <div class="mesa-grafo">
+    <div class="quadro-grafo">
+      <canvas id="tela-grafo" tabindex="0" role="img" aria-label="Grafo de contratos, fornecedores, processos, sanções e evidências"></canvas>
+      <div class="legenda-grafo" id="legenda-grafo"></div>
+    </div>
+    <aside class="detalhe-grafo" id="detalhe-grafo" aria-live="polite"></aside>
+  </div>
 </section>
 
 <section data-aba="negocio" hidden>
