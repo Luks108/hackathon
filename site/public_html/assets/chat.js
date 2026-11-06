@@ -2,6 +2,8 @@
 // nunca por innerHTML, então um texto malicioso não executa nada.
 (() => {
   'use strict'
+  // Dentro do painel da página inicial, a página se ajusta ao espaço pequeno.
+  if (/[?&]embutido\b/.test(location.search) || window.self !== window.top) document.documentElement.classList.add('embutido')
   const $ = s => document.querySelector(s)
   const ENTES = { 'pe-garanhuns': 'Município de Garanhuns', 'pe-estado': 'Estado de Pernambuco' }
   const ROTULOS = {

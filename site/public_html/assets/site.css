@@ -125,4 +125,16 @@ details.fonte .meta a { color: var(--verde); }
 .rodape-chat { display: flex; justify-content: space-between; gap: 12px; padding: 0 22px 12px; font-size: 13px; color: var(--tinta-3); }
 .rodape-chat output.perto { color: var(--ambar); }
 
+/* Dentro do painel da página inicial (chat.html?embutido=1): sem marca no topo e sem margens, o chat ocupa tudo. */
+html.embutido .topo .marca { display: none; }
+html.embutido .topo .miolo { min-height: 44px; justify-content: flex-end; padding-left: 12px; padding-right: 12px; }
+html.embutido .topo-acoes .quem { display: inline; max-width: 22ch; }
+html.embutido main { padding: 0; }
+html.embutido body.modo-chat main { padding: 0; }
+html.embutido .chat { border: 0; border-radius: 0; }
+html.embutido .miolo { padding-left: 0; padding-right: 0; }
+html.embutido .topo .miolo { padding-left: 12px; padding-right: 12px; }
+html.embutido #tela-entrar, html.embutido #tela-plano, html.embutido #tela-carregando { padding: 16px; }
+html.embutido .planos { grid-template-columns: 1fr; }
+
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
