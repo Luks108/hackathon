@@ -84,6 +84,9 @@
     $('#fato-contrato').textContent = json(ex.fato_contrato)
     $('#fato-sancao').textContent = json(ex.fato_sancao)
     $('#fato-evidencia').textContent = json(ex.evidencia)
+    $('#cru-estado').textContent = ex.cru_estado
+    $('#fato-contrato-estado').textContent = json(ex.fato_contrato_estado)
+    $('#fato-execucao').textContent = json(ex.fato_execucao)
     $('#caminho-grafo').textContent = ex.caminho.join('\n')
   }
 
@@ -106,12 +109,12 @@
 
   // ---------- grafo ----------
   const CORES = { Contrato: '#3f7fc2', Fornecedor: '#23845f', Sancao: '#c2603f', ProcessoLicitatorio: '#8a2ca8',
-    UnidadeJurisdicionada: '#b5801f', Ente: '#0b2545', Evidencia: '#9a978b' }
+    UnidadeJurisdicionada: '#b5801f', Ente: '#0b2545', Evidencia: '#9a978b', ExecucaoFinanceira: '#2a8c8c' }
   const NOMES = { Contrato: 'Contrato', Fornecedor: 'Fornecedor', Sancao: 'Sanção', ProcessoLicitatorio: 'Processo',
-    UnidadeJurisdicionada: 'Unidade', Ente: 'Ente público', Evidencia: 'Evidência' }
-  const RAIOS = { Ente: 15, Fornecedor: 11, Contrato: 9, ProcessoLicitatorio: 8, UnidadeJurisdicionada: 8, Sancao: 6, Evidencia: 4 }
+    UnidadeJurisdicionada: 'Unidade', Ente: 'Ente público', Evidencia: 'Evidência', ExecucaoFinanceira: 'Execução financeira' }
+  const RAIOS = { Ente: 15, Fornecedor: 11, Contrato: 9, ProcessoLicitatorio: 8, UnidadeJurisdicionada: 8, Sancao: 6, Evidencia: 4, ExecucaoFinanceira: 5 }
   const PLURAIS = { Contrato: 'Contratos', Fornecedor: 'Fornecedores', Sancao: 'Sanções', ProcessoLicitatorio: 'Processos',
-    UnidadeJurisdicionada: 'Unidades', Ente: 'Entes públicos', Evidencia: 'Evidências' }
+    UnidadeJurisdicionada: 'Unidades', Ente: 'Entes públicos', Evidencia: 'Evidências', ExecucaoFinanceira: 'Execuções' }
   const dataBR = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? `${m[3]}/${m[2]}/${m[1]}` : '' }
   // Várias ocorrências têm o mesmo tipo: a situação e a data dizem qual é qual.
   const rotuloDe = n => n.t === 'Sancao'
@@ -125,7 +128,8 @@
     if (n.t === 'Contrato') { c('Valor contratado', brl(p.valor_contratado)); c('Vigência', [p.inicio, p.fim].filter(Boolean).join(' a ')); c('Objeto', p.objeto) }
     else if (n.t === 'Fornecedor') { c('CNPJ', p.cnpj); c('Identidade', p.resolvido ? 'Confirmada por documento' : 'Sem documento completo') }
     else if (n.t === 'Sancao') { c('Tipo', p.tipo); c('Situação', p.situacao); c('Órgão', p.orgao); c('Publicada em', p.publicada_em); c('Fim da suspensão', p.fim_suspensao); c('Descrição', p.descricao) }
-    else if (n.t === 'ProcessoLicitatorio') { c('Modalidade', p.modalidade); c('Fase', p.fase); c('Valor estimado', brl(p.valor_estimado)) }
+    else if (n.t === 'ProcessoLicitatorio') { c('Número', p.numero); c('Modalidade', p.modalidade); c('Fase', p.fase); if (p.valor_estimado != null) c('Valor estimado', brl(p.valor_estimado)) }
+    else if (n.t === 'ExecucaoFinanceira') { c('Ano', p.ano); c('Órgão', p.orgao); c('Empenhado', brl(p.empenhado)); c('Liquidado', brl(p.liquidado)); c('Pago', brl(p.pago)); c('Restos a pagar', brl(p.restos_a_pagar)) }
     else if (n.t === 'Ente') { c('Esfera', p.esfera); c('UF', p.uf) }
     else if (n.t === 'Evidencia') { c('Trecho', p.trecho); c('Tabela e linha', `${p.tabela}, linha ${p.linha}`); c('Hash do arquivo', p.documento_hash); c('Capturado em', p.capturado_em) }
     return l
@@ -134,7 +138,7 @@
   function criarGrafo(dados) {
     const tela = $('#tela-grafo'), ctx = tela.getContext('2d')
     const visiveis = {}
-    Object.keys(CORES).forEach(t => { visiveis[t] = t !== 'Evidencia' })
+    Object.keys(CORES).forEach(t => { visiveis[t] = t !== 'Evidencia' && t !== 'ExecucaoFinanceira' })
     const nos = dados.nos.map(n => ({ ...n, x: 0, y: 0, vx: 0, vy: 0 }))
     const porId = Object.fromEntries(nos.map(n => [n.id, n]))
     const arestas = dados.arestas.filter(e => porId[e.a] && porId[e.b]).map(e => ({ a: porId[e.a], b: porId[e.b], rel: e.rel }))

@@ -6,7 +6,7 @@
     <li><b>Site ou WhatsApp</b><span>Recebe a pergunta da pessoa.</span></li>
     <li><b>Fila</b><span>Guarda a pergunta com os entes do plano.</span></li>
     <li><b>Worker</b><span>Busca a pergunta e aplica o perfil.</span></li>
-    <li><b>Agente isolado</b><span>Só tem 6 consultas fixas.</span></li>
+    <li><b>Agente isolado</b><span>Só tem 8 consultas fixas.</span></li>
     <li><b>Grafo</b><span>Filtra por perfil e devolve evidências.</span></li>
   </ol>
   <h3>Stack</h3>
@@ -35,22 +35,26 @@
 <section data-aba="dados" hidden>
   <p class="rotulo-painel">Dados</p>
   <h2>Do dado cru ao fato com prova</h2>
-  <p>Aqui está o que recebemos dos portais, como isso foi estruturado e o que ainda falta. O exemplo abaixo é real: o mesmo fornecedor aparece no portal de Garanhuns e no cadastro do Estado.</p>
+  <p>Aqui está o que recebemos dos portais, como isso foi estruturado e o que ainda falta. Os exemplos abaixo são reais. O foco é o Estado de Pernambuco, com Garanhuns como segundo ente.</p>
 
   <h3><span class="passo-num">1</span> O que temos hoje</h3>
   <div class="tabela"><table id="tabela-inventario"></table></div>
   <p class="apoio">Todo arquivo capturado tem hash SHA-256. Dados brutos ficam fora do repositório, porque alguns trazem dados pessoais.</p>
 
   <h3><span class="passo-num">2</span> Como o dado chega</h3>
+  <p>O painel de contratos do Estado responde em JSON à mesma consulta que a página faz, sem login, um pedido a cada 10 segundos. Esta é uma linha como veio.</p>
+  <pre class="cru" id="cru-estado"></pre>
   <p>O portal de Garanhuns entrega uma página HTML, sem API. Esta é uma linha da tabela de contratos, como veio. Só removemos o nome do fiscal.</p>
   <pre class="cru" id="cru-contrato"></pre>
-  <p>O Estado publica um arquivo CSV, com uma coluna por campo e a mesma ocorrência repetida por telefone e endereço. Removemos os dados de contato.</p>
+  <p>As sanções do Estado vêm em um arquivo CSV, com uma coluna por campo e a mesma ocorrência repetida por telefone e endereço. Removemos os dados de contato.</p>
   <pre class="cru" id="cru-sancao"></pre>
 
   <h3><span class="passo-num">3</span> Como estruturamos</h3>
   <p>Cada fonte vira registros com os mesmos nomes de campo, valores numéricos, datas padronizadas e uma evidência.</p>
   <div class="duas-colunas">
-    <div><h4>Contrato</h4><pre class="cru" id="fato-contrato"></pre></div>
+    <div><h4>Contrato do Estado</h4><pre class="cru" id="fato-contrato-estado"></pre></div>
+    <div><h4>Execução financeira</h4><pre class="cru" id="fato-execucao"></pre></div>
+    <div><h4>Contrato de Garanhuns</h4><pre class="cru" id="fato-contrato"></pre></div>
     <div><h4>Sanção</h4><pre class="cru" id="fato-sancao"></pre></div>
   </div>
   <h4>Evidência</h4>
@@ -67,7 +71,12 @@
     <tbody>
       <tr><td>Valores em "208.748,30", "0.00" e "511.633.34"</td><td>Convertidos para número</td><td>O portal usa três formatos</td></tr>
       <tr><td>Data 01/01/1900</td><td>Tratada como ausente</td><td>É um valor padrão, não uma data real</td></tr>
-      <tr><td>Documento mascarado</td><td>Completado pela lista de fiscais, com conferência</td><td>Sem CNPJ, empresas se misturam</td></tr>
+      <tr><td>Documento mascarado em Garanhuns</td><td>Completado pela lista de fiscais, com conferência</td><td>Sem CNPJ, empresas se misturam</td></tr>
+      <tr><td>Documento sem zeros à esquerda no Estado</td><td>Recomposto e validado pelo dígito verificador</td><td>O painel guarda o documento como número</td></tr>
+      <tr><td>CPF misturado com CNPJ no Estado</td><td>Separados pelo dígito verificador; 79 contratos tratados como pessoa física</td><td>Na dúvida, vale a proteção do dado pessoal</td></tr>
+      <tr><td>CPF dentro da razão social de MEI</td><td>Removido do nome e do trecho</td><td>Nossa trava encontrou o caso antes de gravar</td></tr>
+      <tr><td>Maiúsculas sem acento, como "AGêNCIA"</td><td>Corrigida só a caixa</td><td>Sem isso, a busca por órgão falha</td></tr>
+      <tr><td>Busca do painel de fornecedores por trecho</td><td>Mantida só a linha com o CNPJ exato</td><td>Evita atribuir valor a outro credor</td></tr>
       <tr><td>Nome do fiscal no objeto do contrato</td><td>Removido</td><td>Não interessa à análise do fornecedor</td></tr>
       <tr><td>CPF de pessoa física</td><td>Trocado por código irreversível</td><td>LGPD</td></tr>
       <tr><td>Telefone e endereço no CSV</td><td>Descartados</td><td>Não são necessários</td></tr>
@@ -81,11 +90,12 @@
     <li><span class="selo lido">Feito</span><b>Sanções do Estado</b> CSV carregado, com repetições tratadas.</li>
     <li><span class="selo lido">Feito</span><b>Extração com evidência</b> 755 contratos, 240 licitações e 3.071 sanções estruturados.</li>
     <li><span class="selo lido">Feito</span><b>Identidade do fornecedor</b> 671 de 755 contratos ligados a um documento completo.</li>
-    <li><span class="selo lido">Feito</span><b>Grafo com amostra</b> 10 contratos carregados no Neo4j e consultados pelo agente.</li>
-    <li><span class="selo derivado">Pendente</span><b>Carga completa</b> A extração cobre tudo, mas o grafo publicado usa só a amostra.</li>
-    <li><span class="selo derivado">Pendente</span><b>Painéis do Estado</b> Conhecemos os campos de pagamentos, fornecedores e contratos, mas não coletamos os dados.</li>
-    <li><span class="selo derivado">Pendente</span><b>Pagamento e contrato</b> Falta confirmar a ligação entre os dois.</li>
-    <li><span class="selo nosso">Bloqueado</span><b>Contratos do Estado desde 2025</b> O sistema estava em manutenção na consulta.</li>
+    <li><span class="selo lido">Feito</span><b>Contratos do Estado</b> 2.047 contratos de 2024, de 70 órgãos, estruturados com evidência. Volume medido: 25.947 contratos de 2019 a 2024.</li>
+    <li><span class="selo lido">Feito</span><b>Execução financeira</b> 1.467 linhas de empenhado, liquidado e pago por fornecedor, órgão e ano, para os 64 CNPJs da amostra com valores, em 2024 e 2025.</li>
+    <li><span class="selo lido">Feito</span><b>Grafo com amostra</b> 100 contratos no Neo4j, 70 do Estado e 30 de Garanhuns, consultados pelo agente.</li>
+    <li><span class="selo derivado">Pendente</span><b>Carga completa</b> A extração cobre 2.802 contratos, mas o grafo usa a amostra.</li>
+    <li><span class="selo derivado">Pendente</span><b>Pagamento e contrato</b> A consulta de ordens bancárias devolveu 0 linhas. Os valores pagos seguem por fornecedor e órgão, sem ligação com um contrato.</li>
+    <li><span class="selo nosso">Bloqueado</span><b>Contratos do Estado desde 2025</b> O painel tem 0 contratos em 2025. Eles estão no PE Integrado, protegido por reCAPTCHA, que não contornamos.</li>
   </ol>
 </section>
 
@@ -127,6 +137,7 @@
       <tr><td><b>Processo Licitatório</b></td><td>Licitação, dispensa ou inexigibilidade</td><td>Tela de licitações</td><td>OCDS: tender; Lei 14.133</td><td><span class="selo lido">Adotada</span></td></tr>
       <tr><td><b>Contrato</b></td><td>Instrumento assinado, com valor e vigência</td><td>Tela de contratos</td><td>OCDS: contracts</td><td><span class="selo lido">Adotada</span></td></tr>
       <tr><td><b>Fornecedor</b></td><td>Empresa ou pessoa contratada</td><td>CPF/CNPJ e razão social</td><td>OCDS: parte com papel de fornecedor</td><td><span class="selo nosso">Estendida</span></td></tr>
+      <tr><td><b>Execução Financeira</b></td><td>Empenhado, liquidado e pago por fornecedor, órgão e ano</td><td>Painel de fornecedores do Estado</td><td>OCDS: implementation, parcial; Lei 4.320</td><td><span class="selo nosso">Estendida</span></td></tr>
       <tr><td><b>Sanção</b></td><td>Ocorrência no cadastro de fornecedores</td><td>CSV do Estado</td><td>Sem classe no OCDS</td><td><span class="selo nosso">Nossa</span></td></tr>
       <tr><td><b>Evidência</b></td><td>Onde, na fonte, aquele fato foi lido</td><td>Arquivo capturado</td><td>Âncora do projeto Polis</td><td><span class="selo nosso">Nossa, obrigatória</span></td></tr>
     </tbody>
@@ -142,6 +153,10 @@
       <tr><td>Parâmetro <code>cod</code> no link da licitação</td><td>Contrato → Processo</td><td><span class="selo lido">Lido</span></td></tr>
       <tr><td><code>MODALIDADE</code>, <code>OBJETO</code>, <code>FASE/VALORES</code></td><td>Processo Licitatório</td><td><span class="selo lido">Lido</span></td></tr>
       <tr><td><code>CPF/CNPJ</code> mascarado + lista de fiscais</td><td>Fornecedor resolvido</td><td><span class="selo derivado">Derivado</span></td></tr>
+      <tr><td><code>ug</code>, <code>contrato_ano</code>, <code>objeto</code>, <code>processo</code>, <code>valor</code>, <code>download</code></td><td>Contrato do Estado, com link do PDF</td><td><span class="selo lido">Lido</span></td></tr>
+      <tr><td>Órgão + número do contrato</td><td>Identidade do Contrato do Estado</td><td><span class="selo derivado">Derivado</span></td></tr>
+      <tr><td><code>CNPJ - NOME</code> do painel</td><td>Fornecedor resolvido</td><td><span class="selo derivado">Derivado</span></td></tr>
+      <tr><td><code>empenhado</code>, <code>liquidado</code>, <code>pago</code>, <code>restospagar</code></td><td>Execução Financeira</td><td><span class="selo lido">Lido</span></td></tr>
       <tr><td><code>FORNOCORR_CD</code>, <code>GBPTPOCORR_NM</code>, <code>SITUACAO_OCORRENCIA</code></td><td>Sanção</td><td><span class="selo lido">Lido</span></td></tr>
       <tr><td><code>PESSDOC_NU_DOCUMENTO</code></td><td>Fornecedor → Sanção</td><td><span class="selo derivado">Derivado</span></td></tr>
       <tr><td>Linha da tabela + SHA-256 do arquivo</td><td>Evidência</td><td><span class="selo derivado">Derivado</span></td></tr>
@@ -153,12 +168,12 @@
   <div class="tabela"><table>
     <thead><tr><th>Etapa</th><th>O que acontece</th><th>Resultado medido</th></tr></thead>
     <tbody>
-      <tr><td><b>Captura</b></td><td>Guarda o arquivo original com hash, respeitando as regras do portal</td><td>756 linhas de contrato, 240 licitações e 4.458 linhas de sanções</td></tr>
-      <tr><td><b>Normalização</b></td><td>Lê valores e datas; descarta data 01/01/1900</td><td>755 contratos; 1 linha fora do padrão</td></tr>
+      <tr><td><b>Captura</b></td><td>Guarda o arquivo original com hash, respeitando as regras do portal</td><td>2.047 contratos do Estado; 756 linhas de contrato e 240 licitações de Garanhuns; 4.458 linhas de sanções</td></tr>
+      <tr><td><b>Normalização</b></td><td>Lê valores e datas; descarta data 01/01/1900</td><td>2.802 contratos; 1 linha fora do padrão</td></tr>
       <tr><td><b>Sanções distintas</b></td><td>Conta uma vez a ocorrência repetida por telefone e endereço</td><td>3.071 ocorrências; 1.387 linhas repetidas</td></tr>
-      <tr><td><b>Identidade</b></td><td>Liga o fornecedor ao documento completo, conferindo a máscara</td><td>671 de 755 resolvidos (89%); 77 ligações recusadas</td></tr>
-      <tr><td><b>Privacidade</b></td><td>Troca CPF por código irreversível e tira o nome do fiscal</td><td>97 pessoas físicas identificadas por código</td></tr>
-      <tr><td><b>Amostra</b></td><td>Escolhe casos que cobrem a demo</td><td>10 contratos: 9 visíveis e 1 de pessoa física</td></tr>
+      <tr><td><b>Identidade</b></td><td>Liga o fornecedor ao documento completo, conferindo a máscara</td><td>Estado: 2.047 de 2.047. Garanhuns: 671 de 755 (89%), com 77 ligações recusadas</td></tr>
+      <tr><td><b>Privacidade</b></td><td>Troca CPF por código irreversível e tira o nome do fiscal</td><td>79 contratos de pessoa física no Estado e 97 em Garanhuns, só por código</td></tr>
+      <tr><td><b>Amostra</b></td><td>Escolhe casos que cobrem a demo</td><td>100 contratos em critério fixo: 70 do Estado e 30 de Garanhuns, 95 visíveis e 5 de pessoa física</td></tr>
       <tr><td><b>Grafo</b></td><td>Carrega no Neo4j. O grafo pode ser reconstruído a qualquer momento</td><td>Ver a aba Grafo</td></tr>
     </tbody>
   </table></div>
@@ -166,7 +181,7 @@
   <h3><span class="passo-num">5</span> O que ainda não produzimos</h3>
   <p>Estas peças aparecem no plano, mas não estão no grafo. Ficaram de fora porque criar estrutura sem dado conferido seria inventar.</p>
   <div class="camadas">
-    <div class="camada"><h4>Pagamento e Empenho</h4><p>O painel do Estado tem os campos, mas não coletamos os dados. Falta confirmar como ligar pagamento a contrato.</p></div>
+    <div class="camada"><h4>Pagamento individual</h4><p>Temos o total por fornecedor, órgão e ano. A ordem bancária, que poderia ligar o pagamento ao contrato, devolveu 0 linhas nas nossas consultas.</p></div>
     <div class="camada"><h4>Aditivo</h4><p>Hoje é só uma marca no Contrato. Falta coletar a página de cada aditivo.</p></div>
     <div class="camada"><h4>Participação e Adjudicação</h4><p>Ficam no detalhe de cada licitação, que só abrimos em uma amostra manual.</p></div>
   </div>
@@ -175,7 +190,9 @@
   <div class="tabela"><table>
     <thead><tr><th>Achado</th><th>Regra</th></tr></thead>
     <tbody>
-      <tr><td>Número de contrato se repete</td><td>Identidade pelo código interno do portal</td></tr>
+      <tr><td>Número de contrato se repete</td><td>Identidade pelo código do portal ou por órgão e número</td></tr>
+      <tr><td>Processo em branco no painel do Estado</td><td>Dizemos "não informado", nunca "sem licitação"</td></tr>
+      <tr><td>Pago vem por fornecedor e órgão</td><td>Nunca atribuído a um contrato</td></tr>
       <tr><td>Documento vem mascarado</td><td>Ligar pelo CNPJ completo</td></tr>
       <tr><td>Mesma empresa com grafias diferentes</td><td>Nome não é identidade</td></tr>
       <tr><td>Estimado, homologado e contratado divergem</td><td>Campos distintos, nunca somados</td></tr>
@@ -187,6 +204,8 @@
   <h3>Fontes de dados</h3>
   <ul class="referencias">
     <li><a href="https://portaltransparencia.app.br/carregaPortalPM.aspx?p_i=64&amp;p_t=0" target="_blank" rel="noopener">Portal da Transparência de Garanhuns</a>: contratos, licitações e fiscais, capturados em 05/11/2026.</li>
+    <li><a href="https://transparencia.pe.gov.br/licitacoes-e-contratos/menu-contratos/painel-de-contratos/" target="_blank" rel="noopener">Painel de Contratos, Estado de Pernambuco</a>: contratos de 2024 e volumes, capturados em 06/11/2026.</li>
+    <li><a href="https://transparencia.pe.gov.br/licitacoes-e-contratos/fornecedores/consulta-fornecedores/" target="_blank" rel="noopener">Consulta de Fornecedores, Estado de Pernambuco</a>: execução de 2024 e 2025, capturada em 06/11/2026.</li>
     <li><a href="https://transparencia.pe.gov.br/licitacoes-e-contratos/fornecedores/fornecedores-sancionados/" target="_blank" rel="noopener">Fornecedores Sancionados, Estado de Pernambuco</a>: arquivo CSV de 05/06/2025.</li>
   </ul>
 
@@ -203,7 +222,7 @@
 <section data-aba="grafo" hidden>
   <p class="rotulo-painel">Grafo</p>
   <h2>O grafo da amostra</h2>
-  <p>Arraste os pontos e clique para abrir o detalhe. Cada fato leva a uma evidência da fonte. Registros de pessoa física ficam fora desta visão.</p>
+  <p>Arraste os pontos e clique para abrir o detalhe. Cada fato leva a uma evidência da fonte. Registros de pessoa física ficam fora desta visão. Da execução financeira, a tela mostra a maior linha por fornecedor e ano; o agente consulta todas as 1.467.</p>
   <div class="mesa-grafo">
     <div class="quadro-grafo">
       <canvas id="tela-grafo" tabindex="0" role="img" aria-label="Grafo de contratos, fornecedores, processos, sanções e evidências"></canvas>
@@ -254,7 +273,7 @@
   <h3>Pergunta a pergunta</h3>
   <div class="tabela"><table id="tabela-bench"></table></div>
   <p class="apoio" id="rodape-bench"></p>
-  <p class="aviso-info">Amostra pequena: 14 perguntas sobre 10 contratos. O resultado mostra que o fluxo funciona, não mede o produto em escala.</p>
+  <p class="aviso-info">50 perguntas sobre uma amostra de 100 contratos. O resultado mostra que o fluxo funciona nesse tamanho, não mede o produto em escala.</p>
 </section>
 
 <section data-aba="carga" hidden>

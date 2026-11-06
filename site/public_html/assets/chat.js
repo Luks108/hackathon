@@ -10,6 +10,8 @@
     cobertura: 'Verificando o que a base cobre',
     buscar_fornecedor: 'Procurando o fornecedor',
     listar_contratos: 'Listando contratos',
+    buscar_contratos: 'Buscando contratos',
+    execucao_do_fornecedor: 'Consultando valores pagos',
     contratos_do_fornecedor: 'Consultando os contratos do fornecedor',
     sancoes_do_fornecedor: 'Consultando sanções',
     conferir_evidencia: 'Conferindo a fonte',

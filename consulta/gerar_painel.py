@@ -21,16 +21,18 @@ CPF = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
 CONTATO = {"PESSFONE_NU_DDD", "PESSFONE_NU_FONE", "LOGR_NM", "PESSEND_NU_LOGRADOURO", "PESSEND_DS_COMPLEMENTO",
            "BAIRRO_NM", "LOGRSECAO_NU_CEP"}
 INVENTARIO = [
-    ("Contratos de Garanhuns", "contratos-2026.html", "HTML", "756 linhas", "Estruturado; 10 no grafo", "lido"),
-    ("Licitações de Garanhuns", "licitacoes-2026.html", "HTML", "240 licitações", "Estruturado; 3 no grafo", "lido"),
-    ("Sanções do Estado", "pe-sancionados.csv", "CSV", "3.071 ocorrências", "Estruturado; 16 no grafo", "lido"),
+    ("Contratos do Estado, 2024", "pe-contratos-2024.json", "JSON", "2.047 contratos em 70 órgãos", "Estruturado; 70 no grafo", "lido"),
+    ("Execução por fornecedor, 2024", "pe-execucao-2024.json", "JSON", "721 linhas de 62 CNPJs da amostra", "Estruturado e no grafo", "lido"),
+    ("Execução por fornecedor, 2025", "pe-execucao-2025.json", "JSON", "746 linhas de CNPJs da amostra", "Estruturado e no grafo", "lido"),
+    ("Volume de contratos do Estado", "pe-volumes.json", "JSON", "25.947 contratos de 2019 a 2024", "Só medido", "derivado"),
+    ("Contratos de Garanhuns", "contratos-2026.html", "HTML", "756 linhas", "Estruturado; 30 no grafo", "lido"),
+    ("Licitações de Garanhuns", "licitacoes-2026.html", "HTML", "240 licitações", "Estruturado; parte no grafo", "lido"),
+    ("Sanções do Estado", "pe-sancionados.csv", "CSV", "3.071 ocorrências", "Estruturado; 95 no grafo", "lido"),
     ("Fiscais de Garanhuns", "fiscais-2026-SENSIVEL.html", "HTML", "756 linhas", "Usado só para resolver o documento", "lido"),
     ("Diárias de Garanhuns", "diarias-2026.html", "HTML", "1.065 linhas", "Capturado, não estruturado", "derivado"),
     ("Obras de Garanhuns", "obras.html", "HTML", "82 linhas", "Capturado, não estruturado", "derivado"),
     ("Legislação de Garanhuns", "legislacao.html", "HTML", "1.748 linhas", "Capturado, não estruturado", "derivado"),
-    ("Painel de pagamentos do Estado", "pe-painel-pagamentos.html", "Painel", "Volume não medido", "Só os campos foram lidos", "derivado"),
-    ("Painel de fornecedores do Estado", "pe-painel-fornecedores.html", "Painel", "Volume não medido", "Só os campos foram lidos", "derivado"),
-    ("Painel de contratos do Estado", "pe-painel-contratos.html", "Painel", "Volume não medido", "Só os campos foram lidos", "derivado"),
+    ("Ordens bancárias do Estado", "pe-painel-pagamentos.html", "Painel", "Consulta devolveu 0 linhas", "Sem dado; ligação com contrato não confirmada", "derivado"),
 ]
 
 
@@ -54,12 +56,32 @@ def inventario(bruto: Path) -> list[dict]:
     return saida
 
 
+def exemplo_estado(bruto: Path, contratos: list[dict], amostra: Path) -> dict:
+    """Um contrato do Estado, com a linha do painel como veio e a execução do mesmo fornecedor."""
+    execucoes = [json.loads(x) for x in (amostra / "execucoes.jsonl").read_text(encoding="utf-8").splitlines()]
+    com_execucao = {x["fornecedor"] for x in execucoes}
+    c = next(x for x in contratos if x["tenant"] == "pe-estado" and x["sensibilidade"] == "publico" and x["fornecedor"] in com_execucao)
+    x = next(y for y in execucoes if y["fornecedor"] == c["fornecedor"])
+    ev = linha_jsonl(amostra / "evidencias.jsonl", "id", c["evidencia"])
+    arquivo = json.loads((bruto / ev["arquivo"]).read_text(encoding="utf-8"))
+    nomes = ["orgao", "contrato", "objeto", "vazio", "situacao", "processo", "credor", "inicio", "fim", "valor", "download"]
+    cru = dict(zip(nomes, arquivo["linhas"][ev["linha"] - 1]))
+    cru.pop("vazio")
+    limpar = lambda r, fora: {k: v for k, v in r.items() if k not in fora}  # noqa: E731
+    return {
+        "cru_estado": json.dumps(cru, ensure_ascii=False, indent=2),
+        "fato_contrato_estado": limpar(c, {"caso_demo", "uj", "idc"}),
+        "fato_execucao": limpar(x, {"uj"}),
+    }
+
+
 def exemplo(bruto: Path) -> dict:
     """Um fornecedor real da amostra, da fonte até o grafo, sem nome de fiscal nem contato."""
     amostra = RAIZ / "dados" / "amostra"
     contratos = [json.loads(x) for x in (amostra / "contratos.jsonl").read_text(encoding="utf-8").splitlines()]
     sancoes = [json.loads(x) for x in (amostra / "sancoes.jsonl").read_text(encoding="utf-8").splitlines()]
-    c = next(x for x in contratos if x["caso_demo"] == "com_sancao" and any(s["fornecedor"] == x["fornecedor"] for s in sancoes))
+    c = next(x for x in contratos if x["tenant"] == "pe-garanhuns" and x["caso_demo"] == "com_sancao"
+              and any(s["fornecedor"] == x["fornecedor"] for s in sancoes))
     s = next(x for x in sancoes if x["fornecedor"] == c["fornecedor"])
     evidencia = linha_jsonl(amostra / "evidencias.jsonl", "id", c["evidencia"])
 
@@ -77,6 +99,7 @@ def exemplo(bruto: Path) -> dict:
 
     limpar = lambda r, fora: {k: v for k, v in r.items() if k not in fora}  # noqa: E731
     return {
+        **exemplo_estado(bruto, contratos, amostra),
         "cru_contrato": tr, "cru_sancao": cru_csv,
         "fato_contrato": limpar(c, {"caso_demo", "uj"}), "fato_sancao": limpar(s, {"inicio_suspensao"}),
         "evidencia": evidencia,
