@@ -1,7 +1,7 @@
 """Worker do notebook: atende o site e o WhatsApp com o agente isolado.
 
-    .venv/bin/python chat/worker.py
-    .venv/bin/python chat/worker.py --simular "Quais contratos temos?" [numero]   # não envia WhatsApp
+    python chat/worker.py                          # com a .venv ativada (Linux e Windows)
+    python chat/worker.py --simular "Quais contratos temos?" [numero]   # não envia WhatsApp
 
 O notebook só faz conexões de saída: busca perguntas na API do site e lê a fila do gateway.
 Não pode rodar junto da sessão `claude --dangerously-load-development-channels`: os dois responderiam.
@@ -35,7 +35,8 @@ API = os.environ.get("API_BASE", f"https://{os.environ.get('SITE', 'hackathon.fi
 CHAVE = os.environ["WORKER_KEY"]
 ESTADO = Path(os.environ.get("WHATSAPP_STATE_DIR", Path.home() / ".claude/channels/whatsapp-hackathon"))
 LOG = RAIZ / "logs" / "chat.jsonl"
-PYTHON_AUDIO = RAIZ.parent / "inferencia" / ".venv" / "bin" / "python"
+_VENV_AUDIO = RAIZ.parent / "inferencia" / ".venv"
+PYTHON_AUDIO = _VENV_AUDIO / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 TRANSCRITOR = RAIZ.parent / "inferencia" / "transcrever.py"
 PERFIL_MANUAL = ["pe-estado", "pe-garanhuns"]   # números liberados pelo dono no terminal
 ERRO_PADRAO = "Não consegui concluir agora. Tente de novo em instantes."
@@ -167,7 +168,7 @@ def pedir(pedido: dict):
     outbox = ESTADO / "outbox"
     tmp = outbox / f".{pedido['id']}.tmp"
     tmp.write_text(json.dumps(pedido, ensure_ascii=False), encoding="utf-8")
-    tmp.rename(outbox / f"{pedido['id']}.json")
+    os.replace(tmp, outbox / f"{pedido['id']}.json")   # atômico e funciona também no Windows
 
 
 def texto_whatsapp(resposta: str, fontes: list[dict]) -> str:
@@ -268,6 +269,8 @@ def sincronizar_telefones():
     perfis_por_numero.update(novos)
 
     caminho, marca = ESTADO / "access.json", ESTADO / "sincronizados.json"
+    if not caminho.exists():    # gateway do WhatsApp nunca rodou aqui: só o site funciona, e isso não é erro
+        return
     acesso = json.loads(caminho.read_text(encoding="utf-8"))
     nossos = set(json.loads(marca.read_text(encoding="utf-8"))) if marca.exists() else set()
     lista_atual = acesso.get("allowFrom", [])

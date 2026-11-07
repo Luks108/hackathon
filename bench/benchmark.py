@@ -1,7 +1,7 @@
 """Benchmark do FornexIA. Gabarito e métrica são fixados antes de rodar.
 
-    .venv/bin/python bench/benchmark.py gabarito     # deriva as respostas do grafo e congela com hash
-    .venv/bin/python bench/benchmark.py rodar        # roda os dois braços contra o gabarito congelado
+    python bench/benchmark.py gabarito     # deriva as respostas do grafo e congela com hash
+    python bench/benchmark.py rodar        # roda os dois braços contra o gabarito congelado
 
 Braços, com o mesmo modelo e as mesmas perguntas:
     fornexia   agente isolado, só com as consultas com perfil
@@ -233,7 +233,7 @@ def rodar_sem_base(q: dict) -> dict:
     agente.NEUTRO.mkdir(parents=True, exist_ok=True)
     try:
         r = subprocess.run(
-            ["claude", "-p", "--model", agente.MODELO, "--strict-mcp-config", "--setting-sources", "", "--tools", "",
+            [agente.CLAUDE, "-p", "--model", agente.MODELO, "--strict-mcp-config", "--setting-sources", "", "--tools", "",
              "--system-prompt", SEM_BASE, "--disallowedTools", agente.PROIBIDAS, "--output-format", "text"],
             input=q["pergunta"], capture_output=True, text=True, cwd=agente.NEUTRO, timeout=agente.LIMITE_S)
         resposta, desfecho = r.stdout.strip(), "ok" if r.returncode == 0 else "erro"

@@ -1,2 +1,7 @@
 # O hash do arquivo bruto de exemplo precisa ser o mesmo em qualquer máquina: sem conversão de quebra de linha.
 fixtures/exemplo/bruto/* -text
+
+# Scripts de shell e serviços rodam no Linux: precisam de fim de linha LF mesmo se clonados no Windows.
+*.sh text eol=lf
+*.service text eol=lf
+*.bat text eol=crlf

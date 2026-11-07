@@ -198,6 +198,16 @@ class TestIsolamentoEntrePerfis(unittest.TestCase):
         sumiu = self.perfil("municipio", BRUTO=str(Path(self.pasta.name) / "nao-existe"))
         self.assertFalse(sumiu.conferir_evidencia("g1")["hash_confere"])
 
+    def test_bruto_relativo_vale_a_partir_da_raiz_do_projeto(self):
+        # O agente roda o servidor em outra pasta. Um BRUTO relativo no .env não pode depender do diretório atual.
+        antes = os.getcwd()
+        os.chdir(self.pasta.name)
+        try:
+            relativo = self.perfil("municipio", BRUTO="fixtures/exemplo/bruto")
+            self.assertTrue(relativo.conferir_evidencia("g1")["hash_confere"])
+        finally:
+            os.chdir(antes)
+
     # ---------- Registro ----------
 
     def test_o_registro_diz_quem_perguntou_o_que_e_quais_fontes(self):

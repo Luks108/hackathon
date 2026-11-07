@@ -1,15 +1,17 @@
 """Roda uma pergunta em um agente isolado e devolve o que acontece, em eventos.
 
-    .venv/bin/python chat/agente.py estado "Quais contratos temos na base?"
+    python chat/agente.py estado "Quais contratos temos na base?"     # com a .venv ativada (Linux e Windows)
 
 Cada pergunta é um `claude -p` novo, em diretório neutro, só com as tools do `transparencia`.
 O perfil vem de quem chama e entra no ambiente do servidor MCP: o modelo não tem como mudá-lo.
 A pergunta vai pelo stdin, nunca por shell.
 """
 
+import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -26,7 +28,37 @@ PRIMITIVAS = (
     "contratos_do_fornecedor", "sancoes_do_fornecedor", "execucao_do_fornecedor", "conferir_evidencia",
 )
 PROIBIDAS = "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit"
-PYTHON = str(RAIZ / ".venv" / "bin" / "python")
+
+
+def python_do_projeto() -> str:
+    """Python da .venv do projeto, em Linux (`bin/python`) ou Windows (`Scripts/python.exe`).
+    `AGENTE_PYTHON` sobrescreve. Sem .venv, usa o Python que está rodando."""
+    if os.environ.get("AGENTE_PYTHON"):
+        return os.environ["AGENTE_PYTHON"]
+    for relativo in (("Scripts", "python.exe"), ("bin", "python")):
+        candidato = RAIZ / ".venv" / Path(*relativo)
+        if candidato.exists():
+            return str(candidato)
+    return sys.executable
+
+
+def achar_claude() -> str:
+    """Caminho do `claude`. `CLAUDE_BIN` sobrescreve. No Windows, cai no executável da extensão do VS Code."""
+    if os.environ.get("CLAUDE_BIN"):
+        return os.environ["CLAUDE_BIN"]
+    achado = shutil.which("claude")
+    if achado:
+        return achado
+    if os.name == "nt":
+        extensoes = Path.home() / ".vscode" / "extensions"
+        candidatos = sorted(glob.glob(str(extensoes / "anthropic.claude-code-*" / "resources" / "native-binary" / "claude.exe")))
+        if candidatos:
+            return candidatos[-1]
+    return "claude"
+
+
+PYTHON = python_do_projeto()
+CLAUDE = achar_claude()
 NEUTRO = Path.home() / ".cache" / "fornexia-agente"
 MODELO = os.environ.get("AGENTE_MODELO", "claude-opus-5-5")
 LIMITE_S = int(os.environ.get("AGENTE_LIMITE_S", "110"))
@@ -166,12 +198,13 @@ def perguntar(texto: str, tenants: list[str], historico: list[tuple[str, str]] |
     leitor = leitor or Leitor()
     perfil = perfil_dos_entes(tenants)
     NEUTRO.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", dir=NEUTRO, suffix=".json", encoding="utf-8") as cfg:
+    # delete=False: no Windows outro processo não abre um arquivo temporário ainda aberto por este. Apagamos no fim.
+    with tempfile.NamedTemporaryFile("w", dir=NEUTRO, suffix=".json", encoding="utf-8", delete=False) as cfg:
         json.dump(perfis.config_mcp(perfil, python=PYTHON), cfg)
-        cfg.flush()
+    try:
         proc = subprocess.Popen(
             [
-                "claude", "-p", "--model", MODELO,
+                CLAUDE, "-p", "--model", MODELO,
                 "--mcp-config", cfg.name, "--strict-mcp-config",
                 "--setting-sources", "",
                 "--system-prompt", REGRAS,
@@ -210,6 +243,11 @@ def perguntar(texto: str, tenants: list[str], historico: list[tuple[str, str]] |
             proc.wait()
         if not terminou:
             yield ("erro", {"motivo": "A consulta demorou mais que o esperado." if estourou.is_set() else "O agente parou sem responder."})
+    finally:
+        try:
+            os.unlink(cfg.name)
+        except OSError:
+            pass
 
 
 if __name__ == "__main__":

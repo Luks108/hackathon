@@ -162,7 +162,7 @@ function lerNovas(): Inbound[] {
 }
 
 // Notas de voz chegam já transcritas (faster-whisper na CPU, inferencia/transcrever.py).
-const PYTHON = join(import.meta.dir, '..', 'inferencia', '.venv', 'bin', 'python')
+const PYTHON = join(import.meta.dir, '..', 'inferencia', '.venv', ...(process.platform === 'win32' ? ['Scripts', 'python.exe'] : ['bin', 'python']))
 const TRANSCRITOR = join(import.meta.dir, '..', 'inferencia', 'transcrever.py')
 
 async function transcrever(arquivo: string): Promise<string | null> {

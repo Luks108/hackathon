@@ -149,6 +149,10 @@ do Dev B, e o deploy/dados são do Lucas.
 Crie um `.env` na raiz com `NEO4J_SENHA`, `CHAVE_PF`, `NEO4J_URI=bolt://127.0.0.1:7689` e `BRUTO` (veja `.env.exemplo`).
 A captura bruta não é versionada, porque pode conter dados pessoais.
 
+> **Windows e Linux:** os comandos abaixo usam o caminho do Linux (`.venv/bin/python`). No Windows, troque por `.venv\Scripts\python`
+> ou ative a venv e use só `python`. O guia completo, com o worker, o WhatsApp e os serviços, está em
+> [`docs/rodar-no-windows-e-no-linux.md`](docs/rodar-no-windows-e-no-linux.md).
+
 **Com dados fictícios** (não precisa da captura):
 
 ```bash
@@ -298,6 +302,7 @@ O que **não** está resolvido, para ninguém se surpreender na hora da demonstr
 - [Plano técnico do site e da API](docs/specs/001-site-e-chat/plan.md)
 - [Tasks](docs/specs/001-site-e-chat/tasks.md)
 - [Como rodar o site localmente](site/dev/README.md)
+- [Rodar no Windows e no Linux](docs/rodar-no-windows-e-no-linux.md): worker, WhatsApp, variáveis e testes
 - [Backlog](docs/BACKLOG.md)
 - [Catálogo de ataques de prompt e proteções](docs/seguranca/ataques-de-prompt.md)
 - [Resultados dos testes de segurança](docs/testes-seguranca.md)
