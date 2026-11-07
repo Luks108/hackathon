@@ -5,9 +5,10 @@ Projeto do **Desafio 1 — Portal Inteligente de Transparência com IA** do Hack
 Consulta em linguagem natural a dados públicos de contratação. Toda resposta aponta para o trecho literal
 da fonte, e cada perfil vê só o que está autorizado a ver.
 
-> **Estado:** extração, grafo, consultas com filtro de perfil, registro de consultas, catálogo de ataques **e o site com contas,
-> chat em fila e administração** estão prontos e **testados** (43 testes de consulta e 78 testes da API do site). Ainda falta o
-> agente isolado (worker) ligado ao site e os ataques rodados com o modelo real. Veja
+> **Estado:** extração, grafo, consultas com filtro de perfil, registro de consultas, catálogo de ataques, o site com contas,
+> chat em fila e administração, **o worker com agente isolado e a área técnica** estão prontos e **testados** (47 testes de
+> consulta e 78 testes da API do site). Ainda faltam os ataques de prompt rodados com o modelo real (B13) e a publicação na
+> Hostinger. Veja
 > [Onde estamos no desafio](#onde-estamos-no-desafio), [Site e chat (Dev A)](#site-e-chat-dev-a) e [Pendências conhecidas](#pendências-conhecidas).
 > Detalhes do site e do chat: [spec](docs/specs/001-site-e-chat/spec.md), [plano técnico](docs/specs/001-site-e-chat/plan.md) e [tasks](docs/specs/001-site-e-chat/tasks.md).
 
@@ -22,6 +23,9 @@ da fonte, e cada perfil vê só o que está autorizado a ver.
 | `esquema/`, `infra/` | Restrições do grafo e Docker Compose local |
 | `canal-whatsapp/` | Gateway Baileys, canal MCP e controle de acesso |
 | `site/` | Site PHP 8.2 + MariaDB: páginas, API (`public_html/api/`), `setup.php` e `deploy.sh` para a Hostinger |
+| `chat/` | Worker do notebook (`worker.py`) e agente isolado (`agente.py`): um `claude -p` por pergunta, só com as tools do `transparencia` |
+| `bench/` | Benchmark do agente contra o modelo sem base, com gabarito congelado por hash |
+| `site/painel/` | Conteúdo da área técnica do site |
 | `site/dev/` | Ambiente local do site: Docker do banco, roteador do servidor embutido do PHP, worker falso e os 78 testes da API |
 | `inferencia/`, `planilha/` | Ferramentas de visão, áudio e planilha, herdadas do modelo do hackathon |
 | `docs/seguranca/` | **Catálogo de ataques de prompt** e proteções |
@@ -36,16 +40,18 @@ da fonte, e cada perfil vê só o que está autorizado a ver.
 | Captura de ao menos um portal estadual | **Parcial.** Garanhuns (municipal) capturado. Do Estado de PE, só o CSV de sanções. A coleta dos painéis estaduais não foi testada | `coleta/` |
 | Normalização e catalogação | **Pronto** | `coleta/extrair.py`, `esquema/neo4j.cypher` |
 | Controle de acesso por estado e perfil | **Pronto na camada de dados, testado.** Três perfis (Município, Estado de PE, outro estado fictício) | `consulta/perfis.json`, `consulta/testes/test_acesso_neo4j.py` |
-| LLM restrita aos dados autorizados | **Dados testados.** O agente isolado que roda o modelo ainda não existe | `docs/specs/001-site-e-chat/tasks.md` (B01 a B07) |
+| LLM restrita aos dados autorizados | **Agente isolado pronto.** Cada pergunta roda num `claude -p` novo, sem Bash, leitura de arquivos nem web, só com as tools do `transparencia` e o perfil vindo do ambiente. Falta rodar os ataques contra ele (B13) | `chat/agente.py`, `chat/worker.py` |
 | Registro de consultas e fontes | **Pronto** no servidor MCP. CPF digitado é mascarado no log | `logs/consultas.jsonl` |
 | RAG com citação de fonte | **Pronto no backend:** cada fato traz trecho, data e hash conferível. A busca em documentos existe só na página de demonstração | `conferir_evidencia`, `docs/apresentacao/` |
 | Multi-tenant | **Testado** com três entes: o mesmo CNPJ tem fatos em cada um, e cada perfil vê só os seus | `fixtures/gerar_exemplo.py` |
 | Proteção contra ataques de prompt | **20 ataques catalogados.** A camada de dados está testada. Os testes com o modelo real estão pendentes | [`docs/seguranca/ataques-de-prompt.md`](docs/seguranca/ataques-de-prompt.md) |
-| Site com contas, planos e chat | **Pronto e testado com worker falso.** Cadastro, login, assinatura, fila de perguntas, telefones do WhatsApp e tela de administração. O deploy real na Hostinger ainda não foi feito | [Site e chat (Dev A)](#site-e-chat-dev-a) |
+| Site com contas, planos e chat | **Pronto.** A API foi testada com worker falso e o fluxo real usa `chat/worker.py`. Cadastro, login, assinatura, fila de perguntas, telefones do WhatsApp e tela de administração. O deploy real na Hostinger ainda não foi feito | [Site e chat (Dev A)](#site-e-chat-dev-a) |
 
 ## Site e chat (Dev A)
 
-Parte do Dev A: tudo que o usuário vê no navegador e a API PHP que o worker do Dev B consome.
+Parte do Dev A: tudo que o usuário vê no navegador e a API PHP que o worker do Dev B consome. Depois do merge, o Lucas aplicou a
+identidade **FornexIA** ao site e acrescentou o chat com três agentes em paralelo e posição na fila, a área técnica (`/tecnico.html`) e o
+worker real. O que está descrito aqui é a base que ele estendeu.
 
 ### Páginas
 
@@ -55,10 +61,11 @@ Parte do Dev A: tudo que o usuário vê no navegador e a API PHP que o worker do
 | `/chat.html` | Entrar ou criar conta e conversar com o assistente. O assistente flutuante da página inicial é este mesmo chat dentro de um `iframe` (`?embutido=1`) |
 | `/conta.html` | Dados da conta, plano e telefones de WhatsApp (até 3), com o estado de cada um |
 | `/admin.html` | Fila de telefones: aprovar, recusar, bloquear. Só para administradores |
+| `/tecnico.html` | Área técnica: como o FornexIA funciona, benchmark, carga, dado cru, estrutura e construção da ontologia, e o que ainda falta |
 
 ### Como o chat funciona
 
-O site não fala com o modelo. Ele guarda a pergunta numa **fila** e o **worker** (Dev B), que roda no notebook, busca a próxima,
+O site não fala com o modelo. Ele guarda a pergunta numa **fila** e o **worker** (`chat/worker.py`), que roda no notebook, busca a próxima,
 conversa com o agente e devolve os eventos aos poucos. O navegador consulta os eventos a cada 0,7 s.
 
 - Uma pergunta aberta por conta (trava com `FOR UPDATE`). Pergunta parada na fila por mais de 120 s, ou em processamento por mais
@@ -126,7 +133,7 @@ Além do comportamento normal, eles cobrem concorrência (80 perguntas com 12 wo
 | A07 | Rotas do worker | ✅ |
 | A08 | Rotas de telefone do usuário | ✅ |
 | A09 | Aprovação do administrador | ✅ |
-| A10 | Layout comum e landing | 🟡 Landing e cabeçalho comum prontos. O chat ainda usa cabeçalho próprio |
+| A10 | Layout comum e landing | 🟡 Landing e menu comum nas páginas (o chat já usa o mesmo menu). A task segue aberta no `tasks.md` até conferir o aceite (400 px e teclado) |
 | A11 | Planos na landing | ✅ |
 | A12 | Modelo de negócios | ✅ |
 | A13 | Sobre nós | ⏳ Aguardando fotos e textos da equipe |
@@ -134,15 +141,16 @@ Além do comportamento normal, eles cobrem concorrência (80 perguntas com 12 wo
 | A15 | Chatbox | ✅ |
 | A16 | Tela do administrador | ✅ |
 
-**Resumo:** 14 de 16 prontas, 1 parcial (A10) e 1 pendente por falta de material (A13). As tasks B01 a B10 (worker e WhatsApp) são
-do Dev B, e o deploy/dados são do Lucas.
+**Resumo:** 14 de 16 prontas, 1 parcial (A10) e 1 pendente por falta de material (A13). Na `main`, o Dev B já marcou B01 a B05, B07,
+B08, B10 e B11; seguem abertas B06, B09 e B13. O deploy e os dados são do Lucas.
 
 ### O que não foi verificado no site
 
 - **Deploy real na Hostinger.** `deploy.sh` foi testado com `ssh`/`rsync` falsos e valores hostis, não no servidor. Falta conferir
   `.htaccess`, repasse de cabeçalhos, cookie `Secure` em HTTPS e a versão do MariaDB.
 - **Celular de verdade**, teclado virtual e leitor de tela. O layout foi testado em navegador sem interface, com largura de celular.
-- **Worker real.** Todo o fluxo do chat foi testado com o worker falso (`site/dev/worker_falso.py`).
+- **Worker real em carga e em produção.** Os 78 testes usam o worker falso (`site/dev/worker_falso.py`). O worker real foi escrito e
+  medido pelo Lucas (`bench/`, B07), mas não passou pelos testes de perfil e injeção (B13).
 
 ## Como rodar
 
@@ -155,7 +163,7 @@ A captura bruta não é versionada, porque pode conter dados pessoais.
 python -m venv .venv && .venv/bin/pip install -r requirements.txt     # no Windows: .venv\Scripts\pip
 docker compose --env-file .env -f infra/docker-compose.yml up -d neo4j
 python coleta/carregar_neo4j.py --zerar --exemplo
-python -m unittest discover -s consulta/testes -v                     # 43 testes
+python -m unittest discover -s consulta/testes -v                     # 47 testes
 ```
 
 **Com a captura real:**
