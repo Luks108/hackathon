@@ -121,6 +121,16 @@ def main(servicos: bool) -> int:
     linha("OK" if bun else "AVISO", f"bun {versao([bun, '--version'])}" if bun else "bun não encontrado (só é preciso para o WhatsApp)",
           "o WhatsApp está pendente; instale o bun só quando for usá-lo")
 
+    # Modelos do benchmark: as chaves de API são opcionais, e só a falta delas nunca é erro.
+    try:
+        import provedores
+        sem_chave = [m for m in provedores.MODELOS_BENCHMARK if provedores.indisponivel(m)]
+        ficam = [m for m in provedores.MODELOS_BENCHMARK if m not in sem_chave]
+        linha("OK", "modelos do benchmark disponíveis: " + ", ".join(ficam)
+              + (f". Sem chave (opcional, ficam de fora): {', '.join(sem_chave)}" if sem_chave else ""))
+    except Exception as e:  # noqa: BLE001
+        linha("AVISO", f"não consegui listar os modelos do benchmark ({type(e).__name__})")
+
     # .env
     print()
     env = ler_env()

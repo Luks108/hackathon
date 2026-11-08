@@ -29,7 +29,8 @@ RAIZ = agente.RAIZ
 for linha in (RAIZ / ".env").read_text(encoding="utf-8").splitlines():
     if "=" in linha and not linha.lstrip().startswith("#"):
         k, v = linha.split("=", 1)
-        os.environ.setdefault(k.strip(), v.strip())
+        if v.strip():      # valor vazio (ex.: chave de API não preenchida) não vira variável
+            os.environ.setdefault(k.strip(), v.strip())
 
 API = os.environ.get("API_BASE", f"https://{os.environ.get('SITE', 'hackathon.figueiredo.dev')}") + "/api"
 CHAVE = os.environ["WORKER_KEY"]
@@ -56,6 +57,20 @@ def gravar_log(**campos):
     campos["pergunta"] = agente.CPF.sub("[CPF]", campos.get("pergunta", ""))
     with LOG.open("a", encoding="utf-8") as f:
         f.write(json.dumps({"em": time.strftime("%Y-%m-%dT%H:%M:%S%z"), **campos}, ensure_ascii=False) + "\n")
+
+
+def mensagem_de_falha(dados: dict) -> tuple:
+    """Linha de terminal para um erro do agente. Quando todos os modelos da cadeia falharam, diz quais foram tentados."""
+    if dados.get("nenhum_respondeu"):
+        return ("agente falhou: nenhum provedor respondeu (tentados:", ", ".join(dados.get("tentados", [])) + ") |", dados.get("motivo", "")[:160])
+    return ("agente falhou:", dados.get("motivo", "")[:200])
+
+
+def campos_do_modelo(leitor) -> dict:
+    """Para o log provar, numa demonstração, quem foi pedido, quem respondeu e se houve troca. Só nomes de modelo e frases
+    curtas de motivo: nenhuma chave passa por aqui."""
+    return {"modelo_pedido": leitor.modelo_pedido, "modelo": leitor.modelo, "tentados": list(leitor.tentados),
+            "trocas": [{k: t[k] for k in ("de", "para", "motivo", "tentativa")} for t in leitor.trocas]}
 
 
 def api(metodo: str, rota: str, corpo=None):
@@ -112,9 +127,14 @@ def atender_site(p: dict):
     desfecho = "erro"
     try:
         for tipo, dados in agente.perguntar(p["texto"], p["tenants"], list(historicos[chave]), leitor):
+            if tipo == "fallback":
+                # Só vai para o terminal e para o log. A API do site só aceita consulta/texto/fonte/fim/erro (um tipo novo
+                # derrubaria o lote inteiro com 400), e a resposta ao usuário não muda de tom por causa da troca.
+                registrar("fallback:", dados.get("de"), "->", dados.get("para"), "|", dados.get("motivo", "")[:120])
+                continue
             primeiro = primeiro or int((time.monotonic() - inicio) * 1000)
             if tipo == "erro":
-                registrar("agente falhou:", dados.get("motivo", "")[:200])
+                registrar(*mensagem_de_falha(dados))
                 dados = {"motivo": dados["motivo"] if "demorou" in dados.get("motivo", "") else ERRO_PADRAO}
             elif tipo == "fim":
                 desfecho = "concluida"
@@ -129,6 +149,7 @@ def atender_site(p: dict):
         historicos[chave].append((p["texto"], leitor.resposta[:600]))
     gravar_log(canal="site", id=p["id"], usuario=p["usuario_id"], tenants=p["tenants"], pergunta=p["texto"],
                consultas=leitor.consultas, evidencias=leitor.evidencias, desfecho=desfecho,
+               **campos_do_modelo(leitor),
                primeiro_sinal_ms=primeiro, duracao_ms=int((time.monotonic() - inicio) * 1000))
 
 
@@ -197,7 +218,9 @@ def responder_whatsapp(texto: str, tenants: list[str], chave: str) -> tuple[str,
             elif tipo == "fim":
                 desfecho = "concluida"
             elif tipo == "erro":
-                registrar("agente falhou:", dados.get("motivo", "")[:200])
+                registrar(*mensagem_de_falha(dados))
+            elif tipo == "fallback":
+                registrar("fallback:", dados.get("de"), "->", dados.get("para"), "|", dados.get("motivo", "")[:120])
     except Exception as e:
         registrar("falha no WhatsApp:", type(e).__name__, str(e)[:200])
     if desfecho != "concluida" or not leitor.resposta:
@@ -228,7 +251,8 @@ def atender_whatsapp(m: dict):
     saida, leitor, desfecho = responder_whatsapp(texto, tenants, f"wa:{chat}")
     pedir({"op": "enviar", "chat_id": chat, "texto": saida})
     gravar_log(canal="whatsapp", id=m["id"], tenants=tenants, pergunta=texto, consultas=leitor.consultas,
-               evidencias=leitor.evidencias, desfecho=desfecho, duracao_ms=int((time.monotonic() - inicio) * 1000))
+               evidencias=leitor.evidencias, desfecho=desfecho, **campos_do_modelo(leitor),
+               duracao_ms=int((time.monotonic() - inicio) * 1000))
 
 
 def sessao_de_canal_aberta() -> bool:
