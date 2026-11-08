@@ -28,4 +28,4 @@ Consultamos empresas com CNPJ que apareçam em portais públicos dos entes cober
 Pergunta: Quanto custa a assinatura do serviço?
 Palavras-chave: preco, plano, assinatura, custo
 Origem: Perguntas frequentes de clientes (documento fictício)
-Os valores dos planos mostrados nesta demonstração, R$ 990 e R$ 1.990 por mês, são hipóteses e ainda não foram validados. Não há cobrança real nesta versão.
+O valor do plano único mostrado nesta demonstração, R$ 149 por mês, é uma hipótese e ainda não foi validado. Não há cobrança real nesta versão.

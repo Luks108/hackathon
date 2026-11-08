@@ -68,7 +68,7 @@ conversa com o agente e devolve os eventos aos poucos. O navegador consulta os e
   fonte com URL `javascript:` para provar que ela não vira link.
 - **Demonstração livre:** na demonstração ao cliente não há etapa de escolha de plano. Os planos aparecem só como informação, e
   quem se cadastra já conversa. A etapa existe no código, desligada pela constante `ESCOLHER_PLANO` em `assets/chat.js`. Quando o
-  produto for vendido, é só ligá-la.
+  produto for vendido, é só ligá-la. Com o plano único, o chat também não tem mais o seletor de plano.
 
 ### API
 
@@ -84,8 +84,9 @@ Todas as rotas ficam em `/api/...`. O contrato completo (formatos, códigos de e
 | Administração | `GET /admin/telefones`, aprovar e revogar |
 | Worker (chave própria) | `GET /worker/proxima`, `POST /worker/perguntas/{id}/eventos`, `GET /worker/telefones` |
 
-Planos de demonstração (valores ainda não validados): **Município** R$ 990, 300 perguntas, R$ 1,50 por excedente, vê só
-`pe-garanhuns`; **Estado** R$ 1.990, 1.000 perguntas, R$ 1,50 por excedente, vê `pe-estado` e `pe-garanhuns`.
+Plano de demonstração (valor ainda não validado): **Único**, R$ 149 por mês, sem franquia nem excedente, vê `pe-estado` e
+`pe-garanhuns`. Antes havia dois planos (Município, R$ 990, e Estado, R$ 1.990); `site/setup.php` move as contas dos planos antigos
+para o plano único e os remove, então rodá-lo de novo em um banco antigo basta para atualizar.
 
 ### Segurança do site
 

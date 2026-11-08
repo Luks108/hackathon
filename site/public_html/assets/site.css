@@ -120,11 +120,6 @@ details.fonte .meta a { color: var(--verde); }
 .entrada .enviar:disabled { opacity: .45; cursor: not-allowed; }
 .rodape-chat { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 0 22px 12px; font-size: 13px; color: var(--tinta-3); }
 .rodape-chat output.perto { color: var(--ambar); }
-.seletor-plano { display: inline-flex; border: 1px solid var(--marinho); border-radius: 8px; overflow: hidden; }
-.seletor-plano:empty { display: none; }
-.seletor-plano button { border: 0; background: var(--cartao); color: var(--marinho); font: 600 13px var(--texto); min-height: 32px; padding: 4px 11px; cursor: pointer; }
-.seletor-plano button[aria-pressed="true"] { background: var(--marinho); color: #fff; }
-.seletor-plano button:disabled { opacity: .55; cursor: not-allowed; }
 
 /* ---------- Páginas internas: conta e administração ---------- */
 .link-topo { color: var(--heroi-2); text-decoration: none; font: 500 14px var(--texto); padding: 6px 8px; border-radius: 4px; white-space: nowrap; }

@@ -53,7 +53,7 @@ def renderizar(navegador: str, url: str) -> str:
 
 
 def tem_plano_na_pagina(dom: str) -> bool:
-    return len(re.findall(r'class="plano-card"', dom)) >= 2
+    return len(re.findall(r'class="plano-card"', dom)) >= 1
 
 
 def mostra_tela_de_entrada(dom: str) -> bool:
