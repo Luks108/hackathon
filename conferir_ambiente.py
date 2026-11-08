@@ -116,6 +116,8 @@ def main(servicos: bool) -> int:
     except Exception as e:  # noqa: BLE001
         linha("FALTA", f"não consegui carregar chat/agente.py ({type(e).__name__})", "confira se a venv tem os pacotes")
     bun = shutil.which("bun")
+    if not bun and (Path.home() / ".bun" / "bin" / "bun").exists():   # o instalador do bun não mexe no PATH da sessão atual
+        bun = str(Path.home() / ".bun" / "bin" / "bun")
     linha("OK" if bun else "AVISO", f"bun {versao([bun, '--version'])}" if bun else "bun não encontrado (só é preciso para o WhatsApp)",
           "o WhatsApp está pendente; instale o bun só quando for usá-lo")
 

@@ -6,6 +6,11 @@ Siga na ordem. No fim de cada etapa há uma **Conferência**: rode o comando, co
 
 > **Pendência:** a conexão do WhatsApp está sendo resolvida por fora. Ela aparece no guia (etapa 11), marcada como **pendente**,
 > e **não bloqueia** o resto: o site, o chat e o agente funcionam sem ela.
+>
+> **Linux: testado só em parte.** O caminho de instalação foi executado em contêineres Ubuntu 24.04, Ubuntu 22.04 e Debian 12, e
+> **não** numa máquina Linux de verdade. Os serviços do systemd, a instalação do Docker Engine, a permissão do grupo `docker`, o login
+> real do `claude` e o teste de fumaça no Linux **ainda não foram testados**. O quadro completo está na
+> [etapa 17](#17-o-que-foi-testado-e-o-que-não-foi).
 
 ## Sumário
 
@@ -25,6 +30,7 @@ Siga na ordem. No fim de cada etapa há uma **Conferência**: rode o comando, co
 14. [Ordem de subida e sinais de que está no ar](#14-ordem-de-subida-e-sinais-de-que-está-no-ar)
 15. [Problemas comuns](#15-problemas-comuns)
 16. [Cuidados de portabilidade](#16-cuidados-de-portabilidade)
+17. [O que foi testado e o que não foi](#17-o-que-foi-testado-e-o-que-não-foi)
 
 Em cada bloco de comandos o guia diz **em que sistema** e **em que pasta** rodar. Quando nada é dito, a pasta é a **raiz do
 projeto** (a que contém `README.md`). Copie **um comando por vez**.
@@ -85,13 +91,75 @@ Os números de RAM e disco são uma estimativa de bom senso, não uma medição.
 | Git | qualquer recente | Baixar o projeto | `git --version` |
 | Python | **3.10 ou mais novo** (o pacote `mcp 2.3.0` exige 3.10+; testado com **3.14.0** no Windows) | Worker, agente, consultas, testes | `python --version` |
 | PHP | **8.2** (a mesma versão da hospedagem; só ela foi testada) | Site | `php -v` |
-| Docker | Docker Desktop (Windows) ou Docker Engine com o plugin Compose (Linux) | MariaDB 10.11 e Neo4j 5.26 | `docker --version` e `docker compose version` |
+| Docker | Docker Desktop (Windows) ou Docker Engine com o plugin Compose (Linux). **Necessário, mas só para os dois bancos de dados**: veja a seção abaixo | MariaDB 10.11 e Neo4j 5.26 | `docker --version` e `docker compose version` |
 | Node.js | **22 ou mais novo** (exigido pelo pacote do Claude Code) | Instalar o `claude` | `node --version` |
 | Claude Code (`claude`) | recente | O agente | `claude --version` |
 | Bun | 1.4 ou mais novo | **Só para o WhatsApp (pendente)** | `bun --version` |
 
 O projeto não tem `pyproject.toml` nem `package.json` na raiz. As versões acima vêm de `requirements.txt` (`mcp==2.3.0`,
 `neo4j==5.28.3`), de `canal-whatsapp/package.json` e das imagens em `infra/` e `site/dev/`.
+
+### Docker: é necessário?
+
+> **SIM. O Docker é necessário, mas só para os dois bancos de dados (o MariaDB do site e o Neo4j). O serviço do site (PHP) e o
+> serviço do WhatsApp (bun) rodam direto no sistema, sem contêiner.** As etapas 6, 7 e 14 deste guia usam o Docker.
+
+| Peça | Como roda | Usa Docker? |
+|---|---|---|
+| MariaDB do site | Contêiner `mariadb:10.11`, definido em `site/dev/docker-compose.yml` | **Sim** |
+| Neo4j | Contêiner `neo4j:5.26.0-community`, definido em `infra/docker-compose.yml` | **Sim** |
+| Site (PHP) | `php -S ...` direto no sistema | Não |
+| Worker e agente (Python) | `python chat/worker.py` direto no sistema, com a venv | Não |
+| Gateway do WhatsApp (bun) | `bun gateway.ts` direto no sistema | Não |
+
+- **Não existe `Dockerfile`** no projeto: o site, o worker e o gateway não são empacotados em imagem. Os dois arquivos
+  `docker-compose.yml` só usam imagens oficiais prontas (MariaDB e Neo4j). Por isso não há o que construir (`docker build`).
+- Rodar o site, o worker ou o gateway **dentro** de contêiner não foi feito e não é necessário. Instalar o MariaDB ou o Neo4j
+  direto no sistema, sem Docker, também não foi testado, e este guia não cobre.
+
+**Windows: o que é WSL2 e a virtualização.** O Docker Desktop executa os contêineres (que são Linux) dentro de uma máquina virtual
+Linux leve, o **WSL2** (Windows Subsystem for Linux 2). Para ela funcionar, o processador precisa ter a **virtualização ligada na
+BIOS** (aparece como *Intel VT-x*, *Virtualization Technology*, ou *AMD-V / SVM Mode*). Confira no PowerShell:
+
+```powershell
+(Get-CimInstance Win32_Processor).VirtualizationFirmwareEnabled
+```
+
+| Esperado | Se vier diferente |
+|---|---|
+| `True` | `False`: reinicie o computador, entre na BIOS (tecla `F2`, `F10`, `Del` ou `Esc`, conforme o fabricante), ligue a opção de virtualização acima, salve e reinicie |
+
+Se o Docker Desktop reclamar de WSL, instale-o (PowerShell **como administrador**) e reinicie o computador:
+
+```powershell
+wsl --install
+```
+
+Depois do reinício, `wsl --status` deve mostrar a **versão padrão 2**. O Docker Desktop só precisa estar aberto ("Engine running");
+não é preciso abrir o Ubuntu do WSL. **No Linux não há WSL nem BIOS a ajustar**: o Docker Engine roda direto.
+
+**Comandos do dia a dia** (na raiz do projeto, no Windows ou no Linux). Troque o arquivo e o serviço conforme o banco:
+site = `-f site/dev/docker-compose.yml`; Neo4j = `--env-file .env -f infra/docker-compose.yml`.
+
+```bash
+docker ps
+docker logs --tail 50 hackathon-site-db
+docker logs -f hackathon-neo4j
+docker compose -f site/dev/docker-compose.yml stop
+docker compose -f site/dev/docker-compose.yml up -d --wait
+docker compose --env-file .env -f infra/docker-compose.yml down
+docker compose --env-file .env -f infra/docker-compose.yml down -v
+```
+
+| Comando | O que faz |
+|---|---|
+| `docker ps` | Lista os contêineres ligados e o estado (`healthy` = pronto) |
+| `docker logs --tail 50 NOME` | Últimas 50 linhas do log do contêiner (`NOME` = `hackathon-site-db` ou `hackathon-neo4j`) |
+| `docker logs -f NOME` | Acompanha o log ao vivo; `Ctrl+C` sai (não derruba o contêiner) |
+| `... stop` | Desliga o banco e **mantém os dados** |
+| `... up -d --wait` | Liga (ou religa) e espera ficar saudável |
+| `... down` | Remove o contêiner e **mantém os dados** (ficam no volume) |
+| `... down -v` | Remove o contêiner **e apaga os dados** do banco. Só use para recomeçar do zero |
 
 ### Instalar no Windows (PowerShell)
 
@@ -161,7 +229,11 @@ sudo apt update
 sudo apt install -y php8.2-cli php8.2-mysql php8.2-curl php8.2-mbstring
 ```
 
-Docker Engine com Compose (siga a página oficial: https://docs.docker.com/engine/install/) e depois:
+O `add-apt-repository` imprime um aviso longo sobre o repositório (começa com 'For Ubuntu ..., https://packages.sury.org/php/ is the canonical way').
+É só informativo; o PHP 8.2 instala normalmente (testado no Ubuntu 22.04 e 24.04).
+
+Docker Engine com Compose (siga a página oficial: https://docs.docker.com/engine/install/). **Não testado:** a instalação do Docker
+Engine e a permissão do grupo `docker` não foram executadas numa máquina Linux (veja a etapa 17). Depois da instalação:
 
 ```bash
 sudo usermod -aG docker $USER
@@ -180,7 +252,10 @@ O `claude` abre o login: entre na conta e digite `/exit`. Para o WhatsApp (pende
 
 ```bash
 curl -fsSL https://bun.sh/install | bash
+source ~/.bashrc
 ```
+
+O instalador do bun grava o PATH no `~/.bashrc`; sem o `source` (ou sem abrir um terminal novo) o comando `bun` não é encontrado.
 
 ### Conferência
 
@@ -225,8 +300,49 @@ git log --oneline -1
 
 | Esperado | Se vier diferente |
 |---|---|
-| `feat/portabilidade-windows-linux` e uma linha de commit | Outra branch: `git switch feat/portabilidade-windows-linux`. Se a branch não existir, rode `git fetch --all` e tente de novo |
+| `feat/portabilidade-windows-linux` e uma linha de commit | Outra branch: `git switch feat/portabilidade-windows-linux`. Se der `invalid reference`, rode `git fetch --all` e tente de novo. Se a branch foi apagada do GitHub, veja o texto abaixo |
 | `ls` (Linux) ou `dir` (Windows) mostra `README.md`, `chat`, `site`, `consulta`... | Você está na pasta errada: entre em `hackathon` |
+
+
+**Saída real**, capturada em 08/11/2026 no Windows 11 (PowerShell), clonando numa pasta nova e vazia. O número do commit muda a cada
+atualização da branch; o que importa é o nome da branch e o formato:
+
+```text
+PS> git clone --branch feat/portabilidade-windows-linux https://github.com/Luks108/hackathon.git
+Cloning into 'hackathon'...
+PS> cd hackathon
+PS> git branch --show-current
+feat/portabilidade-windows-linux
+PS> git log --oneline -1
+c796130 docs: guia mais seguro para júnior (--preparar, BOM, 401 do worker)
+PS> dir
+bench  canal-whatsapp  chat  coleta  consulta  docs  esquema  fixtures  inferencia  infra  planilha  site
+.env.exemplo  .gitattributes  .gitignore  CLAUDE.md  conferir_ambiente.py  README.md  requirements.txt
+```
+
+E a troca de branch, também executada de verdade nessa pasta:
+
+```text
+PS> git fetch --all
+PS> git switch main
+branch 'main' set up to track 'origin/main'.
+Switched to a new branch 'main'
+PS> git pull
+Already up to date.
+PS> git switch feat/portabilidade-windows-linux
+Your branch is up to date with 'origin/feat/portabilidade-windows-linux'.
+Switched to branch 'feat/portabilidade-windows-linux'
+```
+
+Quando a branch **não existe mais** (por exemplo, depois que ela foi mesclada na `main` e apagada), o `git clone --branch` falha assim:
+
+```text
+Cloning into 'hackathon'...
+fatal: Remote branch nome-que-nao-existe not found in upstream origin
+```
+
+Nesse caso, clone sem `--branch` (`git clone https://github.com/Luks108/hackathon.git`), entre na pasta e pergunte ao Lucas qual
+é a branch atual. A `main` é a branch padrão.
 
 Para **trocar de branch** depois (o código novo pode ter mudado de branch):
 
@@ -657,6 +773,10 @@ $env:PHP_BIN = "C:\caminho\para\php.exe"
 
 ## 13. Linux: deixar tudo como serviço
 
+> **NÃO TESTADO.** Os comandos desta etapa **não foram executados** em nenhuma máquina. Os contêineres de teste não têm `systemd`, e os
+> arquivos `.service` são os do notebook do Lucas, com caminhos dele. O que foi conferido: os arquivos têm fim de linha LF no clone Linux.
+> Teste esta etapa na máquina da exibição **antes** do dia, e anote o resultado aqui.
+
 Na máquina da exibição, o worker (e, quando o WhatsApp estiver resolvido, o gateway) sobem sozinhos no boot, como serviços do
 **seu usuário** (`systemctl --user`).
 
@@ -773,6 +893,7 @@ Instale (etapa 2) e rode `claude` uma vez para fazer o login. No Windows, o proj
 Se estiver num caminho estranho, ponha o caminho completo em `CLAUDE_BIN` no `.env`.
 
 **`python3 -m venv` falha com "ensurepip is not available" (Ubuntu/Debian).**
+A mensagem real é: `The virtual environment was not created successfully because ensurepip is not available ... apt install python3.12-venv`.
 Falta o pacote: `sudo apt install -y python3-venv`. Apague a `.venv` pela metade (`rm -rf .venv`) e crie de novo.
 
 **A porta já está em uso (8080, 3307, 7689 ou 7476).**
@@ -808,6 +929,9 @@ O Docker não está rodando. Windows: abra o Docker Desktop e espere "Engine run
 
 **O Neo4j dá `Connection refused` ao carregar os dados.**
 Ele leva até um minuto para ficar pronto. Rode `docker ps`: espere `(healthy)` e repita.
+
+**O agente termina com `Not logged in · Please run /login`.**
+O `claude` está instalado, mas sem conta. Rode `claude`, faça o login e digite `/exit`. (Visto de verdade num Ubuntu limpo, antes do login.)
 
 **O agente não responde, ou termina com erro.**
 Rode `python chat/agente.py estado "Olá"` e leia a mensagem. Causas comuns: o `claude` não está logado (rode `claude`), o Neo4j está
@@ -845,3 +969,36 @@ Regras para quem for mexer no código, para ele continuar rodando nos dois siste
   trancado. *(Importa na etapa 9: o agente passa a configuração do MCP ao `claude` por um arquivo temporário.)*
 - Caminhos relativos no `.env` (como `BRUTO`) valem a partir da raiz do projeto, e não da pasta em que o processo roda.
   *(Importa na etapa 5.)*
+
+---
+
+## 17. O que foi testado e o que não foi
+
+Registro honesto, para ninguém achar que um passo foi verificado quando não foi. Data dos testes: 08/11/2026.
+
+### Testado de verdade
+
+| Onde | O que foi executado | Resultado |
+|---|---|---|
+| **Windows 11** (máquina de desenvolvimento), pasta nova e vazia | Etapa 3 (clone, branch, troca de branch), 4, 5, 6, 7, 8, 9, 10 e 12; pergunta ao agente pelo site, com resposta e fonte | Passou. A saída real está na etapa 3 |
+| **Ubuntu 24.04** (contêiner limpo) | `python3 -m venv` sem `python3-venv` (erro reproduzido) e depois com o pacote; PPA `ondrej/php` e PHP 8.2.35; Node 22.23.4 pelo NodeSource; `claude` 2.1.319 pelo `npm`; `bun` 1.4.4; clone da branch; venv e `pip install`; `--preparar` e `conferir_ambiente.py`; carga dos dados no Neo4j; `setup.php` e o site respondendo `/api/saude`; 48 testes de consulta e 4 de portabilidade | Passou |
+| **Ubuntu 22.04** (contêiner limpo) | PPA `ondrej/php` e PHP 8.2.35; Python 3.10.12 (a versão mínima); clone, venv, `pip install`, import dos pacotes e 4 testes de portabilidade | Passou |
+| **Debian 12** (contêiner limpo) | PHP 8.2.35 direto do `apt`; Python 3.11.2; clone, venv, `pip install`, import dos pacotes e 4 testes de portabilidade | Passou |
+| Usuário `hackathon` do MariaDB | No Ubuntu 24.04, o `setup.php` conectou com esse usuário e criou as 7 tabelas e os planos | Passou. O contêiner de teste falou com o banco pela rede do Docker, e não por `127.0.0.1:3307` |
+| Agente no Linux sem login | `python chat/agente.py` achou `.venv/bin/python` e `/usr/bin/claude` e terminou com `Not logged in · Please run /login` | Comportamento esperado |
+
+### NÃO testado
+
+| Item | Por quê | O que fazer |
+|---|---|---|
+| Máquina Linux de verdade (desktop ou notebook) | Os testes foram em contêineres, rodando no Docker Desktop do Windows | Repetir as etapas 2 a 10 na máquina da exibição |
+| Serviços `systemd` (etapa 13), incluindo `enable-linger` | Contêiner sem `systemd` | Testar na máquina da exibição |
+| Instalação do Docker Engine e permissão do grupo `docker` (`sudo usermod -aG docker`) | Não há Docker Engine nos contêineres de teste | Testar: depois de sair e entrar na sessão, `docker ps` não pode dar `permission denied` |
+| Login real do `claude` e o worker real respondendo no Linux | Sem conta no contêiner. No Windows isso foi testado | Rodar as etapas 9.1 a 9.3 na máquina da exibição |
+| Teste de fumaça do navegador no Linux (etapa 10) | Os contêineres não têm Chrome nem Chromium | Instalar o Chromium e rodar `python site/dev/fumaca_navegador.py` |
+| Teste de fumaça no Opera | O script recusa o Opera pelo nome do executável; o fato de o Opera não oferecer o modo de depuração não foi verificado por nós | Usar Chrome, Edge ou Chromium |
+| Gateway do WhatsApp (etapa 11) | Pendência da conexão, resolvida por fora | Marcada como pendente |
+| Instalação do zero no Windows (`winget`, Loja da Microsoft, WSL2) | Foi testado numa máquina que já tinha tudo instalado | Seguir a etapa 2 numa máquina limpa e anotar o que falhar |
+| Ubuntu e Debian fora das três versões acima, e outras distribuições | Não foram tentadas | Se usar outra, anote o que mudar |
+| Instalar MariaDB e Neo4j sem Docker | Fora do escopo; o guia só cobre o Docker | |
+| Colocar o site, o worker ou o gateway dentro de contêiner | Não existe `Dockerfile` e não é necessário (veja "Docker: é necessário?") | |
