@@ -1,0 +1,52 @@
+{"id": "cnpj:90000025000188", "tipo": "PJ", "cnpj": "90000025000188", "nome": "Araçá Engenharia Ltda (fictícia)", "resolvido": true, "evidencia": "c1", "tenant": "pe-estado"}
+{"id": "cnpj:90000031000140", "tipo": "PJ", "cnpj": "90000031000140", "nome": "Guaraná Consultoria Ltda (fictícia)", "resolvido": true, "evidencia": "c3", "tenant": "pe-estado"}
+{"id": "cnpj:90000011000180", "tipo": "PJ", "cnpj": "90000011000180", "nome": "Karité Eletrônicos Ltda (fictícia)", "resolvido": true, "evidencia": "c4", "tenant": "pe-estado"}
+{"id": "cnpj:90000021000160", "tipo": "PJ", "cnpj": "90000021000160", "nome": "Umbu Segurança Ltda (fictícia)", "resolvido": true, "evidencia": "c5", "tenant": "pe-estado"}
+{"id": "cnpj:90000017000132", "tipo": "PJ", "cnpj": "90000017000132", "nome": "Quaresma Transportes Ltda (fictícia)", "resolvido": true, "evidencia": "c6", "tenant": "pe-estado"}
+{"id": "cnpj:90000014000111", "tipo": "PJ", "cnpj": "90000014000111", "nome": "Nogueira Serviços Gerais Ltda (fictícia)", "resolvido": true, "evidencia": "c7", "tenant": "pe-estado"}
+{"id": "cnpj:90000009000166", "tipo": "PJ", "cnpj": "90000009000166", "nome": "Ipê Segurança Ltda (fictícia)", "resolvido": true, "evidencia": "c8", "tenant": "pe-estado"}
+{"id": "cnpj:90000020000153", "tipo": "PJ", "cnpj": "90000020000153", "nome": "Tamarindo Limpeza Ltda (fictícia)", "resolvido": true, "evidencia": "c9", "tenant": "pe-estado"}
+{"id": "cnpj:90000036000175", "tipo": "PJ", "cnpj": "90000036000175", "nome": "Louro Construções Ltda (fictícia)", "resolvido": true, "evidencia": "c10", "tenant": "pe-estado"}
+{"id": "cnpj:90000008000159", "tipo": "PJ", "cnpj": "90000008000159", "nome": "Horizonte Limpeza Ltda (fictícia)", "resolvido": true, "evidencia": "c12", "tenant": "pe-estado"}
+{"id": "cnpj:90000035000168", "tipo": "PJ", "cnpj": "90000035000168", "nome": "Kiwano Eletrônicos Ltda (fictícia)", "resolvido": true, "evidencia": "c13", "tenant": "pe-estado"}
+{"id": "cnpj:90000013000194", "tipo": "PJ", "cnpj": "90000013000194", "nome": "Mangue Engenharia Ltda (fictícia)", "resolvido": true, "evidencia": "c15", "tenant": "pe-estado"}
+{"id": "cnpj:90000029000126", "tipo": "PJ", "cnpj": "90000029000126", "nome": "Embaúba Transportes Ltda (fictícia)", "resolvido": true, "evidencia": "c16", "tenant": "pe-estado"}
+{"id": "cnpj:90000002000117", "tipo": "PJ", "cnpj": "90000002000117", "nome": "Bromélia Serviços Gerais Ltda (fictícia)", "resolvido": true, "evidencia": "c17", "tenant": "pe-estado"}
+{"id": "cnpj:90000022000167", "tipo": "PJ", "cnpj": "90000022000167", "nome": "Vitória-régia Papelaria Ltda (fictícia)", "resolvido": true, "evidencia": "c18", "tenant": "pe-estado"}
+{"id": "cnpj:90000015000118", "tipo": "PJ", "cnpj": "90000015000118", "nome": "Orquídea Alimentos Ltda (fictícia)", "resolvido": true, "evidencia": "c19", "tenant": "pe-estado"}
+{"id": "cnpj:90000019000146", "tipo": "PJ", "cnpj": "90000019000146", "nome": "Sabiá Consultoria Ltda (fictícia)", "resolvido": true, "evidencia": "c21", "tenant": "pe-estado"}
+{"id": "cnpj:90000018000139", "tipo": "PJ", "cnpj": "90000018000139", "nome": "Roseira Saúde Ltda (fictícia)", "resolvido": true, "evidencia": "c23", "tenant": "pe-estado"}
+{"id": "cnpj:90000024000181", "tipo": "PJ", "cnpj": "90000024000181", "nome": "Zênite Construções Ltda (fictícia)", "resolvido": true, "evidencia": "c26", "tenant": "pe-estado"}
+{"id": "cnpj:90000023000174", "tipo": "PJ", "cnpj": "90000023000174", "nome": "Xaxim Eletrônicos Ltda (fictícia)", "resolvido": true, "evidencia": "c27", "tenant": "pe-estado"}
+{"id": "cnpj:90000030000133", "tipo": "PJ", "cnpj": "90000030000133", "nome": "Flamboyant Saúde Ltda (fictícia)", "resolvido": true, "evidencia": "c30", "tenant": "pe-estado"}
+{"id": "cnpj:90000034000161", "tipo": "PJ", "cnpj": "90000034000161", "nome": "Jacarandá Papelaria Ltda (fictícia)", "resolvido": true, "evidencia": "c31", "tenant": "pe-estado"}
+{"id": "cnpj:90000028000119", "tipo": "PJ", "cnpj": "90000028000119", "nome": "Dendê Tecnologia Ltda (fictícia)", "resolvido": true, "evidencia": "c32", "tenant": "pe-estado"}
+{"id": "cnpj:90000006000145", "tipo": "PJ", "cnpj": "90000006000145", "nome": "Fogaça Saúde Ltda (fictícia)", "resolvido": true, "evidencia": "c33", "tenant": "pe-estado"}
+{"id": "cnpj:90000026000195", "tipo": "PJ", "cnpj": "90000026000195", "nome": "Buriti Serviços Gerais Ltda (fictícia)", "resolvido": true, "evidencia": "c34", "tenant": "pe-estado"}
+{"id": "cnpj:90000016000125", "tipo": "PJ", "cnpj": "90000016000125", "nome": "Pitanga Tecnologia Ltda (fictícia)", "resolvido": true, "evidencia": "c35", "tenant": "pe-estado"}
+{"id": "cnpj:90000010000173", "tipo": "PJ", "cnpj": "90000010000173", "nome": "Jasmim Papelaria Ltda (fictícia)", "resolvido": true, "evidencia": "c41", "tenant": "pe-estado"}
+{"id": "cnpj:90000027000112", "tipo": "PJ", "cnpj": "90000027000112", "nome": "Caju Alimentos Ltda (fictícia)", "resolvido": true, "evidencia": "c43", "tenant": "pe-estado"}
+{"id": "cnpj:90000003000124", "tipo": "PJ", "cnpj": "90000003000124", "nome": "Cacau Alimentos Ltda (fictícia)", "resolvido": true, "evidencia": "c44", "tenant": "pe-estado"}
+{"id": "cnpj:90000033000154", "tipo": "PJ", "cnpj": "90000033000154", "nome": "Imbuia Segurança Ltda (fictícia)", "resolvido": true, "evidencia": "c45", "tenant": "pe-estado"}
+{"id": "cnpj:90000032000147", "tipo": "PJ", "cnpj": "90000032000147", "nome": "Hortelã Limpeza Ltda (fictícia)", "resolvido": true, "evidencia": "c46", "tenant": "pe-estado"}
+{"id": "cnpj:90000007000152", "tipo": "PJ", "cnpj": "90000007000152", "nome": "Girassol Consultoria Ltda (fictícia)", "resolvido": true, "evidencia": "c48", "tenant": "pe-estado"}
+{"id": "cnpj:90000012000187", "tipo": "PJ", "cnpj": "90000012000187", "nome": "Lírio Construções Ltda (fictícia)", "resolvido": true, "evidencia": "c56", "tenant": "pe-estado"}
+{"id": "cnpj:90000005000138", "tipo": "PJ", "cnpj": "90000005000138", "nome": "Estrela Transportes Ltda (fictícia)", "resolvido": true, "evidencia": "c67", "tenant": "pe-estado"}
+{"id": "cnpj:90000001000110", "tipo": "PJ", "cnpj": "90000001000110", "nome": "Aurora Engenharia Ltda (fictícia)", "resolvido": true, "evidencia": "c75", "tenant": "pe-estado"}
+{"id": "cnpj:90000004000131", "tipo": "PJ", "cnpj": "90000004000131", "nome": "Dália Tecnologia Ltda (fictícia)", "resolvido": true, "evidencia": "c79", "tenant": "pe-estado"}
+{"id": "cnpj:90000042000127", "tipo": "PJ", "cnpj": "90000042000127", "nome": "Resedá Saúde Ltda (fictícia)", "resolvido": true, "evidencia": "c86", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000038000189", "tipo": "PJ", "cnpj": "90000038000189", "nome": "Naja-verde Serviços Gerais Ltda (fictícia)", "resolvido": true, "evidencia": "c88", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000003000124", "tipo": "PJ", "cnpj": "90000003000124", "nome": "Cacau Alimentos Ltda (fictícia)", "resolvido": true, "evidencia": "c89", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000004000131", "tipo": "PJ", "cnpj": "90000004000131", "nome": "Dália Tecnologia Ltda (fictícia)", "resolvido": true, "evidencia": "c91", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000044000141", "tipo": "PJ", "cnpj": "90000044000141", "nome": "Tucumã Limpeza Ltda (fictícia)", "resolvido": true, "evidencia": "c94", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000037000182", "tipo": "PJ", "cnpj": "90000037000182", "nome": "Maracujá Engenharia Ltda (fictícia)", "resolvido": true, "evidencia": "c96", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000039000196", "tipo": "PJ", "cnpj": "90000039000196", "nome": "Oiti Alimentos Ltda (fictícia)", "resolvido": true, "evidencia": "c99", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000007000152", "tipo": "PJ", "cnpj": "90000007000152", "nome": "Girassol Consultoria Ltda (fictícia)", "resolvido": true, "evidencia": "c103", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000043000134", "tipo": "PJ", "cnpj": "90000043000134", "nome": "Sapucaia Consultoria Ltda (fictícia)", "resolvido": true, "evidencia": "c104", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000041000120", "tipo": "PJ", "cnpj": "90000041000120", "nome": "Quixaba Transportes Ltda (fictícia)", "resolvido": true, "evidencia": "c106", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000040000113", "tipo": "PJ", "cnpj": "90000040000113", "nome": "Palmeira Tecnologia Ltda (fictícia)", "resolvido": true, "evidencia": "c111", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000002000117", "tipo": "PJ", "cnpj": "90000002000117", "nome": "Bromélia Serviços Gerais Ltda (fictícia)", "resolvido": true, "evidencia": "c119", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000001000110", "tipo": "PJ", "cnpj": "90000001000110", "nome": "Aurora Engenharia Ltda (fictícia)", "resolvido": true, "evidencia": "c126", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000008000159", "tipo": "PJ", "cnpj": "90000008000159", "nome": "Horizonte Limpeza Ltda (fictícia)", "resolvido": true, "evidencia": "c133", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000006000145", "tipo": "PJ", "cnpj": "90000006000145", "nome": "Fogaça Saúde Ltda (fictícia)", "resolvido": true, "evidencia": "c134", "tenant": "pe-garanhuns"}
+{"id": "cnpj:90000005000138", "tipo": "PJ", "cnpj": "90000005000138", "nome": "Estrela Transportes Ltda (fictícia)", "resolvido": true, "evidencia": "c138", "tenant": "pe-garanhuns"}
