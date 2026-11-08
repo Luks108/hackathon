@@ -21,7 +21,7 @@ Code freeze: **06/11/2026, 12h**. O que ficar de fora entra como próximo passo 
 - [x] Registrar consultas e fontes no log (`logs/consultas.jsonl`)
 
 ## Amanhã, 9h40–11h
-- [x] Testar acesso entre perfis (43 testes automáticos, ver `docs/testes-seguranca.md`)
+- [x] Testar acesso entre perfis (48 testes automáticos, ver `docs/testes-seguranca.md`)
 - [ ] Rodar os ataques de prompt com o agente real e registrar (catálogo em `docs/seguranca/ataques-de-prompt.md`)
 - [ ] Isolar as ferramentas do agente no WhatsApp e resolver a corrida de perfil (AP-07, AP-18)
 - [ ] Confirmar com o mentor o que "por estado" exige (um estado a mais, ou município mais Estado)

@@ -6,7 +6,7 @@ Consulta em linguagem natural a dados públicos de contratação. Toda resposta 
 da fonte, e cada perfil vê só o que está autorizado a ver.
 
 > **Estado:** extração, grafo, consultas com filtro de perfil, registro de consultas, catálogo de ataques **e o site com contas,
-> chat em fila e administração** estão prontos e **testados** (43 testes de consulta e 78 testes da API do site). Ainda falta o
+> chat em fila e administração** estão prontos e **testados** (48 testes de consulta e 78 testes da API do site). Ainda falta o
 > agente isolado (worker) ligado ao site e os ataques rodados com o modelo real. Veja
 > [Onde estamos no desafio](#onde-estamos-no-desafio), [Site e chat (Dev A)](#site-e-chat-dev-a) e [Pendências conhecidas](#pendências-conhecidas).
 > Detalhes do site e do chat: [spec](docs/specs/001-site-e-chat/spec.md), [plano técnico](docs/specs/001-site-e-chat/plan.md) e [tasks](docs/specs/001-site-e-chat/tasks.md).
@@ -159,7 +159,7 @@ A captura bruta não é versionada, porque pode conter dados pessoais.
 python -m venv .venv && .venv/bin/pip install -r requirements.txt     # no Windows: .venv\Scripts\pip
 docker compose --env-file .env -f infra/docker-compose.yml up -d neo4j
 python coleta/carregar_neo4j.py --zerar --exemplo
-python -m unittest discover -s consulta/testes -v                     # 43 testes
+python -m unittest discover -s consulta/testes -v                     # 48 testes
 ```
 
 **Com a captura real:**

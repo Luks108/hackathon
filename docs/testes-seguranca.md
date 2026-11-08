@@ -19,10 +19,10 @@ Ambiente: Windows 11, Python 3.14, `mcp 2.3.0`, `neo4j 5.28.3` (driver), Neo4j 5
 | Arquivo | Testes | Resultado | O que prova |
 |---|---|---|---|
 | `test_guardrails.py` | 22 | Passaram | Perfil só vem do ambiente; nenhuma tool aceita ente ou perfil; consultas parametrizadas; ids malformados nem chegam ao banco; limites de saída; registro de consultas com CPF mascarado; configuração com um único servidor |
-| `test_acesso_neo4j.py` | 13 | Passaram | Contra o Neo4j real: Município, Estado e outro estado veem conjuntos diferentes; o mesmo CNPJ não vaza fato entre entes; pessoa física oculta; evidência de outro ente negada; texto malicioso do portal volta como dado; entrada hostil não altera o banco; hash detecta adulteração |
+| `test_acesso_neo4j.py` | 18 | Passaram | Contra o Neo4j real: Município, Estado e outro estado veem conjuntos diferentes; o mesmo CNPJ não vaza fato entre entes; pessoa física oculta; evidência de outro ente negada; texto malicioso do portal volta como dado; entrada hostil não altera o banco; hash detecta adulteração |
 | `test_verificador.py` | 8 | Passaram | O verificador de respostas pega vazamento e não acusa resposta correta |
 
-**Total: 43 testes, todos passando.**
+**Total: 48 testes, todos passando.**
 
 ### Verificação pelo protocolo MCP
 
