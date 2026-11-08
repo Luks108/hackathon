@@ -31,6 +31,7 @@ Siga na ordem. No fim de cada etapa há uma **Conferência**: rode o comando, co
 15. [Problemas comuns](#15-problemas-comuns)
 16. [Cuidados de portabilidade](#16-cuidados-de-portabilidade)
 17. [O que foi testado e o que não foi](#17-o-que-foi-testado-e-o-que-não-foi)
+18. [Área técnica de teste: benchmark, teste de carga e contas de login](#18-área-técnica-de-teste-benchmark-teste-de-carga-e-contas-de-login)
 
 Em cada bloco de comandos o guia diz **em que sistema** e **em que pasta** rodar. Quando nada é dito, a pasta é a **raiz do
 projeto** (a que contém `README.md`). Copie **um comando por vez**.
@@ -471,7 +472,9 @@ simples, sem espaços). Não mexa nas linhas do banco: elas já combinam com o D
 | `BRUTO` | Não | Deixe `fixtures/exemplo/bruto` (dados fictícios). Caminho relativo vale a partir da raiz do projeto | O agente diz que o hash da prova "não confere" |
 | `WORKER_KEY` | **Sim** (para o chat) | Gerada pelo `--preparar` (24+ caracteres). **Tem de ser igual** à de `site/hackathon-config.php`. Na exibição: a do site publicado, passada pelo Lucas em canal privado | O worker não inicia (`KeyError: 'WORKER_KEY'`); se for diferente da do site, o worker mostra `site: API respondeu 401` sem parar e as perguntas ficam paradas |
 | `API_BASE` | Não, mas **recomendada local** | Local: `http://127.0.0.1:8080`. Na exibição: **apague a linha** | **Sem ela, o worker aponta para o site PUBLICADO**, e não para o seu |
-| `AGENTE_MODELO` | Não | Padrão `claude-opus-5-5` | Usa o padrão |
+| `AGENTE_MODELO` | Não | Padrão `claude-opus-5-5`. Aceita o prefixo de provedor (`deepseek:deepseek-flash`) | Usa o padrão |
+| `ANTHROPIC_API_KEY` | **Não**, e normalmente deve ficar vazia | O `claude` usa o login da sua conta. Se preencher, o uso passa a ser cobrado pela API | Usa o login |
+| `DEEPSEEK_API_KEY`, `GOOGLE_API_KEY`, `OPENAI_API_KEY` | **Não** (veja a seção 18.6) | A chave que você tiver em cada provedor. Pode estar no `.env` ou nas variáveis de ambiente do sistema (a do sistema vence) | Os modelos daquele provedor ficam fora da lista, com aviso. Nada quebra |
 | `AGENTES_SITE` | Não | Padrão `3` perguntas ao mesmo tempo | Usa o padrão |
 | `AGENTE_LIMITE_S` | Não | Padrão `110` segundos por pergunta | Usa o padrão |
 | `AGENTE_PYTHON`, `CLAUDE_BIN` | Não | Caminhos completos, só se a detecção automática falhar | O projeto procura sozinho (`.venv` e `claude`) |
@@ -759,8 +762,8 @@ python site/dev/test_api.py
 
 | Comando | Esperado | Se vier diferente |
 |---|---|---|
-| `consulta/testes` | `Ran 48 tests` e `OK` | `skipped=...`: o Neo4j está parado ou sem os dados (etapas 6 e 7). Falha: leia o nome do teste |
-| `chat/testes` | `Ran 4 tests` e `OK` | |
+| `consulta/testes` | `Ran 65 tests` e `OK` | `skipped=...`: o Neo4j está parado ou sem os dados (etapas 6 e 7). Falha: leia o nome do teste |
+| `chat/testes` | `Ran 42 tests` e `OK` (4 de portabilidade, 13 dos provedores de modelo e 25 do fallback, sem internet) | |
 | `site/dev/test_api.py` | `Ran 78 tests` e `OK` (leva uns 40 s) | `php não encontrado`: defina `PHP_BIN` (abaixo). `servidor ... não subiu`: o MariaDB não está no ar. Uma falha em `dois_pedidos_ao_mesmo_tempo...`: o worker estava rodando |
 
 `PHP_BIN` no Windows (PowerShell), se o PHP não estiver no PATH:
@@ -981,7 +984,7 @@ Registro honesto, para ninguém achar que um passo foi verificado quando não fo
 | Onde | O que foi executado | Resultado |
 |---|---|---|
 | **Windows 11** (máquina de desenvolvimento), pasta nova e vazia | Etapa 3 (clone, branch, troca de branch), 4, 5, 6, 7, 8, 9, 10 e 12; pergunta ao agente pelo site, com resposta e fonte | Passou. A saída real está na etapa 3 |
-| **Ubuntu 24.04** (contêiner limpo) | `python3 -m venv` sem `python3-venv` (erro reproduzido) e depois com o pacote; PPA `ondrej/php` e PHP 8.2.35; Node 22.23.4 pelo NodeSource; `claude` 2.1.319 pelo `npm`; `bun` 1.4.4; clone da branch; venv e `pip install`; `--preparar` e `conferir_ambiente.py`; carga dos dados no Neo4j; `setup.php` e o site respondendo `/api/saude`; 48 testes de consulta e 4 de portabilidade | Passou |
+| **Ubuntu 24.04** (contêiner limpo) | `python3 -m venv` sem `python3-venv` (erro reproduzido) e depois com o pacote; PPA `ondrej/php` e PHP 8.2.35; Node 22.23.4 pelo NodeSource; `claude` 2.1.319 pelo `npm`; `bun` 1.4.4; clone da branch; venv e `pip install`; `--preparar` e `conferir_ambiente.py`; carga dos dados no Neo4j; `setup.php` e o site respondendo `/api/saude`; 48 testes de consulta (hoje são 65, com os 7 da base inventada e os 10 do gabarito do benchmark) e 4 de portabilidade | Passou |
 | **Ubuntu 22.04** (contêiner limpo) | PPA `ondrej/php` e PHP 8.2.35; Python 3.10.12 (a versão mínima); clone, venv, `pip install`, import dos pacotes e 4 testes de portabilidade | Passou |
 | **Debian 12** (contêiner limpo) | PHP 8.2.35 direto do `apt`; Python 3.11.2; clone, venv, `pip install`, import dos pacotes e 4 testes de portabilidade | Passou |
 | Usuário `hackathon` do MariaDB | No Ubuntu 24.04, o `setup.php` conectou com esse usuário e criou as 7 tabelas e os planos | Passou. O contêiner de teste falou com o banco pela rede do Docker, e não por `127.0.0.1:3307` |
@@ -1002,3 +1005,191 @@ Registro honesto, para ninguém achar que um passo foi verificado quando não fo
 | Ubuntu e Debian fora das três versões acima, e outras distribuições | Não foram tentadas | Se usar outra, anote o que mudar |
 | Instalar MariaDB e Neo4j sem Docker | Fora do escopo; o guia só cobre o Docker | |
 | Colocar o site, o worker ou o gateway dentro de contêiner | Não existe `Dockerfile` e não é necessário (veja "Docker: é necessário?") | |
+
+
+---
+
+## 18. Área técnica de teste: benchmark, teste de carga e contas de login
+
+A **Área técnica** (as abas Arquitetura, Dados, Ontologia, Grafo, Modelo de negócios, Benchmark, Teste de carga e Segurança) só abre para
+quem está logado e lê o arquivo `painel.json`. O painel **real** é gerado com a captura real (`dados/`), que não está no git. Para testar
+o visual e o fluxo no seu computador, o projeto tem um **painel de teste com dados inventados**. Os dois são independentes: o de teste
+grava em `site/painel.json`, e o deploy só envia `dados/painel.json`, então o painel de teste **nunca** vai para o site publicado.
+
+Cada aba do painel de teste mostra o aviso **"Dados fictícios"**. Os números do Benchmark e do Teste de carga são medidos de verdade,
+mas sobre a base inventada; não valem como resultado do produto.
+
+### 18.1 Contas de teste (login e senha)
+
+Só para o site local. Rode com o site no ar (etapa 8):
+
+```
+python site/dev/verificar_login.py
+```
+
+| E-mail | Senha | Papel |
+|---|---|---|
+| `admin@local.test` | `senha-local-123` | administrador (criado pelo `setup.php`, etapa 8) |
+| `usuario@local.test` | `usuario-local-123` | conta comum (o script cria na primeira vez) |
+
+O script confere de verdade, pela API: senha errada e e-mail inexistente são recusados (401); sem login a Área técnica e a
+administração são recusadas; a conta comum entra, recebe o plano único, **não** acessa a administração (403) e acessa a Área técnica;
+depois de sair, a Área técnica volta a ser recusada; o administrador entra e acessa a administração. **Esperado:** `Tudo certo.` no fim.
+
+### 18.2 Gerar o painel de teste (passo a passo)
+
+Precisa dos bancos no ar (etapa 6). **Atenção:** o passo 2 apaga o grafo do Neo4j e carrega a base inventada maior; o passo 7 devolve a
+base pequena da etapa 7. Os testes automáticos da consulta (etapa 12) só passam com a base pequena.
+
+| Passo | Comando | O que faz |
+|---|---|---|
+| 1 | `python fixtures/gerar_benchmark.py` | Gera `fixtures/benchmark/*.jsonl` e `fixtures/exemplo/bruto/benchmark.html`: 120 contratos inventados (84 do Estado, 36 de Garanhuns). Sempre os mesmos arquivos |
+| 2 | `python coleta/carregar_neo4j.py --zerar --benchmark` | Carrega essa base no Neo4j |
+| 3 | `python bench/benchmark.py gabarito` | Deriva as 50 perguntas e respostas do grafo e congela (grava em `dados/bench/`) |
+| 4 | `BENCH_PARALELO=8 python bench/benchmark.py rodar --modelos todos` | Roda o benchmark nos 4 modelos (150 perguntas cada). **Usa o `claude` logado e a chave do DeepSeek; leva uns 20 minutos com 8 chamadas simultâneas** (o padrão é 3, e então leva mais de uma hora). No PowerShell: `$env:BENCH_PARALELO=8` antes do comando |
+| 5 | `python bench/carga.py` | Teste de carga: 8 contas perguntando ao mesmo tempo pela API. **O site e o worker precisam estar no ar** |
+| 6 | `python consulta/gerar_painel.py --dev` | Junta tudo em `site/painel.json` |
+| 7 | `python coleta/carregar_neo4j.py --zerar --exemplo` | Volta à base pequena dos testes |
+
+Depois, entre em `http://127.0.0.1:8080/chat.html` com uma das contas e abra **Área técnica** na barra de cima.
+
+**Adicionar outro modelo depois**, sem refazer os anteriores (o resultado acumula em `dados/bench/resultado.json`):
+
+```
+python bench/benchmark.py rodar --modelo claude-haiku-5-5
+python consulta/gerar_painel.py --dev
+```
+
+Rodar o mesmo modelo de novo substitui as linhas dele. Se o gabarito for refeito (passo 3), o resultado antigo é descartado, porque
+notas de gabaritos diferentes não se comparam. A aba Benchmark mostra a tabela de comparação entre modelos e um seletor para o detalhe.
+
+**Limites:** qualquer modelo que o comando `claude -p --model ...` aceite serve. Modelos de **outros fornecedores** (que não usam o
+`claude`) não são suportados: exigiriam outro cliente no agente. O benchmark roda 3 perguntas ao mesmo tempo e consome a cota da sua
+conta Claude.
+
+| Se aparecer | Causa | Conserto |
+|---|---|---|
+| `FileNotFoundError ... gabarito.json` ou `resultado.json` | O passo 3 ou 4 não rodou | Rode os passos em ordem |
+| `AssertionError` ao congelar o gabarito | O grafo não é o da base inventada (passo 2) | Rode o passo 2 e tente de novo |
+| Área técnica diz "Não consegui carregar" | `site/painel.json` não existe (a API devolve 503) | Rode o passo 6 |
+| Teste de carga: `não consegui criar/entrar` | Site fora do ar, ou `setup.php` não rodou | Etapa 8 |
+| Teste de carga com várias falhas | Worker parado ou fila cheia | Etapa 9; confira `worker no ar:` no log |
+
+### 18.6 Vários provedores de modelo (Claude, DeepSeek e, depois, Gemini)
+
+O benchmark compara modelos de provedores diferentes **com as mesmas perguntas, o mesmo gabarito, as mesmas consultas e as mesmas
+regras**. Quem escolhe o cliente de cada modelo é um único arquivo, `chat/provedores.py`. O resto do sistema chama
+`agente.perguntar(..., modelo=...)` e recebe os mesmos eventos de sempre.
+
+**Nome do modelo = `provedor:modelo`.** Sem prefixo é Claude, como sempre foi.
+
+| Nome | Quem atende |
+|---|---|
+| `claude-opus-5-5` | `claude` já logado na sua conta |
+| `deepseek:deepseek-flash`, `deepseek:deepseek-v4-pro` | API do DeepSeek (chat completions compatível com a OpenAI) |
+| `gemini:gemini-2.5-flash` | Endpoint `/openai` do Google (**preparado, não testado**: veja 18.7) |
+| `openai:gpt-4.1` | API da OpenAI (preparado, não testado) |
+
+**Chaves (todas opcionais).** Cada pessoa usa as que tiver. Veja o `.env.exemplo`.
+
+| Variável | Para quê |
+|---|---|
+| `ANTHROPIC_API_KEY` | Claude. Normalmente fica vazia: o `claude` usa o login |
+| `DEEPSEEK_API_KEY` | modelos `deepseek:...` |
+| `GOOGLE_API_KEY` | modelos `gemini:...` |
+| `OPENAI_API_KEY` | modelos `openai:...` |
+
+Sem a chave de um provedor, os modelos dele **não entram na lista** (`--modelos todos`) e o terminal avisa
+`modelo X indisponível: chave não configurada`. Pedir esse modelo na mão responde a mesma frase curta, sem stack trace.
+A comparação não exige todas as chaves: com só a do DeepSeek você roda Claude + DeepSeek, e quem tiver a do Gemini acrescenta
+só a coluna dele depois, sem refazer o que já foi medido (o `resultado.json` acumula).
+
+```
+python bench/benchmark.py rodar --modelos todos                          # tudo o que tiver chave
+python bench/benchmark.py rodar --modelos deepseek:deepseek-flash       # só acrescenta este
+python chat/agente.py estado "Qual é o maior contrato?" deepseek:deepseek-flash    # uma pergunta, para testar
+```
+
+**O que fica registrado por modelo** (em `resultado.json` e na tabela da aba Benchmark, com o provedor junto do nome):
+nota, tempo total e médio, tokens de entrada e de saída e custo estimado. O custo do Claude é o que o próprio `claude` informa. O
+dos demais vem da tabela de preços em `chat/provedores.py` (em dólar, no teto do horário de pico) e fica "—" onde não há preço
+configurado: o projeto não inventa preço. **Confira o preço atual no site do provedor antes de citar o custo.**
+
+**Acrescentar um provedor compatível com a OpenAI** = uma entrada em `PROVEDORES` (base_url, nome da variável da chave e, se
+quiser, preços) + a chave no `.env`. Nenhum código por provedor.
+
+**Limites conhecidos:** o adaptador não faz streaming (o texto chega inteiro, de uma vez); modelos de outros fornecedores que
+**não** falam o protocolo da OpenAI não são atendidos. A chave do provedor **não** é repassada ao servidor de consultas.
+
+### 18.7 Gemini: o que já está previsto e o que falta (lido da documentação do Google, NÃO testado)
+
+Não há `GOOGLE_API_KEY` configurada nesta máquina, então nenhuma chamada ao Gemini foi feita. O que segue vem da documentação
+oficial do Google em 08/11/2026 e precisa ser confirmado com uma chamada real.
+
+**Já previsto no código:** `gemini` está em `PROVEDORES` com a `base_url`
+`https://generativelanguage.googleapis.com/v1beta/openai` e a chave em `GOOGLE_API_KEY`. Usar é só
+`--modelos gemini:gemini-2.5-flash` depois de definir a chave. É o mesmo cliente do DeepSeek.
+
+**O endpoint compatível atende o formato que usamos?** Sim, no que o adaptador precisa: `POST .../chat/completions`, chave em
+`Authorization: Bearer`, papel `system`, `tools` com `tool_choice: "auto"`, resposta com `tool_calls` e `usage`
+(`prompt_tokens`, `completion_tokens`). O Google descreve o suporte às bibliotecas da OpenAI como **beta**.
+
+| Diferença | Efeito | O que fazer |
+|---|---|---|
+| Gemini 3 e 4 **exigem devolver a assinatura de raciocínio** na chamada de ferramenta; sem ela a API responde **400**. No Gemini 2.5 é opcional | O laço de ferramentas quebraria no Gemini 3 se a assinatura se perdesse | O adaptador devolve a mensagem do assistente **exatamente como veio**, com campos extras. Um teste automático garante isso. Falta confirmar com chamada real em qual campo o Google a coloca no formato OpenAI (a documentação lida não o nomeia; um relato em fórum cita `extra_content`) |
+| O `id` da chamada de ferramenta pode vir vazio | A resposta da ferramenta não casaria com a chamada | O adaptador cria um id quando falta (testado) |
+| Parâmetros que o Google não lista são **ignorados em silêncio** | Um parâmetro "aceito" pode não ter efeito | Usamos só `model`, `messages`, `tools`, `tool_choice` e `temperature` |
+| `reasoning_effort`, `thinking_config` e `cached_content` são específicos do Gemini (via `extra_body`) | Controle de raciocínio e cache só por esses campos | Fora do escopo agora; se for preciso, entra como opção na entrada do `gemini` |
+| Nome do modelo sem prefixo `models/` | | Use `gemini:gemini-2.5-flash` |
+| Preço | O custo aparece como "—" | Preencher `precos` do `gemini` com o valor do Google |
+
+**Se não atender na prática:** o ponto de troca é `escolher()` em `chat/provedores.py`. Bastaria um segundo cliente com a
+mesma interface (`perguntar` e `sem_base`), usando o formato nativo do Gemini, sem mexer no agente, no benchmark nem no painel.
+
+### 18.8 Gabarito de 150 perguntas e a página "Modelos"
+
+**Gabarito.** São 150 perguntas derivadas do grafo: as 50 originais (F, L, I, A, S e V) e 100 novas (`N001` a `N100`) em 14 famílias:
+sanções em aberto e no total, valor e vigência de contratos, razão social por CNPJ, contagem por órgão e por fornecedor, fornecedor
+nos dois entes, execução financeira, limite entre pago e contrato, isolamento, ausência, ataques e comparativos. Com 50 perguntas,
+uma diferença de 1 ou 2 acertos é ruído; com 150 já dá para dizer quando a diferença **não** é. O braço "sem base" roda só nas 36
+factuais originais. `python bench/benchmark.py gabarito` refaz e congela (o resultado antigo é descartado, porque gabaritos
+diferentes não se comparam). Os padrões de "não encontrei" foram ampliados antes da rodada, e isso está registrado no cabeçalho de
+`bench/benchmark.py`.
+
+**Página `modelos.html`** (menu **Modelos**, e um link na aba Benchmark). Mostra os modelos lado a lado, com cada modelo sempre na mesma cor:
+
+| Gráfico | Para que serve |
+|---|---|
+| Cartões por modelo | Nota, fatos com prova, tempo mediano e custo, de relance |
+| Nota com intervalo de 95% | Mostra se dois modelos se distinguem: intervalos que se sobrepõem podem ser acaso |
+| Nota por tipo de pergunta | Onde cada modelo erra (fato, limite, isolamento, ausência, ataque) |
+| Tempo por resposta | Mediana, metade central das respostas e faixa de 10% a 90% |
+| Evidência conferida | Certa e provada, certa sem prova, errada |
+| Custo por 100 perguntas | Custo de cada modelo, ranqueado |
+| Pergunta a pergunta | Uma coluna por pergunta e uma linha por modelo: passou ou não |
+| Onde divergem | Só as perguntas em que os modelos discordam, com as respostas |
+| A diferença é real ou é sorte? | Teste de McNemar exato, par a par, nas mesmas perguntas |
+
+A legenda no alto também liga e desliga modelos (a cor de cada um não muda). Cada gráfico tem o botão **Ver como tabela**. Os dados
+vêm de `/api/painel`, então a página também exige login. Com o painel de teste (18.2), ela mostra a rodada fictícia.
+
+### 18.9 Fallback entre provedores
+
+Quando o provedor do modelo falha (chave sem saldo, 429, 5xx, timeout, rede, resposta vazia), a pergunta passa para o próximo modelo
+em vez de morrer. A cadeia é montada num só lugar, `provedores.cadeia()`; quem a percorre é `agente.perguntar`.
+
+| Variável (.env) | Padrão | O que faz |
+|---|---|---|
+| `AGENTE_FALLBACK_ORDEM` | `deepseek:deepseek-flash,claude-sonnet-5-5` | Quem assume, em ordem. Modelo sem chave é pulado. `nenhum` desliga |
+| `AGENTE_LIMITE_PRIMEIRA` | `35` | Teto, em segundos, da tentativa que ainda tem substituto |
+| `AGENTE_LIMITE_S` | `110` | Orçamento total da pergunta: a soma das tentativas nunca passa disto |
+
+Regras: depois que o modelo começou a escrever a resposta nunca há troca; pergunta inválida (perfil inexistente) não troca; a última
+tentativa recebe o tempo que sobrou. O worker registra no `logs/chat.jsonl` o `modelo_pedido`, o `modelo` que respondeu e as `trocas`
+(de, para, motivo). O **benchmark nunca usa fallback** (`permitir_fallback=False`), para a nota ser de quem respondeu.
+
+**Prova com clientes reais.** `python chat/provas/fallback_real.py base A B C D D2` roda a pergunta pelo caminho do site, com
+provedor morto (A), pendurado (B), texto já emitido (C) e todos mortos (D e D2). Gasta uns 14 mil tokens (cerca de US$ 0,02) e grava
+em `logs/prova-fallback.jsonl`, sem tocar no `logs/chat.jsonl`. Resultado de 08/11/2026: A respondeu em 6,7 s, B em 39,4 s (a primeira
+tentativa é cortada em 35 s), C não trocou e D terminou em erro tratado listando os modelos tentados. Com o `claude` como último da
+cadeia e fora do ar, D leva os 110 s inteiros, porque ele tenta de novo em silêncio.

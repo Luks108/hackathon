@@ -21,8 +21,10 @@ Ambiente: Windows 11, Python 3.14, `mcp 2.3.0`, `neo4j 5.28.3` (driver), Neo4j 5
 | `test_guardrails.py` | 22 | Passaram | Perfil só vem do ambiente; nenhuma tool aceita ente ou perfil; consultas parametrizadas; ids malformados nem chegam ao banco; limites de saída; registro de consultas com CPF mascarado; configuração com um único servidor |
 | `test_acesso_neo4j.py` | 18 | Passaram | Contra o Neo4j real: Município, Estado e outro estado veem conjuntos diferentes; o mesmo CNPJ não vaza fato entre entes; pessoa física oculta; evidência de outro ente negada; texto malicioso do portal volta como dado; entrada hostil não altera o banco; hash detecta adulteração |
 | `test_verificador.py` | 8 | Passaram | O verificador de respostas pega vazamento e não acusa resposta correta |
+| `test_fixtures_benchmark.py` | 7 | Passaram | A base inventada do benchmark é coerente: 120 contratos, valores sem empate, hash do arquivo bruto certo, toda evidência existe, tudo marcado como fictício e sem pessoa física |
+| `test_bench_gabarito.py` | 10 | Passaram | O gabarito de 150 perguntas é único, determinístico e todo padrão compila; o corretor aceita "não localizei" e recusa vazamento de CPF; fato certo sem prova não pontua; modelo sem chave fica fora da rodada; o resumo nunca inventa custo |
 
-**Total: 48 testes, todos passando.**
+**Total: 65 testes, todos passando.** (48 de acesso e verificação, 7 da base inventada e 10 do gabarito do benchmark)
 
 ### Verificação pelo protocolo MCP
 
