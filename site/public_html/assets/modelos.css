@@ -1,0 +1,78 @@
+/* Página "Modelos lado a lado". As cores dos modelos são fixas por modelo (a cor segue a entidade, nunca a posição). */
+.viz {
+  --viz-surface: #ffffff;
+  --viz-grade: #e1e0d9;       /* linhas de grade: hairline, uma etapa fora da superfície */
+  --viz-eixo: #c3c2b7;
+  --viz-mudo: #6f6d68;        /* texto de eixo */
+  --viz-ink: #14263f;
+  --viz-ink-2: #4b5b70;
+  --viz-falha: #cfcec6;       /* "não passou": cinza neutro, nunca a cor do modelo */
+  display: grid; gap: 22px;
+}
+
+/* filtro de modelos: a legenda também liga e desliga */
+.viz-filtro { display: flex; flex-wrap: wrap; gap: 8px; }
+.viz-filtro button { display: inline-flex; align-items: center; gap: 9px; min-height: 40px; padding: 6px 14px 6px 11px; border: 1px solid var(--regra);
+  background: var(--cartao); border-radius: 999px; font: 600 14px var(--texto); color: var(--tinta); cursor: pointer; }
+.viz-filtro button[aria-pressed="false"] { opacity: .5; }
+.viz-filtro button[aria-pressed="false"] .viz-chave { background: transparent !important; box-shadow: inset 0 0 0 2px var(--viz-eixo); }
+.viz-filtro small { color: var(--tinta-3); font-weight: 500; }
+.viz-chave { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+
+.viz-resumo { margin: 0; padding: 12px 14px; border-left: 3px solid var(--verde); background: var(--verde-fraco); border-radius: 0 6px 6px 0; font-size: 15px; color: var(--tinta); }
+
+/* um cartão por modelo, lado a lado */
+.viz-modelos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.viz-modelo { background: var(--cartao); border: 1px solid var(--regra); border-radius: 14px; padding: 15px 16px; display: grid; gap: 4px; align-content: start; }
+.viz-modelo h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 9px; color: var(--tinta); }
+.viz-modelo .prov { margin: 0; font-size: 13px; color: var(--tinta-3); }
+.viz-modelo .heroi { font-size: 34px; font-weight: 800; color: var(--marinho); line-height: 1.15; margin-top: 4px; }
+.viz-modelo .heroi small { font-size: 15px; font-weight: 600; color: var(--tinta-2); margin-left: 6px; }
+.viz-modelo dl { margin: 6px 0 0; display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 14px; }
+.viz-modelo dt { color: var(--tinta-2); }
+.viz-modelo dd { margin: 0; font-weight: 600; color: var(--tinta); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* cartões de gráfico */
+.viz-card { background: var(--cartao); border: 1px solid var(--regra); border-radius: 14px; padding: 18px 18px 14px; display: grid; gap: 12px; min-width: 0; }
+.viz-card > header { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+.viz-card h2 { margin: 0 0 2px; font-size: 19px; color: var(--marinho); }
+.viz-card .apoio { margin: 0; font-size: 14px; max-width: 70ch; }
+.viz-alterna { flex: none; border: 1px solid var(--regra); background: var(--cartao); border-radius: 8px; padding: 6px 12px; min-height: 36px; font: 600 13px var(--texto); color: var(--tinta); cursor: pointer; }
+.viz-alterna:hover { background: var(--papel); }
+.viz-corpo { min-width: 0; }
+.viz-rolagem { overflow-x: auto; padding-bottom: 6px; }
+.viz-card .tabela { border-radius: 8px; }
+.viz-card .tabela table { font-size: 14px; }
+.viz-card .tabela td.nome { white-space: nowrap; }
+.viz-card .tabela td.marca-ok, .viz-card .tabela td.marca-nao { text-align: center; font-weight: 800; white-space: nowrap; }
+.viz-card .tabela td.marca-ok { color: var(--ok); }
+.viz-card .tabela td.marca-nao { color: var(--vermelho); }
+.viz-card .tabela td.pergunta { min-width: 260px; }
+.viz-card .tabela details summary { cursor: pointer; color: var(--verde); font-weight: 600; }
+.viz-card .tabela details p { margin: 6px 0 0; font-size: 13px; color: var(--tinta-2); white-space: pre-wrap; }
+
+/* SVG */
+.viz svg { display: block; max-width: none; overflow: visible; }
+.viz svg text { font: 12.5px var(--texto); fill: var(--viz-mudo); }
+.viz svg text.forte { fill: var(--viz-ink); font-weight: 600; }
+.viz svg text.valor { fill: var(--viz-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.viz svg .grade { stroke: var(--viz-grade); stroke-width: 1; shape-rendering: crispEdges; }
+.viz svg .eixo { stroke: var(--viz-eixo); stroke-width: 1; shape-rendering: crispEdges; }
+.viz svg [data-dica] { cursor: default; }
+.viz svg [data-dica]:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
+.viz-legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--tinta-2); margin-bottom: 4px; }
+.viz-legenda span { display: inline-flex; align-items: center; gap: 7px; }
+.viz-legenda i { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+
+/* dica flutuante: reforça, nunca é o único jeito de ler um valor */
+.viz-dica { position: fixed; z-index: 60; max-width: 340px; padding: 9px 12px; border-radius: 8px; background: #14263f; color: #fff; font-size: 13px; line-height: 1.45;
+  box-shadow: 0 6px 20px rgba(11, 37, 69, .28); pointer-events: none; }
+.viz-dica b { display: block; margin-bottom: 2px; }
+.viz-dica .l { display: flex; align-items: center; gap: 7px; }
+.viz-dica .c { width: 10px; height: 10px; border-radius: 3px; flex: none; box-shadow: 0 0 0 1.5px #fff; }
+
+@media (max-width: 640px) {
+  .viz-card { padding: 14px 12px 12px; }
+  .viz-card > header { flex-direction: column; gap: 8px; }
+  .viz-modelo .heroi { font-size: 30px; }
+}

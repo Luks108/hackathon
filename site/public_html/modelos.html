@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Modelos lado a lado | FornexIA</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="assets/site.css?v=20261108d">
+<link rel="stylesheet" href="assets/modelos.css?v=20261108d">
+</head>
+<body>
+
+<header class="topo" id="topo"></header>
+
+<main class="miolo pagina pagina-tecnica" id="conteudo">
+  <p class="apoio" id="carregando" aria-live="polite">Carregando…</p>
+  <p class="aviso-erro" id="erro-painel" role="alert" hidden></p>
+
+  <div id="pagina" hidden>
+    <header>
+      <h1>Modelos lado a lado</h1>
+      <p class="apoio" id="subtitulo"></p>
+    </header>
+
+    <div class="viz" id="viz">
+      <div class="viz-filtro" id="filtro" role="group" aria-label="Modelos exibidos"></div>
+
+      <p class="viz-resumo" id="resumo" aria-live="polite"></p>
+
+      <div class="viz-modelos" id="cartoes"></div>
+
+      <section class="viz-card" id="c-nota">
+        <header>
+          <div>
+            <h2>Nota: perguntas que passaram</h2>
+            <p class="apoio" id="s-nota"></p>
+          </div>
+          <button type="button" class="viz-alterna" aria-pressed="false">Ver como tabela</button>
+        </header>
+        <div class="viz-corpo"></div>
+        <div class="viz-tabela tabela" hidden></div>
+      </section>
+
+      <section class="viz-card" id="c-tipo">
+        <header>
+          <div>
+            <h2>Nota por tipo de pergunta</h2>
+            <p class="apoio">Percentual de acerto em cada grupo. Grupos pequenos oscilam muito: o número de perguntas está ao lado do nome.</p>
+          </div>
+          <button type="button" class="viz-alterna" aria-pressed="false">Ver como tabela</button>
+        </header>
+        <div class="viz-corpo"></div>
+        <div class="viz-tabela tabela" hidden></div>
+      </section>
+
+      <section class="viz-card" id="c-tempo">
+        <header>
+          <div>
+            <h2>Tempo por resposta</h2>
+            <p class="apoio">A barra vai do 1º ao 3º quartil (metade das respostas), o risco do meio é a mediana e a linha fina vai do 10º ao 90º percentil.</p>
+          </div>
+          <button type="button" class="viz-alterna" aria-pressed="false">Ver como tabela</button>
+        </header>
+        <div class="viz-corpo"></div>
+        <div class="viz-tabela tabela" hidden></div>
+      </section>
+
+      <section class="viz-card" id="c-prova">
+        <header>
+          <div>
+            <h2>Evidência conferida nos fatos</h2>
+            <p class="apoio" id="s-prova"></p>
+          </div>
+          <button type="button" class="viz-alterna" aria-pressed="false">Ver como tabela</button>
+        </header>
+        <div class="viz-corpo"></div>
+        <div class="viz-tabela tabela" hidden></div>
+      </section>
+
+      <section class="viz-card" id="c-custo">
+        <header>
+          <div>
+            <h2>Custo por 100 perguntas</h2>
+            <p class="apoio" id="s-custo"></p>
+          </div>
+          <button type="button" class="viz-alterna" aria-pressed="false">Ver como tabela</button>
+        </header>
+        <div class="viz-corpo"></div>
+        <div class="viz-tabela tabela" hidden></div>
+      </section>
+
+      <section class="viz-card" id="c-grade">
+        <header>
+          <div>
+            <h2>Pergunta a pergunta</h2>
+            <p class="apoio">Cada coluna é uma pergunta do gabarito. Barra alta e colorida: passou. Barra baixa e cinza: não passou. Passe o mouse para ler a pergunta.</p>
+          </div>
+        </header>
+        <div class="viz-corpo viz-rolagem"></div>
+      </section>
+
+      <section class="viz-card" id="c-diverge">
+        <header>
+          <div>
+            <h2>Onde os modelos divergem</h2>
+            <p class="apoio" id="s-diverge"></p>
+          </div>
+        </header>
+        <div class="viz-corpo tabela"></div>
+      </section>
+
+      <section class="viz-card" id="c-par">
+        <header>
+          <div>
+            <h2>A diferença é real ou é sorte?</h2>
+            <p class="apoio">Comparação par a par, nas mesmas perguntas (teste de McNemar exato). Só conta quando um acerta e o outro erra.</p>
+          </div>
+        </header>
+        <div class="viz-corpo tabela"></div>
+      </section>
+
+      <p class="apoio" id="rodape"></p>
+    </div>
+  </div>
+</main>
+
+<div class="viz-dica" id="dica" role="tooltip" hidden></div>
+
+<script src="assets/util.js?v=20261108d"></script>
+<script src="assets/api.js?v=20261108d"></script>
+<script src="assets/topo.js?v=20261108d"></script>
+<script src="assets/modelos.js?v=20261108d"></script>
+</body>
+</html>

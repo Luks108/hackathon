@@ -263,6 +263,15 @@
   <p class="rotulo-painel">Benchmark</p>
   <h2>O que medimos com gabarito</h2>
   <p>O gabarito foi derivado do grafo e congelado antes de rodar. Comparamos o FornexIA com o mesmo modelo sem acesso aos dados.</p>
+  <p><a href="modelos.html">Ver os modelos lado a lado, com gráficos</a>: nota, tempo, evidência, custo e onde cada um erra.</p>
+  <div id="bloco-modelos" hidden>
+    <h3>Comparação entre modelos</h3>
+    <p>As mesmas perguntas, o mesmo gabarito e as mesmas consultas, trocando só o modelo.</p>
+    <div class="tabela"><table id="tabela-modelos"></table></div>
+    <p class="apoio">Tempo: soma e média das respostas do FornexIA. Tokens e custo: os dois braços da rodada. O custo do Claude é o que o próprio <code>claude</code> informa; o dos demais provedores é estimado pela tabela de preços (em dólar, teto do horário de pico). "—" quer dizer sem preço configurado.</p>
+  </div>
+  <label class="apoio" for="modelo-bench" id="rotulo-modelo-bench">Ver o detalhe de </label>
+  <select id="modelo-bench" hidden aria-label="Modelo exibido no detalhe"></select>
   <div class="numeros-painel" id="numeros-bench"></div>
   <h3>Como a nota funciona</h3>
   <ul>

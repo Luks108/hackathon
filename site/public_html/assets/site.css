@@ -252,3 +252,4 @@ html.embutido #tela-entrar, html.embutido #tela-plano, html.embutido #tela-carre
 html.embutido .planos { grid-template-columns: 1fr; }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+#modelo-bench { margin: 4px 0 16px; padding: 8px 12px; min-height: 40px; max-width: 320px; font: inherit; color: var(--tinta); background: var(--cartao); border: 1px solid var(--regra); border-radius: 8px; }

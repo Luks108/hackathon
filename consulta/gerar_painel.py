@@ -1,13 +1,17 @@
 """Gera dados/painel.json, o conteúdo da área técnica servido só com login.
 
-    .venv/bin/python consulta/gerar_painel.py
+    .venv/bin/python consulta/gerar_painel.py          # captura real: grava dados/painel.json (o que o deploy.sh envia)
+    .venv/bin/python consulta/gerar_painel.py --dev    # base FICTÍCIA: grava site/painel.json, só para o site local
 
 Junta o texto de site/painel/conteudo.html, o grafo do Neo4j, o benchmark e o teste de carga.
 Pessoa física fica de fora, e o arquivo não é versionado: cita fornecedores reais.
+O modo --dev usa fixtures/benchmark (veja fixtures/gerar_benchmark.py), marca cada aba como dados fictícios e NUNCA grava em
+dados/painel.json, para o deploy não publicar por engano o painel de teste.
 """
 
 import csv
 import io
+from html import escape
 import json
 import re
 import sys
@@ -114,6 +118,79 @@ def exemplo(bruto: Path) -> dict:
     }
 
 
+def main_dev() -> int:
+    """Painel de desenvolvimento: tudo vem da base fictícia, o formato é o mesmo do real."""
+    pasta = RAIZ / "fixtures" / "benchmark"
+    ler = lambda nome: [json.loads(x) for x in (pasta / f"{nome}.jsonl").read_text(encoding="utf-8").splitlines()]  # noqa: E731
+    contratos, sancoes, execucoes, evidencias = ler("contratos"), ler("sancoes"), ler("execucoes"), ler("evidencias")
+    bruto = RAIZ / "fixtures" / "exemplo" / "bruto" / "benchmark.html"
+    por_id = {e["id"]: e for e in evidencias}
+    kb = lambda arquivo: (lambda n: f"{n / 1024 / 1024:.1f} MB".replace(".", ",") if n >= 1024 * 1024 else f"{n / 1024:.0f} KB")(arquivo.stat().st_size)  # noqa: E731
+    estado = [c for c in contratos if c["tenant"] == "pe-estado"]
+    garanhuns = [c for c in contratos if c["tenant"] == "pe-garanhuns"]
+    inventario_dev = [
+        ("Contratos do Estado (fictício)", "contratos.jsonl", "JSONL", f"{len(estado)} contratos em {len({c['uj'] for c in estado})} órgãos", "Estruturado e no grafo", "lido"),
+        ("Contratos de Garanhuns (fictício)", "contratos.jsonl", "JSONL", f"{len(garanhuns)} contratos em {len({c['uj'] for c in garanhuns})} unidades", "Estruturado e no grafo", "lido"),
+        ("Sanções do Estado (fictício)", "sancoes.jsonl", "JSONL", f"{len(sancoes)} ocorrências", "Estruturado e no grafo", "lido"),
+        ("Execução por fornecedor (fictício)", "execucoes.jsonl", "JSONL", f"{len(execucoes)} linhas", "Estruturado e no grafo", "lido"),
+        ("Processos de Garanhuns (fictício)", "processos.jsonl", "JSONL", f"{len(ler('processos'))} licitações", "Estruturado e no grafo", "lido"),
+        ("Arquivo bruto das evidências", "benchmark.html", "HTML", f"{len(evidencias)} linhas, uma por evidência", "Hash conferido a cada resposta", "derivado"),
+    ]
+    inventario_dev = [dict(nome=n, formato=f, tamanho=kb(pasta / a) if (pasta / a).exists() else kb(bruto), volume=v, estado=e, selo=sel)
+                      for n, a, f, v, e, sel in inventario_dev]
+
+    sancionados = {x["fornecedor"] for x in sancoes}
+    c = next((x for x in garanhuns if x["fornecedor"] in sancionados), garanhuns[0])
+    sancao = next(x for x in sancoes if x["fornecedor"] == c["fornecedor"])
+    pagos = {x["fornecedor"] for x in execucoes}
+    ce = next((x for x in estado if x["fornecedor"] in pagos), estado[0])
+    exec_ = next(x for x in execucoes if x["fornecedor"] == ce["fornecedor"])
+    linha_html = lambda ev: f"<tr><td>{ev['linha']}</td><td>{escape(ev['trecho'])}</td></tr>"  # noqa: E731
+    limpar = lambda r, fora: {k: v for k, v in r.items() if k not in fora}  # noqa: E731
+    ev_c, ev_s, ev_e = por_id[c["evidencia"]], por_id[sancao["evidencia"]], por_id[ce["evidencia"]]
+    exemplo_dev = {
+        "cru_contrato": linha_html(ev_c) + "\n(DADO FICTÍCIO)",
+        "cru_sancao": "\n".join(f"{k}: {v}" for k, v in (("linha", ev_s["linha"]), ("tabela", ev_s["tabela"]), ("trecho", ev_s["trecho"]))),
+        "cru_estado": json.dumps({"linha": ev_e["linha"], "trecho": ev_e["trecho"]}, ensure_ascii=False, indent=2),
+        "fato_contrato": limpar(c, {"uj"}), "fato_sancao": limpar(sancao, {"inicio_suspensao"}),
+        "fato_contrato_estado": limpar(ce, {"idc", "uj"}), "fato_execucao": limpar(exec_, {"uj"}),
+        "evidencia": ev_c,
+        "caminho": [
+            f"(Contrato {c['numero']}) -[:CONTRATA]-> (Fornecedor {c['fornecedor']})",
+            f"(Contrato {c['numero']}) -[:CELEBRADO_POR]-> (Unidade {c['uj_nome']}) -[:PERTENCE_A]-> (Município de Garanhuns)",
+            f"(Contrato {c['numero']}) -[:PROVADO_POR]-> (Evidência {c['evidencia']})",
+            f"(Fornecedor {c['fornecedor']}) -[:RECEBEU]-> (Sanção {sancao['tipo']}, {sancao['situacao']})",
+            f"(Sanção {sancao['tipo']}) -[:DO_ENTE]-> (Estado de Pernambuco)",
+            f"(Sanção {sancao['tipo']}) -[:PROVADO_POR]-> (Evidência {sancao['evidencia']})",
+        ],
+    }
+
+    aviso = ('<p class="aviso-info"><b>Dados fictícios.</b> Este painel foi gerado só para teste local, com a base inventada de '
+             'fixtures/benchmark. Nada aqui é da captura real.</p>')
+    html = re.sub(r'(<section data-aba="[^"]+"[^>]*>)', lambda m: m.group(1) + "\n  " + aviso,
+                  (RAIZ / "site/painel/conteudo.html").read_text(encoding="utf-8"))
+    # Frases do texto que descrevem a rodada REAL e seriam falsas aqui: trocadas só neste modo.
+    for antes, depois in (("8 pessoas ao mesmo tempo, em produção", "8 pessoas ao mesmo tempo, no teste local"),
+                          ("<li>Um erro 500 do servidor ficou sem causa identificada.</li>", ""),
+                          ("uma amostra de 100 contratos", "uma base inventada de 120 contratos")):
+        assert antes in html, antes
+        html = html.replace(antes, depois)
+    bench = json.loads((RAIZ / "dados/bench/resultado.json").read_text(encoding="utf-8"))
+    for linha in bench["linhas"]:
+        linha["fontes"] = len(linha["fontes"])
+        linha["consultas"] = len(linha["consultas"])
+    saida = {"inventario": inventario_dev, "exemplo": exemplo_dev, "html": html, "grafo": ler_grafo(), "benchmark": bench,
+             "carga": json.loads((RAIZ / "dados/bench/carga.json").read_text(encoding="utf-8"))}
+    texto = json.dumps(saida, ensure_ascii=False)
+    if CPF.search(texto):
+        print("ERRO: CPF no painel; nada foi gravado", file=sys.stderr)
+        return 1
+    destino = RAIZ / "site" / "painel.json"   # o deploy.sh só envia dados/painel.json: este fica no computador
+    destino.write_text(texto, encoding="utf-8")
+    print(len(texto), "bytes em", destino.relative_to(RAIZ), "(dados fictícios)")
+    return 0
+
+
 def main() -> int:
     bench = json.loads((RAIZ / "dados/bench/resultado.json").read_text(encoding="utf-8"))
     for linha in bench["linhas"]:
@@ -138,4 +215,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main_dev() if "--dev" in sys.argv else main())
