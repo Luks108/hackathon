@@ -1,14 +1,17 @@
 """Confere se esta máquina está pronta para rodar o projeto. Não altera nada e nunca mostra segredos.
 
+    python conferir_ambiente.py --preparar   # cria .env e site/hackathon-config.php com chaves novas (só se não existirem)
     python conferir_ambiente.py              # confere programas, .env e configuração
     python conferir_ambiente.py --servicos   # também confere o que deveria estar no ar (bancos, site, worker)
 
 Cada linha começa com OK, FALTA (precisa corrigir) ou AVISO (pode seguir). A causa e o conserto aparecem logo abaixo.
 Guia completo: docs/rodar-no-windows-e-no-linux.md
 """
+import codecs
 import importlib.util
 import os
 import re
+import secrets
 import shutil
 import socket
 import subprocess
@@ -45,6 +48,35 @@ def ler_env() -> dict[str, str]:
                 k, v = l.split("=", 1)
                 valores[k.strip()] = v.strip()
     return valores
+
+
+def tem_bom(arquivo: Path) -> bool:
+    return arquivo.exists() and arquivo.read_bytes().startswith(codecs.BOM_UTF8)
+
+
+def preparar() -> int:
+    """Cria .env e site/hackathon-config.php a partir dos exemplos, com chaves novas e iguais, sem BOM e com fim de linha LF.
+    Não sobrescreve nada que já exista. Serve para desenvolvimento local; na exibição o .env leva a chave do site publicado."""
+    env, cfg = RAIZ / ".env", RAIZ / "site" / "hackathon-config.php"
+    chave = secrets.token_urlsafe(32)
+    if env.exists():
+        print("já existe: .env (não alterei)")
+    else:
+        texto = (RAIZ / ".env.exemplo").read_text(encoding="utf-8")
+        for nome, valor in (("NEO4J_SENHA", secrets.token_urlsafe(24)), ("CHAVE_PF", secrets.token_urlsafe(32)), ("WORKER_KEY", chave)):
+            texto = re.sub(rf"(?m)^{nome}=.*$", f"{nome}={valor}", texto)
+        env.write_bytes(texto.replace("\r\n", "\n").encode("utf-8"))
+        print("criado:  .env  (senhas e chave novas; não compartilhe este arquivo)")
+    if cfg.exists():
+        print("já existe: site/hackathon-config.php (não alterei)")
+    else:
+        texto = (RAIZ / "site" / "hackathon-config.exemplo.php").read_text(encoding="utf-8")
+        valor = ler_env().get("WORKER_KEY") or chave
+        texto = re.sub(r"(?m)^(const WORKER_KEY = )'[^']*'", lambda m: f"{m.group(1)}'{valor}'", texto)
+        cfg.write_bytes(texto.replace("\r\n", "\n").encode("utf-8"))
+        print("criado:  site/hackathon-config.php  (WORKER_KEY igual à do .env)")
+    print("\nPróximo passo: python conferir_ambiente.py")
+    return 0
 
 
 def porta_aberta(porta: int) -> bool:
@@ -92,6 +124,9 @@ def main(servicos: bool) -> int:
     env = ler_env()
     if not (RAIZ / ".env").exists():
         linha("FALTA", ".env não existe", "copie: cp .env.exemplo .env (Linux) / Copy-Item .env.exemplo .env (Windows)")
+    if tem_bom(RAIZ / ".env"):
+        linha("FALTA", ".env foi gravado com BOM (marca invisível no começo do arquivo)",
+              "apague o .env e rode: python conferir_ambiente.py --preparar. Se editar à mão, salve como UTF-8 SEM BOM (no VS Code: Salvar com codificação > UTF-8)")
     for nome in ("NEO4J_SENHA", "CHAVE_PF", "NEO4J_URI", "WORKER_KEY"):
         valor = env.get(nome, "")
         if not valor:
@@ -114,7 +149,10 @@ def main(servicos: bool) -> int:
     if not cfg.exists():
         linha("FALTA", "site/hackathon-config.php não existe", "copie de site/hackathon-config.exemplo.php (passo 5 do guia)")
     else:
-        m = re.search(r"WORKER_KEY\s*=\s*'([^']*)'", cfg.read_text(encoding="utf-8"))
+        if tem_bom(cfg):
+            linha("FALTA", "site/hackathon-config.php foi gravado com BOM: isso quebra as respostas da API (JSON inválido)",
+                  "salve como UTF-8 SEM BOM, ou apague o arquivo e rode: python conferir_ambiente.py --preparar")
+        m = re.search(r"WORKER_KEY\s*=\s*'([^']*)'", cfg.read_text(encoding="utf-8-sig"))
         chave_site = m.group(1) if m else ""
         if chave_site.startswith("troque") or not chave_site:
             linha("FALTA", "site/hackathon-config.php: WORKER_KEY ainda é a de exemplo", "troque pela mesma chave do .env")
@@ -141,4 +179,4 @@ def main(servicos: bool) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main("--servicos" in sys.argv))
+    sys.exit(preparar() if "--preparar" in sys.argv else main("--servicos" in sys.argv))

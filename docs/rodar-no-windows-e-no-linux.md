@@ -213,7 +213,8 @@ git clone --branch feat/portabilidade-windows-linux https://github.com/Luks108/h
 cd hackathon
 ```
 
-Se o GitHub pedir login, entre com a conta que tem acesso ao repositório.
+Se o GitHub pedir login, entre com a conta que tem acesso ao repositório. No PowerShell, o git pode mostrar `Cloning into 'hackathon'...`
+em vermelho: é só o aviso de progresso do git, não é erro.
 
 **Conferência:**
 
@@ -290,40 +291,69 @@ O `.env` guarda senhas e chaves. **Ele nunca vai para o git** (está no `.gitign
 **não se envia por WhatsApp, e-mail, chat nem nenhum canal público**. Se precisar passar uma chave a alguém, use um canal privado
 e combinado. O arquivo `.env.exemplo` é só um modelo, com valores falsos (esse sim vai para o git).
 
-### 5.1 Criar o `.env`
+### 5.1 Criar o `.env` e a configuração do site (jeito fácil)
+
+Para desenvolvimento local, um comando cria os dois arquivos, com senhas e chave novas e **iguais onde precisam ser iguais**.
+Ele não sobrescreve arquivos que já existam:
+
+```bash
+python conferir_ambiente.py --preparar
+```
+
+| Esperado | Se vier diferente |
+|---|---|
+| `criado:  .env` e `criado:  site/hackathon-config.php` | `já existe: ...`: o arquivo já estava lá e não foi alterado (tudo bem) |
+
+Os arquivos criados não levam **BOM** (uma marca invisível que o PowerShell 5 e alguns editores gravam no começo do arquivo e que
+**quebra** o site). Por isso este comando é mais seguro do que editar à mão.
+
+Na **exibição ao cliente** use o `.env` com a `WORKER_KEY` do site publicado (passada pelo Lucas em canal privado) e **sem**
+`API_BASE`. Para isso edite o `.env` como na seção 5.2.
+
+### 5.2 Editar à mão (alternativa)
+
+Só se precisar mudar algum valor. Salve sempre como **UTF-8 sem BOM** (no VS Code, canto inferior direito: *UTF-8*; no Bloco de
+Notas do Windows 11 o padrão já é UTF-8 sem BOM). Não use `Set-Content -Encoding utf8` do PowerShell 5: ele grava BOM.
 
 **Windows (PowerShell):**
 
 ```powershell
-Copy-Item .env.exemplo .env
 notepad .env
+notepad site\hackathon-config.php
 ```
 
 **Linux (bash):**
 
 ```bash
-cp .env.exemplo .env
 nano .env
+nano site/hackathon-config.php
 ```
 
-### 5.2 Gerar duas senhas
+Se os arquivos ainda não existem, crie a partir dos modelos antes:
 
-Rode este comando **duas vezes** e guarde os dois resultados (um para `NEO4J_SENHA`, outro para `WORKER_KEY`). Para `CHAVE_PF`
-pode usar uma terceira geração:
+```bash
+cp .env.exemplo .env
+cp site/hackathon-config.exemplo.php site/hackathon-config.php
+```
+
+(No Windows, `Copy-Item` no lugar de `cp`.) Para gerar uma senha ou chave aleatória:
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-### 5.3 Preencher as variáveis
+No `site/hackathon-config.php`, troque **apenas** a linha `const WORKER_KEY = '...'` pela **mesma `WORKER_KEY` do `.env`** (entre aspas
+simples, sem espaços). Não mexa nas linhas do banco: elas já combinam com o Docker local.
+
+### 5.3 O que cada variável significa
 
 | Variável | Obrigatória? | De onde vem o valor | Se faltar ou estiver errada |
 |---|---|---|---|
-| `NEO4J_SENHA` | **Sim** | Você inventa (gere com o comando acima). Vale só no seu Neo4j local | O Docker do Neo4j nem sobe (`defina NEO4J_SENHA no .env`) |
+| `NEO4J_SENHA` | **Sim** | Gerada pelo `--preparar` (ou invente uma). Vale só no seu Neo4j local. Ela é gravada no Neo4j **na primeira vez que ele sobe**: trocar depois no `.env` não troca a do banco | O Docker do Neo4j nem sobe (`defina NEO4J_SENHA no .env`); se não bater com a do banco, o carregamento dá `Unauthorized` |
 | `CHAVE_PF` | **Sim** para extrair dados reais; com os dados fictícios o carregamento não a usa, mas mantenha preenchida | Você inventa | `KeyError: 'CHAVE_PF'` ao extrair dados reais |
 | `NEO4J_URI` | **Sim** | Deixe `bolt://127.0.0.1:7689` | `KeyError: 'NEO4J_URI'` ao carregar os dados |
 | `BRUTO` | Não | Deixe `fixtures/exemplo/bruto` (dados fictícios). Caminho relativo vale a partir da raiz do projeto | O agente diz que o hash da prova "não confere" |
-| `WORKER_KEY` | **Sim** (para o chat) | Você gera (24+ caracteres). **Tem de ser igual** à de `site/hackathon-config.php`. Na exibição: a do site publicado, passada pelo Lucas em canal privado | O worker não inicia (`KeyError: 'WORKER_KEY'`); se for diferente da do site, o worker recebe erro 401 e as perguntas ficam paradas |
+| `WORKER_KEY` | **Sim** (para o chat) | Gerada pelo `--preparar` (24+ caracteres). **Tem de ser igual** à de `site/hackathon-config.php`. Na exibição: a do site publicado, passada pelo Lucas em canal privado | O worker não inicia (`KeyError: 'WORKER_KEY'`); se for diferente da do site, o worker mostra `site: API respondeu 401` sem parar e as perguntas ficam paradas |
 | `API_BASE` | Não, mas **recomendada local** | Local: `http://127.0.0.1:8080`. Na exibição: **apague a linha** | **Sem ela, o worker aponta para o site PUBLICADO**, e não para o seu |
 | `AGENTE_MODELO` | Não | Padrão `claude-opus-5-5` | Usa o padrão |
 | `AGENTES_SITE` | Não | Padrão `3` perguntas ao mesmo tempo | Usa o padrão |
@@ -331,28 +361,9 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 | `AGENTE_PYTHON`, `CLAUDE_BIN` | Não | Caminhos completos, só se a detecção automática falhar | O projeto procura sozinho (`.venv` e `claude`) |
 | `WHATSAPP_STATE_DIR` | Não | Pasta de estado do gateway | Usa `~/.claude/channels/whatsapp-hackathon` |
 
-Apague o `#` das linhas opcionais só se quiser mudar o padrão. O WhatsApp **não** usa `.env` para o número: veja a etapa 11.
 
-### 5.4 Criar a configuração do site
-
-O site PHP não lê o `.env`: ele lê `site/hackathon-config.php`.
-
-**Windows (PowerShell):**
-
-```powershell
-Copy-Item site\hackathon-config.exemplo.php site\hackathon-config.php
-notepad site\hackathon-config.php
-```
-
-**Linux (bash):**
-
-```bash
-cp site/hackathon-config.exemplo.php site/hackathon-config.php
-nano site/hackathon-config.php
-```
-
-Troque **apenas** a linha `const WORKER_KEY = '...'` pela **mesma `WORKER_KEY` do `.env`** (entre aspas simples, sem espaços). Não mexa
-nas linhas do banco: elas já combinam com o Docker local.
+O site PHP **não lê** o `.env`: ele lê `site/hackathon-config.php`, por isso a `WORKER_KEY` existe nos dois arquivos. O número do
+WhatsApp também **não** fica no `.env`: veja a etapa 11. Nas linhas opcionais, apague o `#` só se quiser mudar o padrão.
 
 ### Conferência
 
@@ -364,6 +375,7 @@ python conferir_ambiente.py
 |---|---|
 | Todas as linhas `OK` e, no fim, `Tudo pronto.` | Cada `FALTA` traz logo abaixo o que fazer. `AVISO` pode ser ignorado por enquanto (por exemplo, `bun` ausente) |
 | `site/hackathon-config.php existe e a WORKER_KEY confere com o .env` | `WORKER_KEY ... DIFERENTE`: copie a chave do `.env` para o arquivo do site |
+| | `foi gravado com BOM`: o arquivo foi salvo com uma marca invisível no começo. Apague-o e rode `python conferir_ambiente.py --preparar` |
 
 Esse comando não mostra nenhum segredo e não altera nada.
 
@@ -509,7 +521,7 @@ HH:MM:SS worker no ar: http://127.0.0.1:8080/api com 3 agentes no site
 |---|---|
 | A linha acima, com `127.0.0.1:8080` | Aponta para outro endereço (por exemplo `hackathon.figueiredo.dev`): faltou `API_BASE` no `.env` e o worker está atendendo o site **publicado**. Pare (`Ctrl+C`), corrija e suba de novo |
 | | `KeyError: 'WORKER_KEY'`: falta a chave no `.env` (etapa 5) |
-| | Fica rodando mas as perguntas não são atendidas: a `WORKER_KEY` do `.env` difere da do site (erro 401) |
+| | O log repete `site: API respondeu 401`: a `WORKER_KEY` do `.env` difere da do site. Deixe as duas iguais, reinicie o site e o worker |
 
 Para ver a resposta "como se fosse WhatsApp", sem enviar nada:
 
@@ -784,7 +796,7 @@ Pare o processo (no Windows, `Stop-Process -Id NUMERO_DO_PID`; no Linux, `kill N
 **O worker diz `KeyError: 'WORKER_KEY'`.**
 Falta a chave no `.env`. Preencha (etapa 5) e suba de novo. Depois, confira com `python conferir_ambiente.py`.
 
-**O worker sobe, mas as perguntas ficam paradas (ou o log mostra 401).**
+**O worker sobe, mas as perguntas ficam paradas (o log repete `site: API respondeu 401`).**
 A `WORKER_KEY` do `.env` é diferente da de `site/hackathon-config.php`. Deixe as duas iguais e **reinicie o site e o worker**.
 
 **O worker atende o site errado.**
@@ -807,6 +819,11 @@ O MariaDB não está no ar, ou o `php` não foi achado. Defina `PHP_BIN` e confi
 **`deploy.sh` ou outro `.sh` dá `bad interpreter` / `^M` no Linux.**
 O arquivo foi gravado com fim de linha do Windows. O `.gitattributes` evita isso em clones novos; num clone antigo,
 rode `git add --renormalize .` ou clone de novo.
+
+**A API devolve algo estranho (`Unexpected UTF-8 BOM` no worker, JSON quebrado, "headers already sent") depois de editar a configuração.**
+O `site/hackathon-config.php` (ou o `.env`) foi salvo com **BOM**, uma marca invisível no começo do arquivo. O `PowerShell 5`
+(`Set-Content -Encoding utf8`) e alguns editores fazem isso. Rode `python conferir_ambiente.py`: ele acusa o BOM. Apague o arquivo e rode
+`python conferir_ambiente.py --preparar`, ou salve de novo como "UTF-8 sem BOM".
 
 **Deu tudo errado e quero recomeçar.**
 Pare tudo (etapa 14), `docker compose -f site/dev/docker-compose.yml down -v` e `docker compose --env-file .env -f infra/docker-compose.yml down -v`
