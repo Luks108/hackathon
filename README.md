@@ -6,7 +6,7 @@ Consulta em linguagem natural a dados públicos de contratação. Toda resposta 
 da fonte, e cada perfil vê só o que está autorizado a ver.
 
 > **Estado:** extração, grafo, consultas com filtro de perfil, registro de consultas, catálogo de ataques **e o site com contas,
-> chat em fila e administração** estão prontos e **testados** (65 testes de consulta, 42 de chat e 80 testes da API do site). Ainda falta o
+> chat em fila e administração** estão prontos e **testados** (65 testes de consulta, 50 de chat, 80 da API e 33 do pacote de prova). Ainda falta o
 > agente isolado (worker) ligado ao site e os ataques rodados com o modelo real. Veja
 > [Onde estamos no desafio](#onde-estamos-no-desafio), [Site e chat (Dev A)](#site-e-chat-dev-a) e [Pendências conhecidas](#pendências-conhecidas).
 > Detalhes do site e do chat: [spec](docs/specs/001-site-e-chat/spec.md), [plano técnico](docs/specs/001-site-e-chat/plan.md) e [tasks](docs/specs/001-site-e-chat/tasks.md).
@@ -90,6 +90,15 @@ modelo some da lista e o resto roda como sempre. As chaves vêm do `.env` (model
   Nenhum par de modelos se separou de forma estatisticamente significativa (menor p = 0,062): Flash 95,3%, Sonnet 94,0%,
   Opus 92,7%, V4 Pro 90,7%. A diferença real é de tempo e custo: o Opus é o mais lento e o mais caro, sem nota melhor. Uma rodada
   só, e o custo do DeepSeek é estimado pela tabela de preços.
+
+### Pacote de prova
+
+Cada resposta tem o botão **Exportar prova**: baixa um ZIP com a pergunta, a resposta, o modelo que respondeu (e a troca de provedor, se
+houve), os trechos literais da fonte e os hashes SHA-256, para um auditor reconferir **sem acesso ao sistema** (`LEIA-ME.txt` no ZIP).
+Rotas: `GET /api/perguntas/{id}/prova` e `GET /api/provas[?ids=1,2,3]`. Resposta sem trecho sai marcada `sem_prova`, e o campo ausente sai
+`null` com o motivo, nunca preenchido. **Limites:** o arquivo bruto do portal não vai no pacote (o auditor o pede e confere o `documento_hash`),
+o hash do trecho é calculado na exportação, a versão do extrator não é registrada pela coleta, e o pacote não avalia se há dado pessoal
+(`dados_pessoais: null`). O pacote tem teto de 5 MB. Detalhes no fim do `CLAUDE.md`.
 
 ### API
 
@@ -182,7 +191,8 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt     # no Windo
 docker compose --env-file .env -f infra/docker-compose.yml up -d neo4j
 python coleta/carregar_neo4j.py --zerar --exemplo
 python -m unittest discover -s consulta/testes -v                     # 65 testes
-python -m unittest discover -s chat/testes -v                         # 42 testes, sem internet
+python -m unittest discover -s chat/testes -v                         # 50 testes, sem internet
+python site/dev/test_prova.py                                         # 33 testes do pacote de prova (PHP e MariaDB)
 ```
 
 **Com a captura real:**

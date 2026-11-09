@@ -213,6 +213,13 @@ class Leitor:
                         "url": item.get("url"),
                         "capturado_em": item.get("capturado_em"),
                         "hash_confere": bool(item.get("hash_confere")),
+                        # Cadeia até o arquivo bruto, para o pacote de prova (acrescentados; a tela não os usa).
+                        # `arquivo` é só o nome, nunca um caminho do servidor.
+                        "documento_hash": item.get("documento_hash"),
+                        "arquivo": Path(str(item["arquivo"]).replace("\\", "/")).name if item.get("arquivo") else None,
+                        "tabela": item.get("tabela"),
+                        "linha": item.get("linha"),
+                        "trecho_mascarado": bool(item.get("trecho_mascarado")),
                     }))
         return saida
 

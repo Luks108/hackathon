@@ -235,6 +235,16 @@
     resp.fontes.append(det)
   }
 
+  // Pacote de prova: um ZIP que um terceiro reconfere sem acesso ao sistema. É um link comum; o navegador já manda a sessão.
+  function adicionarExportar(resp) {
+    if (!resp.id || resp.raiz.querySelector('.exportar')) return
+    const a = el('a', 'exportar', 'Exportar prova')
+    a.href = '/api/perguntas/' + encodeURIComponent(resp.id) + '/prova'
+    a.setAttribute('download', '')
+    a.title = 'Baixa a pergunta, a resposta e os trechos da fonte, com os hashes para conferir por fora'
+    resp.raiz.append(a)
+  }
+
   function aplicarEvento(ev, resp) {
     const d = ev.dados || {}
     switch (ev.tipo) {
@@ -251,6 +261,7 @@
         break
       case 'fim':
         resp.progresso.hidden = true
+        adicionarExportar(resp)
         break
       case 'erro':
         resp.progresso.hidden = true
@@ -268,6 +279,7 @@
   async function acompanhar(id) {
     const sessao = estado.sessao
     const resp = criarResposta()
+    resp.id = id
     estado.acompanhando = true
     travarEntrada(true)
     const conversa = $('#conversa')

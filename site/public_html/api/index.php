@@ -10,6 +10,8 @@
 //   POST /api/perguntas                   {texto}
 //   GET  /api/perguntas/aberta
 //   GET  /api/perguntas/{id}/eventos?desde=N
+//   GET  /api/perguntas/{id}/prova        pacote de prova (ZIP) de uma consulta; ?formato=json devolve só o JSON
+//   GET  /api/provas?ids=1,2,3            dossiê com várias consultas (sem ids: as concluídas da conta)
 //   GET  /api/telefones                   os telefones do usuário
 //   POST /api/telefones                   {numero}: nasce "pendente"
 //   DELETE /api/telefones/{id}
@@ -27,7 +29,7 @@ declare(strict_types=1);
 define('API', true);
 
 require dirname(__DIR__, 2) . '/hackathon-config.php';   // fora do public_html
-foreach (['base', 'conta', 'chat', 'telefones', 'worker'] as $modulo) {
+foreach (['base', 'conta', 'chat', 'telefones', 'worker', 'prova'] as $modulo) {
     require __DIR__ . "/lib_$modulo.php";
 }
 
@@ -55,6 +57,8 @@ $rotas = [
     ['POST',   '#^admin/telefones/(\d+)/aprovar$#',   true,  'rota_admin_aprovar'],
     ['POST',   '#^admin/telefones/(\d+)/revogar$#',   true,  'rota_admin_revogar'],
     ['GET',  '#^perguntas/(\d+)/eventos$#',        true,  'rota_eventos'],
+    ['GET',  '#^perguntas/(\d+)/prova$#',          true,  'rota_prova'],
+    ['GET',  '#^provas$#',                         true,  'rota_provas'],
     ['GET',  '#^painel$#',                         true,  'rota_painel'],
     ['POST', '#^worker/proxima$#',                 false, 'rota_worker_proxima'],
     ['POST', '#^worker/perguntas/(\d+)/eventos$#', false, 'rota_worker_eventos'],

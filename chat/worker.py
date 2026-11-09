@@ -138,6 +138,8 @@ def atender_site(p: dict):
                 dados = {"motivo": dados["motivo"] if "demorou" in dados.get("motivo", "") else ERRO_PADRAO}
             elif tipo == "fim":
                 desfecho = "concluida"
+            if tipo in ("fim", "erro"):
+                dados = {**dados, **campos_do_modelo(leitor)}    # o site guarda quem respondeu, para o pacote de prova
             lote.adicionar(tipo, dados)
             if lote.encerrada:
                 return
