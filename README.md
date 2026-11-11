@@ -5,9 +5,10 @@ Projeto do **Desafio 1 — Portal Inteligente de Transparência com IA** do Hack
 Consulta em linguagem natural a dados públicos de contratação. Toda resposta aponta para o trecho literal
 da fonte, e cada perfil vê só o que está autorizado a ver.
 
-> **Estado:** extração, grafo, consultas com filtro de perfil, registro de consultas, catálogo de ataques **e o site com contas,
-> chat em fila e administração** estão prontos e **testados** (65 testes de consulta, 50 de chat, 80 da API e 33 do pacote de prova). Ainda falta o
-> agente isolado (worker) ligado ao site e os ataques rodados com o modelo real. Veja
+> **Estado:** extração, grafo, consultas com filtro de perfil, registro de consultas, catálogo de ataques, **o site com contas,
+> chat em fila e administração** e **o worker que liga o site e o WhatsApp ao agente** estão prontos. Testes: 65 de consulta (18 deles exigem o
+> Neo4j no ar e são pulados sem ele), 69 de chat, 80 da API e 33 do pacote de prova. Ainda falta rodar os ataques de prompt com o modelo real
+> e fazer o deploy na Hostinger. Veja
 > [Onde estamos no desafio](#onde-estamos-no-desafio), [Site e chat (Dev A)](#site-e-chat-dev-a) e [Pendências conhecidas](#pendências-conhecidas).
 > Detalhes do site e do chat: [spec](docs/specs/001-site-e-chat/spec.md), [plano técnico](docs/specs/001-site-e-chat/plan.md) e [tasks](docs/specs/001-site-e-chat/tasks.md).
 
@@ -190,8 +191,8 @@ A captura bruta não é versionada, porque pode conter dados pessoais.
 python -m venv .venv && .venv/bin/pip install -r requirements.txt     # no Windows: .venv\Scripts\pip
 docker compose --env-file .env -f infra/docker-compose.yml up -d neo4j
 python coleta/carregar_neo4j.py --zerar --exemplo
-python -m unittest discover -s consulta/testes -v                     # 65 testes
-python -m unittest discover -s chat/testes -v                         # 50 testes, sem internet
+python -m unittest discover -s consulta/testes -v                     # 65 testes (18 só com o Neo4j no ar)
+python -m unittest discover -s chat/testes -v                         # 69 testes, sem internet nem .env (2 exigem o pacote `mcp`)
 python site/dev/test_prova.py                                         # 33 testes do pacote de prova (PHP e MariaDB)
 ```
 
@@ -321,7 +322,10 @@ O que **não** está resolvido, para ninguém se surpreender na hora da demonstr
 2. **Ataques com o modelo real.** Nenhum foi executado. A camada de dados está testada, mas a resposta do modelo não. Roteiro em
    [`docs/seguranca/ataques-de-prompt.md`](docs/seguranca/ataques-de-prompt.md#roteiro-de-teste-com-o-agente-real).
 3. **WhatsApp sem isolamento.** A sessão roda dentro do projeto, com ferramentas além das do `transparencia` (AP-07), e o plano
-   de perfil por número tem corrida entre remetentes simultâneos (AP-18). Para a demonstração: um número por perfil, um de cada vez.
+   de perfil por número tem corrida entre remetentes simultâneos (AP-18, na sessão `claude` do canal; o worker já troca o mapa de perfis de uma vez,
+   com teste). Para a demonstração: um número por perfil, um de cada vez.
+   O `reply` do canal agora só anexa arquivos de `midia/` e de `inferencia/saida/` (reduz o AP-07 de "qualquer arquivo" para "mídias"), mas a
+   sessão continua com `Bash` e `Read`, e essa trava ainda não foi executada com o `bun`.
 4. **Portal estadual.** Painel de contratos de 2024 e execução da amostra coletados. Licitações do Estado têm só o número do processo, sem modalidade nem valores.
 5. **Pagamento individual.** A consulta de ordens bancárias devolveu 0 linhas, e a ligação com o contrato segue sem confirmação (L03).
 6. **Site em PHP: deploy e dispositivos reais.** As falhas que existiam no modelo antigo foram corrigidas (rota `PATCH` sem
@@ -339,6 +343,8 @@ O que **não** está resolvido, para ninguém se surpreender na hora da demonstr
 - [Tasks](docs/specs/001-site-e-chat/tasks.md)
 - [Como rodar o site localmente](site/dev/README.md)
 - [Rodar no Windows e no Linux](docs/rodar-no-windows-e-no-linux.md): worker, WhatsApp, variáveis e testes
+- [Pacote de prova: registro de trabalho](docs/pacote-de-prova.md)
+- [Diário de sessões](docs/sessoes/LEIAME.md): o que cada pessoa fez e o que ficou em aberto (leia antes de começar)
 - [Backlog](docs/BACKLOG.md)
 - [Catálogo de ataques de prompt e proteções](docs/seguranca/ataques-de-prompt.md)
 - [Resultados dos testes de segurança](docs/testes-seguranca.md)

@@ -35,3 +35,6 @@ site/public_html/uploads/*
 
 # Painel de teste local (dados fictícios), gerado por consulta/gerar_painel.py --dev
 site/painel.json
+
+# Configuração do editor (pessoal)
+.vscode/

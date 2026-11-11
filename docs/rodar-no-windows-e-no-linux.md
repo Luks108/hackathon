@@ -763,8 +763,8 @@ python site/dev/test_api.py
 | Comando | Esperado | Se vier diferente |
 |---|---|---|
 | `consulta/testes` | `Ran 65 tests` e `OK` | `skipped=...`: o Neo4j está parado ou sem os dados (etapas 6 e 7). Falha: leia o nome do teste |
-| `chat/testes` | `Ran 42 tests` e `OK` (4 de portabilidade, 13 dos provedores de modelo e 25 do fallback, sem internet) | |
-| `site/dev/test_api.py` | `Ran 78 tests` e `OK` (leva uns 40 s) | `php não encontrado`: defina `PHP_BIN` (abaixo). `servidor ... não subiu`: o MariaDB não está no ar. Uma falha em `dois_pedidos_ao_mesmo_tempo...`: o worker estava rodando |
+| `chat/testes` | `Ran 69 tests` e `OK` (portabilidade, provedores, fallback, dados do pacote de prova e robustez do worker; sem internet e sem `.env`) | |
+| `site/dev/test_api.py` | `Ran 80 tests` e `OK` (leva uns 40 s) | `php não encontrado`: defina `PHP_BIN` (abaixo). `servidor ... não subiu`: o MariaDB não está no ar. Uma falha em `dois_pedidos_ao_mesmo_tempo...`: o worker estava rodando |
 
 `PHP_BIN` no Windows (PowerShell), se o PHP não estiver no PATH:
 

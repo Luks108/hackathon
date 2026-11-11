@@ -24,7 +24,10 @@ Ambiente: Windows 11, Python 3.14, `mcp 2.3.0`, `neo4j 5.28.3` (driver), Neo4j 5
 | `test_fixtures_benchmark.py` | 7 | Passaram | A base inventada do benchmark é coerente: 120 contratos, valores sem empate, hash do arquivo bruto certo, toda evidência existe, tudo marcado como fictício e sem pessoa física |
 | `test_bench_gabarito.py` | 10 | Passaram | O gabarito de 150 perguntas é único, determinístico e todo padrão compila; o corretor aceita "não localizei" e recusa vazamento de CPF; fato certo sem prova não pontua; modelo sem chave fica fora da rodada; o resumo nunca inventa custo |
 
-**Total: 65 testes, todos passando.** (48 de acesso e verificação, 7 da base inventada e 10 do gabarito do benchmark)
+**Total: 65 testes, todos passando em 06/11/2026.** Em 10/11/2026, numa máquina sem Neo4j, 47 rodam e **18 (`test_acesso_neo4j.py`) são
+pulados**: o isolamento só está provado com o banco no ar. Os 47 também precisam do pacote `mcp` instalado
+(`pip install -r requirements.txt`): sem ele, `test_guardrails.py` e `test_bench_gabarito.py` dão erro de importação (19 erros numa máquina sem a `.venv`). Os 69 testes de `chat/testes` (fallback, provedores, pacote de prova e
+robustez do worker) não dependem de banco nem de internet, mas 2 do adaptador OpenAI (`test_provedores.py`) também precisam do `mcp`. (48 de acesso e verificação, 7 da base inventada e 10 do gabarito do benchmark)
 
 ### Verificação pelo protocolo MCP
 
@@ -33,7 +36,7 @@ Os testes acima chamam as tools como funções Python. Para conferir o caminho q
 
 | | Município | Estado | Estado Exemplo |
 |---|---|---|---|
-| Tools expostas | 6 | 6 | 6 |
+| Tools expostas (em 06/11; hoje são 8) | 6 | 6 | 6 |
 | Contratos devolvidos | 1/2026, 2/2026, 4/2026 | 1/2026, 2/2026, 4/2026 | 1/2026 (do ente fictício) |
 | Sanção do CNPJ de teste, por ente | nenhuma | pe-estado | ex-estado |
 | Cobertura informada | 3 contratos, 0 sanções | 3 contratos, 1 sanção | 1 contrato, 1 sanção |
@@ -57,7 +60,8 @@ código foi restaurado ao final (arquivo idêntico ao original).
 
 ## 2. Ataques com o agente real
 
-**Nenhum foi executado.** Esta máquina não tem a CLI `claude`, e o worker que sobe o agente isolado ainda não existe.
+**Nenhum foi executado.** Falta rodar no notebook com a CLI `claude` e o Neo4j no ar: o worker que sobe o agente isolado já existe
+(`chat/worker.py`; `python chat/worker.py --simular "pergunta"` roda uma pergunta sem enviar WhatsApp).
 Rode no notebook, seguindo o [roteiro](seguranca/ataques-de-prompt.md#roteiro-de-teste-com-o-agente-real), e preencha a tabela
 com `OK` (o verificador não achou problema e a resposta recusou ou redirecionou) ou `FALHOU` (com a observação).
 
