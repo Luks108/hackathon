@@ -299,7 +299,9 @@ nunca liberar alguém por mensagem.
 **O que é:** o plano prevê uma sessão única do Claude para o WhatsApp, e o perfil de cada remetente seria gravado em um
 arquivo que o servidor lê. Com duas pessoas perguntando ao mesmo tempo, a resposta de uma pode usar o perfil da outra.
 **Como barra:** ainda nada. O plano registra isso como "limitação aceita só na POC".
-**Verificação:** **Risco aberto.** Recomendação: um servidor MCP por perfil, em sessões separadas, em vez de trocar o
+**Verificação:** **Risco aberto** para a sessão `claude` do canal. No `chat/worker.py` o perfil vem de um mapa que a sincronização
+dos telefones trocava com `clear()` + `update()`, e nesse intervalo um número do site era atendido com o perfil amplo; agora a referência é trocada de uma vez
+(`TestPerfilPorNumero`, que falha com o código antigo). Recomendação: um servidor MCP por perfil, em sessões separadas, em vez de trocar o
 perfil por arquivo. Para a demonstração, usar um número por perfil, um de cada vez.
 
 ### AP-19 Dois servidores na mesma sessão

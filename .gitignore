@@ -1,7 +1,15 @@
 # Segredos
 .env
 **/.env
+# variantes (.env.local, .env.prod...). O modelo sem valores continua versionado.
+.env.*
+!.env.exemplo
 google-sa.json
+*.pem
+*.key
+*.p12
+# configuração local do Claude Code (pode ter permissões e caminhos da máquina)
+.claude/settings.local.json
 
 # Captura bruta: pode conter dados pessoais publicados pelos portais
 portal/dados/bruto/
@@ -24,3 +32,9 @@ logs/
 hackathon-config.php
 site/public_html/uploads/*
 !site/public_html/uploads/.htaccess
+
+# Painel de teste local (dados fictícios), gerado por consulta/gerar_painel.py --dev
+site/painel.json
+
+# Configuração do editor (pessoal)
+.vscode/

@@ -47,6 +47,11 @@ export function gravarAcesso(a: Acesso): void {
 }
 
 /** Só os dígitos da parte antes do @ e do : (device). `5587999999999:12@s.whatsapp.net` → `5587999999999`. */
+// Tipos técnicos do WhatsApp: não são mensagens de pessoa (sincronização, apagar/editar, chaves, reações). Não viram "inbound".
+// Foi um protocolMessage, logo após cada resposta do bot, que fazia o worker mandar "Por aqui eu respondo…" sem ninguém ter escrito.
+const TIPOS_TECNICOS = new Set(['protocolMessage', 'senderKeyDistributionMessage', 'reactionMessage'])
+export function ehTipoTecnico(tipoBruto: string): boolean { return TIPOS_TECNICOS.has(tipoBruto) }
+
 export function digitos(jid: string | null | undefined): string {
   if (!jid) return ''
   return jid.split('@')[0]!.split(':')[0]!.replace(/\D/g, '')

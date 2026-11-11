@@ -55,7 +55,7 @@
     adminTelefones: status => enviar('GET', `/admin/telefones?status=${encodeURIComponent(status)}`),
     aprovarTelefone: id => enviar('POST', `/admin/telefones/${id}/aprovar`, {}),
     revogarTelefone: id => enviar('POST', `/admin/telefones/${id}/revogar`, {}),
-    // Demonstração livre: sem escolha de plano, a conta recebe o que cobre mais entes. Devolve o plano, ou null se falhar.
+    // Demonstração livre: sem escolha de plano, a conta recebe o plano que cobre mais entes (hoje, o plano único). Devolve o plano, ou null se falhar.
     async garantirPlano() {
       try {
         const planos = await enviar('GET', '/planos')

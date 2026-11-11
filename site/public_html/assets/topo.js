@@ -14,7 +14,7 @@
 
     const links = el('nav', 'topo-links')
     links.setAttribute('aria-label', 'Páginas')
-    const itens = [['chat.html', 'Assistente', 'chat'], ['tecnico.html', 'Área técnica', 'tecnico'], ['conta.html', 'Minha conta', 'conta']]
+    const itens = [['chat.html', 'Assistente', 'chat'], ['tecnico.html', 'Área técnica', 'tecnico'], ['modelos.html', 'Modelos', 'modelos'], ['conta.html', 'Minha conta', 'conta']]
     if (usuario.papel === 'admin') itens.push(['admin.html', 'Administração', 'admin'])
     for (const [href, texto, id] of itens) {
       const a = el('a', '', texto)

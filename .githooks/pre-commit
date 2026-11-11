@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Hook de commit do projeto (vale para qualquer ferramenta ou provedor que faça commit neste clone).
+# Ativar uma vez por clone:   git config core.hooksPath .githooks
+#   1) BLOQUEIA o commit se um diário de sessão (docs/sessoes/AAAA-MM-DD-usuario.md) fugir do padrão ou tiver segredo.
+#   2) AVISA, sem bloquear, quando o commit muda código mas nenhum diário vai junto.
+set -u
+raiz="$(git rev-parse --show-toplevel)"
+staged="$(git diff --cached --name-only --diff-filter=ACM)"
+diarios="$(printf '%s\n' "$staged" | grep -E '^docs/sessoes/[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+\.md$' || true)"
+
+if [ -n "$diarios" ]; then
+  py="$(command -v python3 || command -v python || true)"
+  if [ -z "$py" ]; then
+    echo "pre-commit: Python não encontrado, o diário não foi conferido." >&2
+  else
+    # shellcheck disable=SC2086
+    (cd "$raiz" && "$py" docs/sessoes/validar.py $diarios) || {
+      echo "pre-commit: commit bloqueado. Corrija o diário (modelo: docs/sessoes/_modelo.md)." >&2
+      exit 1
+    }
+  fi
+elif printf '%s\n' "$staged" | grep -qvE '^(docs/|README\.md$|CLAUDE\.md$|AGENTS\.md$|\.gitignore$|\.githooks/)'; then
+  echo "pre-commit: lembrete: este commit muda código e não leva o diário de sessões." >&2
+  echo "            Crie ou atualize docs/sessoes/AAAA-MM-DD-usuario.md (cópia de docs/sessoes/_modelo.md) no mesmo push." >&2
+fi
+exit 0

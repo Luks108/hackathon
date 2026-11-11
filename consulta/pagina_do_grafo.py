@@ -14,10 +14,12 @@ from pathlib import Path
 from neo4j import GraphDatabase
 
 RAIZ = Path(__file__).resolve().parents[1]
-for linha in (RAIZ / ".env").read_text(encoding="utf-8").splitlines():
-    if "=" in linha:
+_ENV = RAIZ / ".env"
+for linha in (_ENV.read_text(encoding="utf-8-sig").splitlines() if _ENV.exists() else []):   # mesmo critério dos outros leitores do .env
+    if "=" in linha and not linha.lstrip().startswith("#"):
         k, v = linha.split("=", 1)
-        os.environ.setdefault(k, v)
+        if k.strip() and v.strip():      # valor vazio não vira variável
+            os.environ.setdefault(k.strip(), v.strip())
 
 CPF = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
 

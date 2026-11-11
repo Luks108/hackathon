@@ -14,7 +14,7 @@
 <meta property="og:url" content="https://hackathon.figueiredo.dev/">
 <link rel="icon" href="icone.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="assets/site.css?v=20261106h">
+<link rel="stylesheet" href="assets/site.css?v=20261108c">
 <style>
 /* Landing: mesma identidade das páginas internas. A moldura deslocada guarda a prova, o centro do produto. */
 main#topo { display: block; padding: 0; }
@@ -49,7 +49,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 76px; }
 .passos h3, .quatro h3 { color: var(--marinho); }
 .passos h3 { font-size: 19px; margin-bottom: 5px; }
 .passos p, .quatro p { color: var(--tinta-2); font-size: 15px; margin: 0; }
-.planos { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 820px; margin: 30px 0 0; gap: 22px; }
+.planos { grid-template-columns: minmax(0, 1fr); max-width: 520px; margin: 30px 0 0; gap: 22px; }
 .plano-card { background: var(--cartao); border: 1px solid var(--regra); border-radius: 18px; padding: 26px; display: flex; flex-direction: column; gap: 8px; }
 .plano-card:last-child { border: 2px solid var(--marinho); }
 .plano-card h3 { color: var(--marinho); font-size: 21px; }
@@ -103,7 +103,7 @@ footer p { margin: 0; max-width: 66ch; }
     <a class="marca" href="#topo">Fornex<span>IA</span></a>
     <nav aria-label="Seções">
       <a class="opcional" href="#como">Como funciona</a>
-      <a class="opcional" href="#planos">Planos</a>
+      <a class="opcional" href="#planos">Plano</a>
       <a class="opcional" href="#sobre">Sobre nós</a>
       <a class="botao acao pequeno" href="chat.html">Entrar</a>
     </nav>
@@ -149,12 +149,12 @@ footer p { margin: 0; max-width: 66ch; }
 
 <section class="bloco" id="planos" aria-labelledby="t-planos">
   <div class="faixa-centro">
-    <p class="rotulo">Planos</p>
-    <h2 id="t-planos">Escolha a cobertura</h2>
-    <p class="apoio-secao">Valores de demonstração, ainda não validados. Nada é cobrado nesta versão.</p>
+    <p class="rotulo">Assinatura</p>
+    <h2 id="t-planos">Uma assinatura simples</h2>
+    <p class="apoio-secao">Plano único para compliance, gestoras de terceiros e empresas menores. Valor de demonstração, ainda não validado. Nada é cobrado nesta versão.</p>
     <div class="planos" id="lista-planos" aria-live="polite"><p class="planos-estado">Carregando os planos…</p></div>
     <noscript><p class="planos-estado">Ative o JavaScript para ver os planos, ou <a href="chat.html">abra o assistente</a>.</p></noscript>
-    <p class="nota-planos">A conta nova começa no plano Estado. No chat, você pode trocar para Município e comparar as respostas.</p>
+    <p class="nota-planos">A conta recebe o acesso automaticamente, para experimentar o site e cadastrar seus números de WhatsApp.</p>
   </div>
 </section>
 
@@ -267,9 +267,11 @@ footer p { margin: 0; max-width: 66ch; }
       preco.appendChild(el('small', '', '/ mês'));
       c.appendChild(preco);
       var ul = el('ul');
-      ul.appendChild(el('li', '', p.franquia.toLocaleString('pt-BR') + ' perguntas por mês'));
-      ul.appendChild(el('li', '', 'Excedente: ' + brl(p.preco_excedente, 2) + ' por pergunta'));
+      if (p.franquia > 0) ul.appendChild(el('li', '', p.franquia.toLocaleString('pt-BR') + ' perguntas por mês'));
+      if (p.preco_excedente > 0) ul.appendChild(el('li', '', 'Excedente: ' + brl(p.preco_excedente, 2) + ' por pergunta'));
       ul.appendChild(el('li', '', 'Consulta: ' + p.tenants.map(function (t) { return ENTES[t] || t; }).join(' e ')));
+      ul.appendChild(el('li', '', 'Site e WhatsApp, com a prova de cada fato'));
+      ul.appendChild(el('li', '', 'Até 3 números de WhatsApp por conta, liberados após aprovação'));
       c.appendChild(ul);
       lista.appendChild(c);
     });

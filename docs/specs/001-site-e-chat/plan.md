@@ -64,10 +64,12 @@ tentativas_login(email, ip, criada_em)
 
 Valores são hipótese, não preço validado.
 
+Há um **plano único**. Franquia e excedente ficam em 0 (as colunas existem no banco, mas o plano único não as usa).
+Antes havia dois planos, Município (R$ 990) e Estado (R$ 1.990); o `setup.php` move quem estava neles para o plano único e os remove.
+
 | Plano | Mensal | Franquia | Excedente | Entes |
 |---|---|---|---|---|
-| Município | R$ 990 | 300 | R$ 1,50 | `pe-garanhuns` |
-| Estado | R$ 1.990 | 1.000 | R$ 1,50 | `pe-estado`, `pe-garanhuns` |
+| Único | R$ 149 | 0 | R$ 0 | `pe-estado`, `pe-garanhuns` |
 
 ## Contrato da API
 

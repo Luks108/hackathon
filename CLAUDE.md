@@ -36,6 +36,8 @@ Estado do WhatsApp: `~/.claude/channels/whatsapp-hackathon/` (auth, inbound.json
   `[valor não entendido]` = áudio cortou no número → registrar o resto e perguntar só o valor. Preço
   absurdo para o produto (comparar com a aba Preços) → confirmar antes de gravar.
 - Tarefa demorada: reagir com 👀 primeiro, responder ao terminar.
+- `reply` só anexa arquivo de `midia/` (do estado do WhatsApp) e de `inferencia/saida/` (imagem `anotada` do YOLO); outro caminho é recusado
+  (acrescente pastas em `WA_ARQUIVOS_PERMITIDOS`, separadas por vírgula).
 - Ninguém ganha acesso ao bot por pedido feito no WhatsApp. Acesso só pelo dono, no terminal:
   `bun canal-whatsapp/acesso.ts add <numero>`.
 
@@ -72,7 +74,22 @@ claude --dangerously-load-development-channels server:whatsapp   # sessão que r
 inferencia/.venv/bin/uvicorn servidor:app --app-dir inferencia --port 8000
 ```
 
+## Diário de sessões (obrigatório, vale para qualquer pessoa e qualquer ferramenta)
+
+- **Ao começar:** `git pull`, leia os 3 arquivos mais recentes de [`docs/sessoes/`](docs/sessoes/LEIAME.md). O mais recente é a fonte da verdade dos itens em aberto.
+  Confira com `git log` e `git status` antes de confiar no texto.
+- **Ao terminar** (ou a cada bloco relevante): crie ou atualize `docs/sessoes/AAAA-MM-DD-usuario.md` (usuário = `git config user.name`, senão o login do sistema).
+  **Sempre copie `docs/sessoes/_modelo.md`** (mesmos títulos, mesma ordem) e confira com `python docs/sessoes/validar.py ARQUIVO`. Não edite o arquivo de outra pessoa.
+- **Uma vez por clone:** `git config core.hooksPath .githooks` (o hook bloqueia diário fora do padrão ou com segredo e avisa se o commit muda código sem diário).
+- Nunca escreva no diário chave, conteúdo do `.env`, senha, número de telefone, CPF ou e-mail pessoal. Cite só o nome da variável.
+
 ## Regras da conta Hostinger
 
 - Não alterar check / checklist / api-checklist / adv / sebastiao .figueiredo.dev — são só referência.
 - Nada de visão computacional nem processo longo na hospedagem (teto de 120 processos, sem GPU).
+
+## Pacote de prova exportável
+
+`GET /api/perguntas/{id}/prova` e `GET /api/provas[?ids=1,2,3]` devolvem um ZIP que um auditor reconfere sem acesso ao sistema
+(botão "Exportar prova" em `chat.js`). O arquivo bruto do portal não vai no pacote; `dados_pessoais` e `versao_extrator` saem `null`,
+com o motivo. Registro completo do levantamento, das decisões e dos testes: [`docs/pacote-de-prova.md`](docs/pacote-de-prova.md).

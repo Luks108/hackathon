@@ -30,12 +30,16 @@ _env = RAIZ / ".env"
 for linha in _env.read_text(encoding="utf-8").splitlines() if _env.exists() else []:
     if "=" in linha and not linha.lstrip().startswith("#"):
         k, v = linha.split("=", 1)
-        os.environ.setdefault(k.strip(), v.strip())
+        if v.strip():      # valor vazio não vira variável
+            os.environ.setdefault(k.strip(), v.strip())
 
 PERFIL = os.environ.get("TRANSPARENCIA_PERFIL", "sem-perfil")
 TENANTS = [t for t in os.environ.get("TRANSPARENCIA_TENANTS", "").split(",") if t]
 VER_PESSOAL = os.environ.get("TRANSPARENCIA_VER_PESSOAL") == "sim"
-BRUTO = Path(os.environ.get("BRUTO") or RAIZ / "fixtures" / "exemplo" / "bruto")
+# O agente roda o servidor em outra pasta: um BRUTO relativo vale a partir da raiz do projeto, não do diretório atual.
+BRUTO = Path(os.environ.get("BRUTO") or "fixtures/exemplo/bruto")
+if not BRUTO.is_absolute():
+    BRUTO = RAIZ / BRUTO
 SENSIBILIDADES = ["publico", "pessoal"] if VER_PESSOAL else ["publico"]
 LOG = Path(os.environ.get("TRANSPARENCIA_LOG") or RAIZ / "logs" / "consultas.jsonl")
 SESSAO = os.environ.get("TRANSPARENCIA_SESSAO")

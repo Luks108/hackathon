@@ -102,6 +102,9 @@ body.modo-chat main { min-height: 0; padding-block: 16px; }
 .texto-resp { white-space: pre-wrap; }
 .texto-resp:not(:empty) { margin-top: 2px; }
 .erro-resp { margin-top: 10px; padding-left: 10px; border-left: 3px solid var(--vermelho); color: var(--tinta-2); font-size: 15.5px; }
+a.exportar { display: inline-flex; align-items: center; align-self: flex-start; margin-top: 10px; min-height: 30px; padding: 3px 12px; font: 600 13px var(--texto); color: var(--verde); background: var(--cartao); border: 1px solid var(--regra); border-radius: 999px; text-decoration: none; }
+a.exportar:hover { background: var(--papel); }
+a.exportar:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
 .fontes { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 details.fonte summary { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; list-style: none; min-height: 30px; padding: 3px 12px; font: 600 13px var(--texto); color: var(--verde); background: var(--cartao); border: 1px solid var(--regra); border-radius: 999px; }
 details.fonte summary::-webkit-details-marker { display: none; }
@@ -120,11 +123,6 @@ details.fonte .meta a { color: var(--verde); }
 .entrada .enviar:disabled { opacity: .45; cursor: not-allowed; }
 .rodape-chat { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 0 22px 12px; font-size: 13px; color: var(--tinta-3); }
 .rodape-chat output.perto { color: var(--ambar); }
-.seletor-plano { display: inline-flex; border: 1px solid var(--marinho); border-radius: 8px; overflow: hidden; }
-.seletor-plano:empty { display: none; }
-.seletor-plano button { border: 0; background: var(--cartao); color: var(--marinho); font: 600 13px var(--texto); min-height: 32px; padding: 4px 11px; cursor: pointer; }
-.seletor-plano button[aria-pressed="true"] { background: var(--marinho); color: #fff; }
-.seletor-plano button:disabled { opacity: .55; cursor: not-allowed; }
 
 /* ---------- Páginas internas: conta e administração ---------- */
 .link-topo { color: var(--heroi-2); text-decoration: none; font: 500 14px var(--texto); padding: 6px 8px; border-radius: 4px; white-space: nowrap; }
@@ -257,3 +255,4 @@ html.embutido #tela-entrar, html.embutido #tela-plano, html.embutido #tela-carre
 html.embutido .planos { grid-template-columns: 1fr; }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+#modelo-bench { margin: 4px 0 16px; padding: 8px 12px; min-height: 40px; max-width: 320px; font: inherit; color: var(--tinta); background: var(--cartao); border: 1px solid var(--regra); border-radius: 8px; }

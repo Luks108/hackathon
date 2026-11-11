@@ -38,7 +38,7 @@ php site/setup.php admin@local.test "Admin Local" senha-local-123
 
 Para testar no site publicado, peça a senha ao Lucas. Não a coloque em arquivo do repositório nem em mensagem de commit.
 
-Hoje o admin entra e usa o chat como qualquer conta, mas ainda não há tela nem rota de administrador (A09 e A16).
+O admin entra em `/admin.html` para aprovar e bloquear telefones do WhatsApp (A09 e A16), e usa o chat como qualquer conta.
 
 Sem PHP no Windows: `winget install PHP.PHP.NTS.8.2`. Depois ative `pdo_mysql`, `curl`, `fileinfo`, `openssl` e `mbstring` no `php.ini`.
 

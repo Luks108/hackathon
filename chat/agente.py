@@ -1,24 +1,29 @@
 """Roda uma pergunta em um agente isolado e devolve o que acontece, em eventos.
 
-    .venv/bin/python chat/agente.py estado "Quais contratos temos na base?"
+    python chat/agente.py estado "Quais contratos temos na base?"     # com a .venv ativada (Linux e Windows)
 
 Cada pergunta é um `claude -p` novo, em diretório neutro, só com as tools do `transparencia`.
 O perfil vem de quem chama e entra no ambiente do servidor MCP: o modelo não tem como mudá-lo.
 A pergunta vai pelo stdin, nunca por shell.
 """
 
+import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
 import threading
+import time
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "consulta"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import perfis  # noqa: E402
+import provedores  # noqa: E402  (escolhe o cliente pelo prefixo do modelo; é o único ponto dessa decisão)
 
 PREFIXO = "mcp__transparencia__"
 PRIMITIVAS = (
@@ -26,11 +31,43 @@ PRIMITIVAS = (
     "contratos_do_fornecedor", "sancoes_do_fornecedor", "execucao_do_fornecedor", "conferir_evidencia",
 )
 PROIBIDAS = "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit"
-PYTHON = str(RAIZ / ".venv" / "bin" / "python")
+
+
+def python_do_projeto() -> str:
+    """Python da .venv do projeto, em Linux (`bin/python`) ou Windows (`Scripts/python.exe`).
+    `AGENTE_PYTHON` sobrescreve. Sem .venv, usa o Python que está rodando."""
+    if os.environ.get("AGENTE_PYTHON"):
+        return os.environ["AGENTE_PYTHON"]
+    for relativo in (("Scripts", "python.exe"), ("bin", "python")):
+        candidato = RAIZ / ".venv" / Path(*relativo)
+        if candidato.exists():
+            return str(candidato)
+    return sys.executable
+
+
+def achar_claude() -> str:
+    """Caminho do `claude`. `CLAUDE_BIN` sobrescreve. No Windows, cai no executável da extensão do VS Code."""
+    if os.environ.get("CLAUDE_BIN"):
+        return os.environ["CLAUDE_BIN"]
+    achado = shutil.which("claude")
+    if achado:
+        return achado
+    if os.name == "nt":
+        extensoes = Path.home() / ".vscode" / "extensions"
+        candidatos = sorted(glob.glob(str(extensoes / "anthropic.claude-code-*" / "resources" / "native-binary" / "claude.exe")))
+        if candidatos:
+            return candidatos[-1]
+    return "claude"
+
+
+PYTHON = python_do_projeto()
+CLAUDE = achar_claude()
 NEUTRO = Path.home() / ".cache" / "fornexia-agente"
 MODELO = os.environ.get("AGENTE_MODELO", "claude-opus-5-5")
-LIMITE_S = int(os.environ.get("AGENTE_LIMITE_S", "110"))
-CPF = re.compile(r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b")
+LIMITE_S = int(os.environ.get("AGENTE_LIMITE_S", "110"))                 # orçamento TOTAL da pergunta, somando as tentativas
+LIMITE_PRIMEIRA = int(os.environ.get("AGENTE_LIMITE_PRIMEIRA", "35"))    # teto de cada tentativa que ainda tem substituto
+MINIMO_TENTATIVA_S = 5                                                   # com menos tempo que isso não vale começar outra tentativa
+CPF =re.compile(r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b")
 
 REGRAS = """\
 Você é o FornexIA, assistente de análise de fornecedores públicos para times de compliance.
@@ -91,6 +128,14 @@ def _itens(carga):
             yield carga
 
 
+def uso_do_claude(bruto: dict) -> dict:
+    """Tokens e custo que o `claude` informa no resultado final. Entrada = tudo que o modelo leu (inclui cache)."""
+    u = bruto.get("usage") or {}
+    entrada = sum(int(u.get(k) or 0) for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
+    custo = bruto.get("total_cost_usd")
+    return {"entrada": entrada, "saida": int(u.get("output_tokens") or 0), **({"custo_usd": float(custo)} if custo is not None else {})}
+
+
 class Leitor:
     """Traduz o `stream-json` em eventos. Puro: recebe dicionário e devolve lista."""
 
@@ -99,6 +144,15 @@ class Leitor:
         self.consultas: list[str] = []
         self.evidencias: list[str] = []
         self.resposta = ""
+        self.uso: dict = {}     # tokens e custo da pergunta, quando o provedor informa (não vira evento)
+        self.modelo_pedido: str | None = None   # quem foi pedido e quem de fato respondeu (preenchidos por perguntar)
+        self.modelo: str | None = None
+        self.trocas: list[dict] = []            # fallback: {de, para, motivo, tentativa}; sobrevive ao zerar()
+        self.tentados: list[str] = []           # todos os modelos que chegaram a ser tentados, em ordem
+
+    def zerar(self):
+        """Descarta o que a tentativa anterior acumulou: o substituto começa do zero, sem herdar consultas, provas nem texto."""
+        self.tools, self.consultas, self.evidencias, self.resposta, self.uso = {}, [], [], "", {}
 
     def ler(self, bruto: dict) -> list[tuple[str, dict]]:
         tipo = bruto.get("type")
@@ -114,6 +168,8 @@ class Leitor:
         if tipo == "user":
             return self._resultados(bruto)
         if tipo == "result":
+            if "usage" in bruto or "total_cost_usd" in bruto:     # o adaptador OpenAI acumula o uso por conta própria
+                self.uso = uso_do_claude(bruto)
             if bruto.get("is_error"):
                 return [("erro", {"motivo": str(bruto.get("result") or bruto.get("subtype") or "erro")})]
             return [("fim", {"duracao_ms": int(bruto.get("duration_ms") or 0)})]
@@ -157,21 +213,30 @@ class Leitor:
                         "url": item.get("url"),
                         "capturado_em": item.get("capturado_em"),
                         "hash_confere": bool(item.get("hash_confere")),
+                        # Cadeia até o arquivo bruto, para o pacote de prova (acrescentados; a tela não os usa).
+                        # `arquivo` é só o nome, nunca um caminho do servidor.
+                        "documento_hash": item.get("documento_hash"),
+                        "arquivo": Path(str(item["arquivo"]).replace("\\", "/")).name if item.get("arquivo") else None,
+                        "tabela": item.get("tabela"),
+                        "linha": item.get("linha"),
+                        "trecho_mascarado": bool(item.get("trecho_mascarado")),
                     }))
         return saida
 
 
-def perguntar(texto: str, tenants: list[str], historico: list[tuple[str, str]] | None = None, leitor: Leitor | None = None):
-    """Gera eventos (tipo, dados). Termina sempre com `fim` ou `erro`."""
+def _perguntar_claude(texto: str, tenants: list[str], historico: list[tuple[str, str]] | None, leitor: Leitor, modelo: str | None,
+                      limite_s: float | None = None):
+    """O agente de sempre: um `claude -p` por pergunta. Quem chama é o ClaudeCLI, escolhido por provedores.escolher."""
     leitor = leitor or Leitor()
     perfil = perfil_dos_entes(tenants)
     NEUTRO.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", dir=NEUTRO, suffix=".json", encoding="utf-8") as cfg:
+    # delete=False: no Windows outro processo não abre um arquivo temporário ainda aberto por este. Apagamos no fim.
+    with tempfile.NamedTemporaryFile("w", dir=NEUTRO, suffix=".json", encoding="utf-8", delete=False) as cfg:
         json.dump(perfis.config_mcp(perfil, python=PYTHON), cfg)
-        cfg.flush()
+    try:
         proc = subprocess.Popen(
             [
-                "claude", "-p", "--model", MODELO,
+                CLAUDE, "-p", "--model", modelo or MODELO,
                 "--mcp-config", cfg.name, "--strict-mcp-config",
                 "--setting-sources", "",
                 "--system-prompt", REGRAS,
@@ -189,7 +254,7 @@ def perguntar(texto: str, tenants: list[str], historico: list[tuple[str, str]] |
             estourou.set()
             proc.kill()
 
-        relogio = threading.Timer(LIMITE_S, matar)
+        relogio = threading.Timer(limite_s or LIMITE_S, matar)
         relogio.start()
         terminou = False
         try:
@@ -210,11 +275,120 @@ def perguntar(texto: str, tenants: list[str], historico: list[tuple[str, str]] |
             proc.wait()
         if not terminou:
             yield ("erro", {"motivo": "A consulta demorou mais que o esperado." if estourou.is_set() else "O agente parou sem responder."})
+    finally:
+        try:
+            os.unlink(cfg.name)
+        except OSError:
+            pass
+
+
+class ClaudeCLI:
+    """Cliente do `claude`. Mesma interface dos demais (veja provedores.escolher)."""
+
+    def __init__(self, nome: str):
+        self.nome = nome
+
+    def perguntar(self, texto, tenants, historico, leitor, limite_s=None):
+        return _perguntar_claude(texto, tenants, historico, leitor, self.nome, limite_s)
+
+    def sem_base(self, pergunta: str, sistema: str) -> dict:
+        """O modelo sozinho, sem nenhuma tool nem dado (o braço de comparação do benchmark)."""
+        inicio = time.monotonic()
+        NEUTRO.mkdir(parents=True, exist_ok=True)
+        base = {"tokens_entrada": None, "tokens_saida": None, "custo_usd": None}
+        try:
+            r = subprocess.run(
+                [CLAUDE, "-p", "--model", self.nome, "--strict-mcp-config", "--setting-sources", "", "--tools", "",
+                 "--system-prompt", sistema, "--disallowedTools", PROIBIDAS, "--output-format", "json"],
+                input=pergunta, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=NEUTRO, timeout=LIMITE_S)
+            try:
+                dado = json.loads(r.stdout)
+            except ValueError:
+                dado = {}
+            uso = uso_do_claude(dado) if isinstance(dado, dict) else {}
+            resposta = str(dado.get("result") or "").strip() if isinstance(dado, dict) else ""
+            if uso:
+                base = {"tokens_entrada": uso["entrada"], "tokens_saida": uso["saida"], "custo_usd": uso.get("custo_usd")}
+            desfecho = "ok" if r.returncode == 0 and isinstance(dado, dict) and not dado.get("is_error") else "erro"
+        except subprocess.TimeoutExpired:
+            resposta, desfecho = "", "erro"
+        return {"resposta": resposta, "desfecho": desfecho, **base, "total_s": round(time.monotonic() - inicio, 1)}
+
+
+def _agora() -> float:
+    return time.monotonic()
+
+
+def _curto(motivo) -> str:
+    return " ".join(str(motivo or "falha sem detalhe").split())[:200]
+
+
+def perguntar(texto: str, tenants: list[str], historico: list[tuple[str, str]] | None = None, leitor: Leitor | None = None,
+              modelo: str | None = None, permitir_fallback: bool = True):
+    """Gera eventos (tipo, dados). Termina sempre com `fim` ou `erro`.
+    `modelo` troca o modelo só desta pergunta; o prefixo define o provedor (veja provedores.py). Sem ele, AGENTE_MODELO.
+
+    FALLBACK. Se o provedor falha (chave ausente, 401/403, 429, 5xx, timeout, rede, resposta vazia), passa para o próximo da
+    `provedores.cadeia(modelo)` e avisa com o evento ("fallback", {de, para, motivo, tentativa}). Três bloqueios:
+      1. depois de um evento `texto` nunca troca: a resposta já começou a ser dita por aquele provedor;
+      2. pergunta inválida (perfil inexistente) levanta ValueError antes de qualquer provedor e nunca vira troca;
+      3. o orçamento é LIMITE_S no total. A tentativa que ainda tem substituto recebe no máximo LIMITE_PRIMEIRA; a última
+         recebe o que sobrou. Sem tempo mínimo para outra tentativa, termina com erro de tempo.
+    `permitir_fallback=False` (benchmark) tenta só o modelo pedido, com o orçamento inteiro, e a falha aparece como erro.
+    O Leitor é zerado entre as tentativas; ao fim, leitor.modelo é quem respondeu e leitor.trocas o que aconteceu."""
+    leitor = leitor or Leitor()
+    pedido = modelo or MODELO
+    perfil_dos_entes(tenants)
+    cadeia = provedores.cadeia(pedido) if permitir_fallback else [pedido]
+    leitor.modelo_pedido = pedido
+    inicio, provas = _agora(), set()
+    for n, atual in enumerate(cadeia, 1):
+        ultimo = n == len(cadeia)
+        restante = LIMITE_S - (_agora() - inicio)
+        limite = restante if ultimo else min(LIMITE_PRIMEIRA, restante)
+        leitor.modelo, falou, falha = atual, False, None
+        leitor.tentados.append(atual)
+        cliente = provedores.escolher(atual).perguntar(texto, tenants, historico, leitor, limite_s=limite)
+        try:
+            for tipo, dados in cliente:
+                if tipo == "texto":
+                    falou = True
+                elif tipo == "fonte":
+                    if dados.get("evidencia") in provas:     # o substituto repetiu uma prova que a tela já mostrou
+                        continue
+                    provas.add(dados.get("evidencia"))
+                elif tipo == "erro":
+                    falha = dados.get("motivo")
+                    break
+                elif tipo == "fim" and not falou and not leitor.resposta.strip() and not ultimo:
+                    falha = "resposta vazia"
+                    break
+                yield tipo, dados
+                if tipo == "fim":
+                    return
+            else:
+                falha = "O agente parou sem responder."
+        except OSError as e:     # rede ou binário ausente; qualquer outro erro de código continua subindo
+            falha = f"erro de rede ou de sistema ({type(e).__name__})"
+        finally:
+            getattr(cliente, "close", lambda: None)()
+        # Todos falharam (mais de um tentado e ninguém chegou a falar): o worker usa estes campos para dizer quem foi tentado.
+        todos = {"nenhum_respondeu": True, "tentados": list(leitor.tentados)} if len(leitor.tentados) > 1 and not falou else {}
+        if falou or ultimo:
+            yield ("erro", {"motivo": _curto(falha), **todos})
+            return
+        if LIMITE_S - (_agora() - inicio) < MINIMO_TENTATIVA_S:
+            yield ("erro", {"motivo": "A consulta demorou mais que o esperado.", "nenhum_respondeu": True, "tentados": list(leitor.tentados)})
+            return
+        troca = {"de": atual, "para": cadeia[n], "motivo": _curto(falha), "tentativa": n + 1}
+        leitor.trocas.append(troca)
+        yield ("fallback", dict(troca))
+        leitor.zerar()
 
 
 if __name__ == "__main__":
     tenants = perfis.carregar()[sys.argv[1]]["tenants"]
     leitor = Leitor()
-    for tipo, dados in perguntar(sys.argv[2], tenants, leitor=leitor):
+    for tipo, dados in perguntar(sys.argv[2], tenants, leitor=leitor, modelo=sys.argv[3] if len(sys.argv) > 3 else None):
         print(tipo, json.dumps(dados, ensure_ascii=False)[:220] if tipo != "texto" else repr(dados["delta"]), flush=True)
     print("---\n" + leitor.resposta)

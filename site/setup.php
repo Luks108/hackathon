@@ -102,15 +102,33 @@ foreach ($tabelas as $nome => $sql) {
     $pdo->exec($sql);
 }
 
+// Plano único de demonstração (R$ 149 por mês, sem franquia nem excedente). O valor é hipótese, não preço validado.
+// Franquia e excedente ficam em 0: o banco ainda tem as colunas, mas o plano único não as usa.
 $planos = [
-    ['Município', 990.00, 300, 1.50, ['pe-garanhuns']],
-    ['Estado', 1990.00, 1000, 1.50, ['pe-estado', 'pe-garanhuns']],
+    ['Único', 149.00, 0, 0.00, ['pe-estado', 'pe-garanhuns']],
 ];
 $st = $pdo->prepare('INSERT INTO planos (nome, preco_mensal, franquia, preco_excedente, tenants) VALUES (?, ?, ?, ?, ?)
                      ON DUPLICATE KEY UPDATE preco_mensal = VALUES(preco_mensal), franquia = VALUES(franquia),
                      preco_excedente = VALUES(preco_excedente), tenants = VALUES(tenants)');
 foreach ($planos as [$nome, $preco, $franquia, $excedente, $tenants]) {
     $st->execute([$nome, $preco, $franquia, $excedente, json_encode($tenants)]);
+}
+
+// Bancos antigos ainda têm os planos Município e Estado. Quem estava neles passa para o plano atual e os antigos saem
+// (o histórico de perguntas guarda os entes de cada uma, então nada se perde). Roda de novo sem efeito.
+$atual = (int)$pdo->query('SELECT id FROM planos WHERE nome = ' . $pdo->quote($planos[0][0]))->fetchColumn();
+$marcas = implode(',', array_fill(0, count($planos), '?'));
+$st = $pdo->prepare("SELECT id FROM planos WHERE nome NOT IN ($marcas)");
+$st->execute(array_column($planos, 0));
+$antigos = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+if ($antigos) {
+    $lista = implode(',', $antigos);
+    $pdo->beginTransaction();
+    $pdo->exec("UPDATE assinaturas SET plano_id = $atual WHERE plano_id IN ($lista)");
+    $pdo->exec("UPDATE perguntas SET plano_id = $atual WHERE plano_id IN ($lista)");
+    $pdo->exec("DELETE FROM planos WHERE id IN ($lista)");
+    $pdo->commit();
+    echo 'planos antigos removidos: ' . count($antigos) . "\n";
 }
 
 [$_, $email, $nome, $senha] = $argv + [null, null, null, null];

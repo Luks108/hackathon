@@ -22,7 +22,7 @@ Dar ao produto uma porta de entrada. O site apresenta a oferta, cria a conta e l
 | ID | Requisito | Prioridade |
 |---|---|---|
 | RF-01 | A landing mostra proposta de valor, como funciona, chamada para ação e aviso de que a base é uma amostra | Deve |
-| RF-02 | A página de planos mostra preço, franquia, excedente, entes cobertos e o aviso "valores de demonstração" | Deve |
+| RF-02 | A página de planos mostra preço, entes cobertos e o aviso "valores de demonstração" (franquia e excedente aparecem só se o plano os tiver) | Deve |
 | RF-03 | Sobre nós mostra foto, nome, papel e descrição de cada pessoa do time | Deve |
 | RF-04 | O modelo de negócios mostra proposta de valor, quem paga e como o preço funciona, com hipóteses marcadas | Deve |
 
