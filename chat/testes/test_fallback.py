@@ -233,7 +233,6 @@ class TestOrcamento(unittest.TestCase):
 class TestWorker(unittest.TestCase):
     """O evento novo não pode chegar à API do site (ela recusa tipo desconhecido) e o log tem que provar a troca."""
 
-    @unittest.skipUnless((Path(__file__).resolve().parents[2] / ".env").exists(), "o worker lê o .env ao ser importado")
     def test_fallback_vai_para_o_log_e_nao_para_a_api(self):
         with mock.patch.dict(os.environ, {"WORKER_KEY": "k" * 30}):
             worker = importlib.import_module("worker")

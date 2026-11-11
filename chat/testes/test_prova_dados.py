@@ -71,8 +71,6 @@ class TestEventosFinaisLevamOModelo(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        if not (Path(__file__).resolve().parents[2] / ".env").exists():
-            raise unittest.SkipTest("o worker lê o .env ao ser importado")
         with mock.patch.dict(os.environ, {"WORKER_KEY": "k" * 30}):
             cls.worker = importlib.import_module("worker")
 

@@ -26,7 +26,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 import agente  # noqa: E402
 
 RAIZ = agente.RAIZ
-for linha in (RAIZ / ".env").read_text(encoding="utf-8").splitlines():
+_ENV = RAIZ / ".env"
+for linha in (_ENV.read_text(encoding="utf-8-sig").splitlines() if _ENV.exists() else []):   # sem .env, vale o ambiente do sistema
     if "=" in linha and not linha.lstrip().startswith("#"):
         k, v = linha.split("=", 1)
         if v.strip():      # valor vazio (ex.: chave de API não preenchida) não vira variável
@@ -36,9 +37,9 @@ API = os.environ.get("API_BASE", f"https://{os.environ.get('SITE', 'hackathon.fi
 CHAVE = os.environ["WORKER_KEY"]
 ESTADO = Path(os.environ.get("WHATSAPP_STATE_DIR", Path.home() / ".claude/channels/whatsapp-hackathon"))
 LOG = RAIZ / "logs" / "chat.jsonl"
-_VENV_AUDIO = RAIZ.parent / "inferencia" / ".venv"
+_VENV_AUDIO = RAIZ / "inferencia" / ".venv"      # inferencia/ fica na raiz do projeto, ao lado de chat/
 PYTHON_AUDIO = _VENV_AUDIO / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-TRANSCRITOR = RAIZ.parent / "inferencia" / "transcrever.py"
+TRANSCRITOR = RAIZ / "inferencia" / "transcrever.py"
 PERFIL_MANUAL = ["pe-estado", "pe-garanhuns"]   # números liberados pelo dono no terminal
 ERRO_PADRAO = "Não consegui concluir agora. Tente de novo em instantes."
 AGENTES_SITE = int(os.environ.get("AGENTES_SITE", "3"))   # o WhatsApp tem o próprio agente, um por vez
@@ -80,21 +81,28 @@ def api(metodo: str, rota: str, corpo=None):
     )
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
-            texto = r.read().decode("utf-8")
-            return r.status, json.loads(texto) if texto else None
+            texto = r.read().decode("utf-8", errors="replace")
+            try:
+                return r.status, json.loads(texto) if texto else None
+            except ValueError:      # página de erro da hospedagem com status 200: conta como falha do servidor, nunca derruba o laço
+                return 502, None
     except urllib.error.HTTPError as e:
         return e.code, None
 
 
 class Lote:
-    """Junta os eventos e envia a cada 300 ms. Repetir um seq é seguro na API."""
+    """Junta os eventos e envia a cada 300 ms. Repetir um seq é seguro na API.
+    Evento que não chegou (rede ou 5xx) fica na fila e segue no próximo envio, nunca é descartado: o `fim` pode estar nele."""
+
+    POR_LOTE = 100          # o mesmo teto da API (EVENTOS_POR_LOTE)
 
     def __init__(self, pergunta_id: int):
         self.id, self.seq, self.fila, self.ultimo, self.encerrada = pergunta_id, 0, [], 0.0, False
+        self.travados: set[int] = set()     # seq que já saiu (ou tentou sair): o servidor ignora um seq repetido, então não se acrescenta texto a ele
 
     def adicionar(self, tipo: str, dados: dict):
         ultimo = self.fila[-1] if self.fila else None
-        if tipo == "texto" and ultimo and ultimo["tipo"] == "texto":
+        if tipo == "texto" and ultimo and ultimo["tipo"] == "texto" and ultimo["seq"] not in self.travados:
             ultimo["dados"]["delta"] += dados["delta"]
         else:
             self.seq += 1
@@ -102,22 +110,30 @@ class Lote:
         if tipo != "texto" or time.monotonic() - self.ultimo >= 0.3:
             self.enviar()
 
-    def enviar(self):
-        if not self.fila or self.encerrada:
-            return
+    def _postar(self, parte: list) -> bool:
+        """True quando a API respondeu e não adianta repetir (sucesso ou recusa); False quando vale tentar de novo depois."""
+        self.travados.update(e["seq"] for e in parte)
         for tentativa in range(3):
             try:
-                status, _ = api("POST", f"/worker/perguntas/{self.id}/eventos", {"eventos": self.fila})
+                status, _ = api("POST", f"/worker/perguntas/{self.id}/eventos", {"eventos": parte})
             except OSError:
                 time.sleep(1 + tentativa)
                 continue
             if status == 409:      # o site encerrou a pergunta por tempo
                 self.encerrada = True
             if status < 500:       # erro do servidor é passageiro: repetir um seq é seguro
-                break
+                return True
             registrar("eventos: API respondeu", status)
             time.sleep(1 + tentativa)
-        self.fila, self.ultimo = [], time.monotonic()
+        return False
+
+    def enviar(self):
+        while self.fila and not self.encerrada:
+            parte = self.fila[:self.POR_LOTE]
+            if not self._postar(parte):
+                break
+            self.fila = self.fila[len(parte):]
+        self.ultimo = time.monotonic()
 
 
 def atender_site(p: dict):
@@ -171,6 +187,9 @@ def laco_site(atraso: float = 0):
         except OSError as e:
             registrar("site: rede", str(e)[:120])
             espera = min(espera * 2, 30)
+        except Exception as e:      # um erro inesperado não pode matar a thread deste agente em silêncio
+            registrar("site: falha inesperada:", type(e).__name__, str(e)[:200])
+            espera = min(espera * 2, 30)
         parar.wait(espera)
 
 
@@ -178,6 +197,12 @@ def laco_site(atraso: float = 0):
 def normalizar(numero: str) -> str:
     d = re.sub(r"\D", "", numero)
     return d[:4] + d[5:] if re.fullmatch(r"55\d{2}9\d{8}", d) else d
+
+
+def tenants_do_numero(numero: str) -> list[str]:
+    """Entes de quem escreve. Número do site: os do plano dele. Número que o dono liberou no terminal (não está no site): PERFIL_MANUAL.
+    Lê `perfis_por_numero` uma vez só, porque a sincronização troca o dicionário inteiro por outro."""
+    return perfis_por_numero.get(normalizar(numero), PERFIL_MANUAL)
 
 
 def escrever_atomico(caminho: Path, conteudo: str):
@@ -248,7 +273,7 @@ def atender_whatsapp(m: dict):
     texto = texto[:500]
     pedir({"op": "reagir", "chat_id": chat, "message_id": m["id"], "emoji": "👀"})
     pedir({"op": "digitando", "chat_id": chat, "ligado": True})
-    tenants = perfis_por_numero.get(normalizar(m.get("remetente", "")), PERFIL_MANUAL)
+    tenants = tenants_do_numero(m.get("remetente", ""))
     inicio = time.monotonic()
     saida, leitor, desfecho = responder_whatsapp(texto, tenants, f"wa:{chat}")
     pedir({"op": "enviar", "chat_id": chat, "texto": saida})
@@ -257,8 +282,21 @@ def atender_whatsapp(m: dict):
                duracao_ms=int((time.monotonic() - inicio) * 1000))
 
 
+MARCA_DA_SESSAO = "dangerously-load-development-channels"
+
+
 def sessao_de_canal_aberta() -> bool:
-    return subprocess.run(["pgrep", "-f", "dangerously-load-development-channels"], capture_output=True).returncode == 0
+    """Há uma sessão `claude` ouvindo o WhatsApp? Se sim, o worker não responde (as duas responderiam).
+    Linux/macOS: pgrep. Windows: PowerShell (o comando de si mesmo é excluído por $PID). Se não der para saber, diz que não."""
+    try:
+        if os.name == "nt":
+            filtro = f"$_.CommandLine -like '*{MARCA_DA_SESSAO}*' -and $_.ProcessId -ne $PID"
+            r = subprocess.run(["powershell", "-NoProfile", "-Command", f"@(Get-CimInstance Win32_Process | Where-Object {{ {filtro} }}).Count"],
+                               capture_output=True, text=True, timeout=15)
+            return r.returncode == 0 and r.stdout.strip() not in ("", "0")
+        return subprocess.run(["pgrep", "-f", MARCA_DA_SESSAO], capture_output=True, timeout=10).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
 
 
 def laco_whatsapp():
@@ -266,23 +304,32 @@ def laco_whatsapp():
     tamanho = lambda: arquivo.stat().st_size if arquivo.exists() else 0  # noqa: E731
     cursor = int(marca.read_text()) if marca.exists() else tamanho()   # na primeira vez, ignora o histórico
     while not parar.is_set():
-        if tamanho() < cursor:
-            cursor = 0
-        if tamanho() > cursor and not sessao_de_canal_aberta():
-            with arquivo.open("rb") as f:
-                f.seek(cursor)
-                bloco = f.read()
-            completo = bloco[:bloco.rfind(b"\n") + 1]
-            cursor += len(completo)
-            marca.write_text(str(cursor))
-            for linha in completo.splitlines():
-                try:
-                    m = json.loads(linha)
-                    registrar("whatsapp:", m.get("tipo"))
-                    atender_whatsapp(m)
-                except Exception as e:
-                    registrar("falha ao atender:", type(e).__name__, str(e)[:200])
+        try:
+            cursor = _passo_whatsapp(arquivo, marca, tamanho, cursor)
+        except Exception as e:      # idem: a thread do WhatsApp não morre por um erro de leitura
+            registrar("whatsapp: falha inesperada:", type(e).__name__, str(e)[:200])
         parar.wait(1)
+
+
+def _passo_whatsapp(arquivo: Path, marca: Path, tamanho, cursor: int) -> int:
+    """Uma volta do laço: atende o que chegou desde o cursor e devolve o cursor novo."""
+    if tamanho() < cursor:
+        cursor = 0
+    if tamanho() > cursor and not sessao_de_canal_aberta():
+        with arquivo.open("rb") as f:
+            f.seek(cursor)
+            bloco = f.read()
+        completo = bloco[:bloco.rfind(b"\n") + 1]
+        cursor += len(completo)
+        marca.write_text(str(cursor))
+        for linha in completo.splitlines():
+            try:
+                m = json.loads(linha)
+                registrar("whatsapp:", m.get("tipo"))
+                atender_whatsapp(m)
+            except Exception as e:
+                registrar("falha ao atender:", type(e).__name__, str(e)[:200])
+    return cursor
 
 
 def sincronizar_telefones():
@@ -291,8 +338,8 @@ def sincronizar_telefones():
     if status != 200 or lista is None:
         return
     novos = {normalizar(t["numero"]): t["tenants"] for t in lista}
-    perfis_por_numero.clear()
-    perfis_por_numero.update(novos)
+    global perfis_por_numero
+    perfis_por_numero = novos       # troca a referência de uma vez: clear()+update() deixava uma janela em que todo número caía no perfil amplo
 
     caminho, marca = ESTADO / "access.json", ESTADO / "sincronizados.json"
     if not caminho.exists():    # gateway do WhatsApp nunca rodou aqui: só o site funciona, e isso não é erro
@@ -325,7 +372,7 @@ def main() -> int:
     if "--simular" in sys.argv:
         i = sys.argv.index("--simular")
         numero = sys.argv[i + 2] if len(sys.argv) > i + 2 else ""
-        tenants = perfis_por_numero.get(normalizar(numero), PERFIL_MANUAL)
+        tenants = tenants_do_numero(numero)
         print(responder_whatsapp(sys.argv[i + 1], tenants, "simulado")[0])
         return 0
     signal.signal(signal.SIGTERM, lambda *_: parar.set())
