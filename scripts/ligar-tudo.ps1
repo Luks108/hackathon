@@ -112,7 +112,11 @@ elseif (-not (Pareado)) {
 else {
     $antes = Get-Date
     Remove-Item Env:\WA_PAIR_PHONE -ErrorAction SilentlyContinue
-    Janela 'FornexIA - gateway WhatsApp' (Join-Path $raiz 'canal-whatsapp') 'bun gateway.ts'
+    # Fica na janela e também em logs\gateway.log (UTF-8), como o worker.
+    $logG = Join-Path $raiz 'logs\gateway.log'
+    $cmdG = "[Console]::OutputEncoding=[Text.Encoding]::UTF8; Set-Content '$logG' '' -Encoding utf8; " +
+            "bun gateway.ts 2>&1 | ForEach-Object { `$_; Add-Content '$logG' `$_ -Encoding utf8 }"
+    Janela 'FornexIA - gateway WhatsApp' (Join-Path $raiz 'canal-whatsapp') $cmdG
     $conectou = $false
     for ($i = 0; $i -lt 45 -and -not $conectou; $i++) {
         Start-Sleep -Seconds 2

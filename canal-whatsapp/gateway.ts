@@ -27,7 +27,7 @@ import { extname, join, basename } from 'path'
 import {
   ACCESS_FILE, AUTH_DIR, DESCONHECIDOS_LOG, ENVIADAS_LOG, GATEWAY_PID, INBOUND_LOG, MIDIA_DIR, OUTBOX_DIR,
   QR_PNG, RESULTADOS_DIR, STATE_DIR, STATUS_FILE,
-  anexarJsonl, digitos, escreverAtomico, garantirDiretorios, lerAcesso, lerPid, mesmoNumero, processoVivo,
+  anexarJsonl, digitos, ehTipoTecnico, escreverAtomico, garantirDiretorios, lerAcesso, lerPid, mesmoNumero, processoVivo,
   type Inbound, type Pedido, type Resultado,
 } from './comum.ts'
 
@@ -221,7 +221,10 @@ async function receber(m: WAMessage) {
 
   const conteudo = normalizeMessageContent(m.message)
   const tipoBruto = getContentType(conteudo) ?? ''
+  if (ehTipoTecnico(tipoBruto)) { log(`ignorado (mensagem técnica): ${tipoBruto}`); return }
   const tipo = TIPOS[tipoBruto] ?? (textoDe(conteudo) ? 'texto' : 'outro')
+  // Só o nome técnico do tipo (nunca o conteúdo), para saber o que é cada "outro".
+  if (tipo === 'outro') log(`tipo não tratado: ${tipoBruto || '(vazio)'} | chaves: ${Object.keys(conteudo ?? {}).join(',') || '(nenhuma)'}`)
   const reg: Inbound = {
     id: m.key.id ?? '', chat_id: chat, remetente, nome: m.pushName ?? remetente,
     ts: Number(m.messageTimestamp ?? Math.floor(Date.now() / 1000)),

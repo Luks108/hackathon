@@ -102,6 +102,11 @@ describe('fila de saída (o contrato com o worker)', () => {
     expect(existsSync(join(comum.OUTBOX_DIR, `${a}.json`))).toBe(true)
   })
 
+  test('mensagens técnicas do WhatsApp não são tratadas como mensagem de pessoa', () => {
+    for (const t of ['protocolMessage', 'senderKeyDistributionMessage', 'reactionMessage']) expect(comum.ehTipoTecnico(t)).toBe(true)
+    for (const t of ['conversation', 'extendedTextMessage', 'imageMessage', 'audioMessage', 'stickerMessage', 'locationMessage', '']) expect(comum.ehTipoTecnico(t)).toBe(false)
+  })
+
   test('escreverAtomico não deixa arquivo temporário para trás', () => {
     comum.escreverAtomico(join(ESTADO, 'x.json'), '{}')
     expect(readdirSync(ESTADO).some((n: string) => n.includes('.tmp-'))).toBe(false)

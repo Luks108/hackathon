@@ -1,6 +1,10 @@
 # Ativar o número do bot e testar o WhatsApp de ponta a ponta
 
 > **Situação (11/11/2026): número pareado e uma pergunta real já respondida pelo WhatsApp** (pelo log do worker: canal `whatsapp`, concluída, 12 s).
+> **Rodada de 11/11/2026 (celular do dono, conferida pelo log):** T01, T03, T04, T06 a T13 e T15 passaram. **Defeito achado e corrigido:** depois de
+> cada resposta, o WhatsApp mandava um `protocolMessage` (técnico, sem texto), o gateway o gravava como "outro" e o worker respondia "Por aqui eu respondo…"
+> sozinho. Agora o gateway o ignora (`ehTipoTecnico` em `comum.ts`, com teste) e foi reconferido no celular: uma resposta por mensagem. Áudio (T14) sem `ffmpeg`/Whisper
+> responde "Não consegui entender o áudio". Faltam T02, T05 (conferência manual do trecho), T14 com áudio, T16 a T21, T23 e T24.
 > **A matriz T01 a T25 ainda não foi executada por inteiro.** Este documento diz o que já foi provado sem WhatsApp, o que só se prova com o
 > celular na mão, e o roteiro para fazer as duas coisas. **Nenhum número de telefone fica
 > neste arquivo nem no git**: onde aparecer `NUMERO_DO_BOT` ou `NUMERO_DO_DONO`, é um espaço para você preencher na hora.
