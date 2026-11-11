@@ -7,7 +7,7 @@ da fonte, e cada perfil vê só o que está autorizado a ver.
 
 > **Estado:** extração, grafo, consultas com filtro de perfil, registro de consultas, catálogo de ataques, **o site com contas,
 > chat em fila e administração** e **o worker que liga o site e o WhatsApp ao agente** estão prontos. Testes: 65 de consulta (18 deles exigem o
-> Neo4j no ar e são pulados sem ele), 69 de chat, 80 da API e 33 do pacote de prova. Ainda falta rodar os ataques de prompt com o modelo real
+> Neo4j no ar e são pulados sem ele), 125 de chat (12 só rodam no Linux), 80 da API e 33 do pacote de prova. Ainda falta rodar os ataques de prompt com o modelo real
 > e fazer o deploy na Hostinger. Veja
 > [Onde estamos no desafio](#onde-estamos-no-desafio), [Site e chat (Dev A)](#site-e-chat-dev-a) e [Pendências conhecidas](#pendências-conhecidas).
 > Detalhes do site e do chat: [spec](docs/specs/001-site-e-chat/spec.md), [plano técnico](docs/specs/001-site-e-chat/plan.md) e [tasks](docs/specs/001-site-e-chat/tasks.md).
@@ -192,7 +192,8 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt     # no Windo
 docker compose --env-file .env -f infra/docker-compose.yml up -d neo4j
 python coleta/carregar_neo4j.py --zerar --exemplo
 python -m unittest discover -s consulta/testes -v                     # 65 testes (18 só com o Neo4j no ar)
-python -m unittest discover -s chat/testes -v                         # 69 testes, sem internet nem .env (2 exigem o pacote `mcp`)
+python -m unittest discover -s chat/testes -v                         # 125 testes (12 pulados no Windows), sem internet nem .env (2 exigem o pacote `mcp`; 26 simulam os scripts de shell e levam ~100 s)
+(cd canal-whatsapp && bun test testes)                                # 12 testes do gateway (números, acesso, fila de saída)
 python site/dev/test_prova.py                                         # 33 testes do pacote de prova (PHP e MariaDB)
 ```
 

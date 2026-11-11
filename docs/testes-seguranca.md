@@ -26,7 +26,7 @@ Ambiente: Windows 11, Python 3.14, `mcp 2.3.0`, `neo4j 5.28.3` (driver), Neo4j 5
 
 **Total: 65 testes, todos passando em 06/11/2026.** Em 10/11/2026, numa máquina sem Neo4j, 47 rodam e **18 (`test_acesso_neo4j.py`) são
 pulados**: o isolamento só está provado com o banco no ar. Os 47 também precisam do pacote `mcp` instalado
-(`pip install -r requirements.txt`): sem ele, `test_guardrails.py` e `test_bench_gabarito.py` dão erro de importação (19 erros numa máquina sem a `.venv`). Os 69 testes de `chat/testes` (fallback, provedores, pacote de prova e
+(`pip install -r requirements.txt`): sem ele, `test_guardrails.py` e `test_bench_gabarito.py` dão erro de importação (19 erros numa máquina sem a `.venv`). Os 125 testes de `chat/testes` (fallback, provedores, pacote de prova e
 robustez do worker) não dependem de banco nem de internet, mas 2 do adaptador OpenAI (`test_provedores.py`) também precisam do `mcp`. (48 de acesso e verificação, 7 da base inventada e 10 do gabarito do benchmark)
 
 ### Verificação pelo protocolo MCP

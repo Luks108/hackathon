@@ -698,7 +698,9 @@ O teste cobre só as páginas abertas, sem login. Para o fluxo completo (cadastr
 
 ## 11. WhatsApp (pendente)
 
-> **PENDENTE.** A conexão do WhatsApp está sendo resolvida por fora e **ainda não foi testada de ponta a ponta** neste computador.
+> **PENDENTE.** O número do bot **ainda não foi pareado** e nenhuma mensagem real foi trocada. O roteiro completo, os riscos e a matriz de 25 testes
+> estão em [`docs/whatsapp-ativacao.md`](whatsapp-ativacao.md); `python chat/provas/whatsapp_preparar.py` confere os pré-requisitos.
+> A conexão do WhatsApp está sendo resolvida por fora e **ainda não foi testada de ponta a ponta** neste computador.
 > O que existe: o gateway compila e as dependências instalam. O que **não** foi feito: parear um número e trocar mensagens.
 > Pule esta etapa; o site e o chat funcionam sem ela.
 
@@ -763,7 +765,8 @@ python site/dev/test_api.py
 | Comando | Esperado | Se vier diferente |
 |---|---|---|
 | `consulta/testes` | `Ran 65 tests` e `OK` | `skipped=...`: o Neo4j está parado ou sem os dados (etapas 6 e 7). Falha: leia o nome do teste |
-| `chat/testes` | `Ran 69 tests` e `OK` (portabilidade, provedores, fallback, dados do pacote de prova e robustez do worker; sem internet e sem `.env`) | |
+| `chat/testes` | `Ran 125 tests` e `OK (skipped=12)` no Windows (portabilidade, provedores, fallback, dados do pacote de prova, robustez do worker, o fluxo do WhatsApp e os scripts de shell; sem internet e sem `.env`; os 12 pulados só rodam no Linux; os de shell levam ~100 s) | |
+| `canal-whatsapp` (`bun test testes`) | `12 pass` (números, acesso e fila de saída do gateway; sem WhatsApp) | `bun` não instalado: veja a etapa 11 |
 | `site/dev/test_api.py` | `Ran 80 tests` e `OK` (leva uns 40 s) | `php não encontrado`: defina `PHP_BIN` (abaixo). `servidor ... não subiu`: o MariaDB não está no ar. Uma falha em `dois_pedidos_ao_mesmo_tempo...`: o worker estava rodando |
 
 `PHP_BIN` no Windows (PowerShell), se o PHP não estiver no PATH:
