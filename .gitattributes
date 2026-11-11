@@ -5,3 +5,6 @@ fixtures/exemplo/bruto/* -text
 *.sh text eol=lf
 *.service text eol=lf
 *.bat text eol=crlf
+
+# Scripts do PowerShell: UTF-8 com BOM e CRLF (o PowerShell 5.1 lê sem BOM como ANSI e estraga os acentos).
+*.ps1 text eol=crlf
