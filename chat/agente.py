@@ -22,8 +22,10 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "consulta"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import deteccao  # noqa: E402  (sinais de tentativa de ataque: só observa e registra)
 import perfis  # noqa: E402
 import provedores  # noqa: E402  (escolhe o cliente pelo prefixo do modelo; é o único ponto dessa decisão)
+import registro  # noqa: E402  (log estruturado por subsistema: logs/agente.jsonl e logs/seguranca.jsonl)
 
 PREFIXO = "mcp__transparencia__"
 PRIMITIVAS = (
@@ -129,11 +131,65 @@ def _itens(carga):
 
 
 def uso_do_claude(bruto: dict) -> dict:
-    """Tokens e custo que o `claude` informa no resultado final. Entrada = tudo que o modelo leu (inclui cache)."""
+    """Tokens e custo que o `claude` informa no resultado final. Entrada = tudo que o modelo leu (inclui cache).
+    Os campos de cache, rodadas e tempo da API só aparecem quando o provedor os informou: nada é inventado."""
     u = bruto.get("usage") or {}
     entrada = sum(int(u.get(k) or 0) for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
     custo = bruto.get("total_cost_usd")
-    return {"entrada": entrada, "saida": int(u.get("output_tokens") or 0), **({"custo_usd": float(custo)} if custo is not None else {})}
+    extras = {}
+    if "cache_read_input_tokens" in u:
+        extras["cache_lido"] = int(u.get("cache_read_input_tokens") or 0)
+    if "cache_creation_input_tokens" in u:
+        extras["cache_escrito"] = int(u.get("cache_creation_input_tokens") or 0)
+    if bruto.get("num_turns") is not None:
+        extras["rodadas"] = int(bruto["num_turns"])
+    if bruto.get("duration_api_ms") is not None:
+        extras["duracao_api_ms"] = int(bruto["duration_api_ms"])
+    return {"entrada": entrada, "saida": int(u.get("output_tokens") or 0), **({"custo_usd": float(custo)} if custo is not None else {}), **extras}
+
+
+_HTTP = re.compile(r"(?:HTTP|status|Error:?)\s*(\d{3})", re.IGNORECASE)
+
+
+def causa_da_falha(motivo) -> tuple[str, int | None]:
+    """Classifica o motivo de uma falha de provedor: (causa, código HTTP). Causas: credito, limite, chave, tempo, servidor, rede, vazia, outro."""
+    texto = str(motivo or "")
+    achado = _HTTP.search(texto)
+    codigo = int(achado.group(1)) if achado else None
+    baixo = texto.lower()
+    if codigo == 402 or any(p in baixo for p in ("saldo", "crédito", "credito", "credit balance", "insufficient", "quota")):
+        return "credito", codigo
+    if codigo == 429 or "limite de uso" in baixo or "rate limit" in baixo:
+        return "limite", codigo
+    if codigo in (401, 403) or "chave" in baixo or "api key" in baixo:
+        return "chave", codigo
+    if any(p in baixo for p in ("timeout", "demorou", "sem resposta", "tempo")):
+        return "tempo", codigo
+    if codigo and codigo >= 500:
+        return "servidor", codigo
+    if any(p in baixo for p in ("conexão", "conexao", "rede", "connection")):
+        return "rede", codigo
+    if "vazia" in baixo:
+        return "vazia", codigo
+    return "outro", codigo
+
+
+def _log(leitor, evento: str, nivel: str = "info", **campos) -> None:
+    registro.registrar("agente", evento, nivel, request_id=getattr(leitor, "request_id", None), **campos)
+
+
+def _uso_para_log(uso: dict) -> dict:
+    """Nomes do log para o uso informado pelo provedor. Só o que veio: nada é completado nem estimado."""
+    nomes = (("entrada", "tokens_entrada"), ("saida", "tokens_saida"), ("cache_lido", "cache_lido"), ("cache_escrito", "cache_escrito"),
+             ("custo_usd", "custo_usd"), ("rodadas", "rodadas"), ("duracao_api_ms", "duracao_api_ms"))
+    return {para: uso[de] for de, para in nomes if de in uso}
+
+
+def _drenar(leitor) -> None:
+    """Grava no log de segurança o que o Leitor percebeu (ele é puro: só acumula; quem tem o request_id grava)."""
+    pendentes, leitor.alertas = leitor.alertas, []
+    for evento, nivel, campos in pendentes:
+        registro.registrar("seguranca", evento, nivel, request_id=getattr(leitor, "request_id", None), **campos)
 
 
 class Leitor:
@@ -149,16 +205,23 @@ class Leitor:
         self.modelo: str | None = None
         self.trocas: list[dict] = []            # fallback: {de, para, motivo, tentativa}; sobrevive ao zerar()
         self.tentados: list[str] = []           # todos os modelos que chegaram a ser tentados, em ordem
+        self.request_id: str | None = None      # acompanha a pergunta nos logs (preenchido por perguntar)
+        self.alertas: list[tuple[str, str, dict]] = []   # (evento, nivel, campos) de segurança, gravados por quem tem o request_id
+        self.erros_ferramenta = 0               # tools que devolveram erro nesta tentativa (ajuda a classificar a falha)
+        self.falha: dict = {}                   # último evento de erro do agente (quem consome grava; ajuda a classificar o desfecho)
+        self.excecao: BaseException | None = None   # exceção que escapou do agente, se houve
 
     def zerar(self):
         """Descarta o que a tentativa anterior acumulou: o substituto começa do zero, sem herdar consultas, provas nem texto."""
         self.tools, self.consultas, self.evidencias, self.resposta, self.uso = {}, [], [], "", {}
+        self.erros_ferramenta = 0
 
     def ler(self, bruto: dict) -> list[tuple[str, dict]]:
         tipo = bruto.get("type")
         if tipo == "system" and bruto.get("subtype") == "init":
             extras = [t for t in bruto.get("tools") or [] if t.replace(PREFIXO, "") not in PRIMITIVAS]
             if extras:      # trava: tool fora da lista encerra a resposta antes de o modelo agir
+                self.alertas.append(("ferramentas_nao_autorizadas", "erro", {"ferramentas": extras}))
                 raise RuntimeError(f"agente com tools não autorizadas: {extras}")
             return []
         if tipo == "stream_event":
@@ -189,6 +252,8 @@ class Leitor:
             if bloco.get("type") == "tool_use" and bloco.get("id") not in self.tools:
                 nome = str(bloco.get("name", ""))
                 self.tools[bloco["id"]] = (nome, bloco.get("input") or {})
+                if not nome.startswith(PREFIXO):
+                    self.alertas.append(("ferramenta_negada", "aviso", {"ferramenta": nome[:60]}))
                 if nome.startswith(PREFIXO):
                     curto = nome[len(PREFIXO):]
                     self.consultas.append(curto)
@@ -201,11 +266,20 @@ class Leitor:
             if bloco.get("type") != "tool_result":
                 continue
             nome, entrada = self.tools.get(bloco.get("tool_use_id"), ("", {}))
+            if bloco.get("is_error"):
+                self.erros_ferramenta += 1
             if nome != PREFIXO + "conferir_evidencia":
                 continue
             ident = str(entrada.get("evidencia_id", ""))
             for item in _itens(bloco.get("content")):
+                if item.get("erro"):
+                    self.alertas.append(("evidencia_negada", "aviso", {"evidencia": ident[:80], "motivo": str(item["erro"])[:100]}))
                 if item.get("trecho") and ident not in self.evidencias:
+                    n_cpf = deteccao.contar_cpf(str(item["trecho"]))
+                    if n_cpf:
+                        self.alertas.append(("cpf_mascarado", "info", {"origem": "fonte", "quantidade": n_cpf, "evidencia": ident[:80]}))
+                    for sinal in deteccao.verificar(str(item["trecho"])):     # texto do portal é dado, nunca instrução
+                        self.alertas.append(("injecao_em_fonte", "aviso", {**sinal, "evidencia": ident[:80]}))
                     self.evidencias.append(ident)
                     saida.append(("fonte", {
                         "evidencia": ident,
@@ -232,7 +306,8 @@ def _perguntar_claude(texto: str, tenants: list[str], historico: list[tuple[str,
     NEUTRO.mkdir(parents=True, exist_ok=True)
     # delete=False: no Windows outro processo não abre um arquivo temporário ainda aberto por este. Apagamos no fim.
     with tempfile.NamedTemporaryFile("w", dir=NEUTRO, suffix=".json", encoding="utf-8", delete=False) as cfg:
-        json.dump(perfis.config_mcp(perfil, python=PYTHON), cfg)
+        # `sessao` = request_id: o servidor de ferramentas o grava em cada consulta e a pergunta pode ser reconstruída de ponta a ponta.
+        json.dump(perfis.config_mcp(perfil, python=PYTHON, sessao=leitor.request_id), cfg)
     try:
         proc = subprocess.Popen(
             [
@@ -323,8 +398,24 @@ def _curto(motivo) -> str:
     return " ".join(str(motivo or "falha sem detalhe").split())[:200]
 
 
+def _fim_da_tentativa(leitor, n: int, modelo: str, inicio: float, falou: bool, falha) -> None:
+    """Uma linha por tentativa em logs/agente.jsonl: quem, quanto tempo, tokens, cache, custo e, se falhou, por quê (com o código HTTP).
+    Tokens, cache, rodadas e custo só entram quando o provedor os informou."""
+    excecao = sys.exc_info()[0]
+    resultado = "interrompida" if excecao is GeneratorExit else "excecao" if excecao else "falha" if falha else "ok"
+    campos = {"tentativa": n, "modelo": modelo, "provedor": provedores.separar(modelo)[0], "resultado": resultado,
+              "duracao_ms": int((_agora() - inicio) * 1000), "falou": falou, "consultas": len(leitor.consultas),
+              **_uso_para_log(leitor.uso)}
+    if falha:
+        campos["causa"], campos["codigo_http"] = causa_da_falha(falha)
+        campos["motivo"] = _curto(falha)
+    if excecao and excecao is not GeneratorExit:
+        campos["excecao"] = excecao.__name__
+    _log(leitor, "tentativa_fim", "info" if resultado == "ok" else "aviso", **campos)
+
+
 def perguntar(texto: str, tenants: list[str], historico: list[tuple[str, str]] | None = None, leitor: Leitor | None = None,
-              modelo: str | None = None, permitir_fallback: bool = True):
+              modelo: str | None = None, permitir_fallback: bool = True, request_id: str | None = None):
     """Gera eventos (tipo, dados). Termina sempre com `fim` ou `erro`.
     `modelo` troca o modelo só desta pergunta; o prefixo define o provedor (veja provedores.py). Sem ele, AGENTE_MODELO.
 
@@ -337,20 +428,30 @@ def perguntar(texto: str, tenants: list[str], historico: list[tuple[str, str]] |
     `permitir_fallback=False` (benchmark) tenta só o modelo pedido, com o orçamento inteiro, e a falha aparece como erro.
     O Leitor é zerado entre as tentativas; ao fim, leitor.modelo é quem respondeu e leitor.trocas o que aconteceu."""
     leitor = leitor or Leitor()
+    if request_id or not leitor.request_id:
+        leitor.request_id = request_id or registro.novo_request_id("cli")
     pedido = modelo or MODELO
-    perfil_dos_entes(tenants)
+    try:
+        perfil_dos_entes(tenants)
+    except ValueError as e:      # perfil que não existe: nunca vira troca de provedor, e merece ficar registrado
+        registro.registrar("seguranca", "perfil_invalido", "aviso", request_id=leitor.request_id, tenants=list(tenants), motivo=_curto(e))
+        raise
     cadeia = provedores.cadeia(pedido) if permitir_fallback else [pedido]
     leitor.modelo_pedido = pedido
     inicio, provas = _agora(), set()
+    _log(leitor, "inicio", modelo_pedido=pedido, cadeia=cadeia, fallback=permitir_fallback, limite_s=LIMITE_S)
     for n, atual in enumerate(cadeia, 1):
         ultimo = n == len(cadeia)
         restante = LIMITE_S - (_agora() - inicio)
         limite = restante if ultimo else min(LIMITE_PRIMEIRA, restante)
         leitor.modelo, falou, falha = atual, False, None
         leitor.tentados.append(atual)
+        t_tentativa, registrada = _agora(), False
+        _log(leitor, "tentativa_inicio", tentativa=n, modelo=atual, provedor=provedores.separar(atual)[0], limite_s=round(limite, 1))
         cliente = provedores.escolher(atual).perguntar(texto, tenants, historico, leitor, limite_s=limite)
         try:
             for tipo, dados in cliente:
+                _drenar(leitor)
                 if tipo == "texto":
                     falou = True
                 elif tipo == "fonte":
@@ -363,6 +464,13 @@ def perguntar(texto: str, tenants: list[str], historico: list[tuple[str, str]] |
                 elif tipo == "fim" and not falou and not leitor.resposta.strip() and not ultimo:
                     falha = "resposta vazia"
                     break
+                if tipo == "fim":
+                    _drenar(leitor)
+                    _fim_da_tentativa(leitor, n, atual, t_tentativa, falou, None)      # a tentativa fecha antes do resumo
+                    registrada = True
+                    _log(leitor, "resumo", resultado="ok", modelo=atual, tentados=list(leitor.tentados), trocas=len(leitor.trocas),
+                         duracao_ms=int((_agora() - inicio) * 1000), consultas=len(leitor.consultas), fontes=len(leitor.evidencias),
+                         **_uso_para_log(leitor.uso))
                 yield tipo, dados
                 if tipo == "fim":
                     return
@@ -372,16 +480,25 @@ def perguntar(texto: str, tenants: list[str], historico: list[tuple[str, str]] |
             falha = f"erro de rede ou de sistema ({type(e).__name__})"
         finally:
             getattr(cliente, "close", lambda: None)()
+            _drenar(leitor)
+            if not registrada:
+                _fim_da_tentativa(leitor, n, atual, t_tentativa, falou, falha)
         # Todos falharam (mais de um tentado e ninguém chegou a falar): o worker usa estes campos para dizer quem foi tentado.
         todos = {"nenhum_respondeu": True, "tentados": list(leitor.tentados)} if len(leitor.tentados) > 1 and not falou else {}
         if falou or ultimo:
+            _log(leitor, "resumo", "erro", resultado="falha", modelo=atual, tentados=list(leitor.tentados), trocas=len(leitor.trocas),
+                 duracao_ms=int((_agora() - inicio) * 1000), motivo=_curto(falha), falou=falou)
             yield ("erro", {"motivo": _curto(falha), **todos})
             return
         if LIMITE_S - (_agora() - inicio) < MINIMO_TENTATIVA_S:
+            _log(leitor, "resumo", "erro", resultado="falha", modelo=atual, tentados=list(leitor.tentados), trocas=len(leitor.trocas),
+                 duracao_ms=int((_agora() - inicio) * 1000), motivo="orçamento de tempo esgotado", causa="tempo")
             yield ("erro", {"motivo": "A consulta demorou mais que o esperado.", "nenhum_respondeu": True, "tentados": list(leitor.tentados)})
             return
         troca = {"de": atual, "para": cadeia[n], "motivo": _curto(falha), "tentativa": n + 1}
         leitor.trocas.append(troca)
+        causa, codigo = causa_da_falha(falha)
+        _log(leitor, "troca_de_provedor", "aviso", **troca, causa=causa, codigo_http=codigo)
         yield ("fallback", dict(troca))
         leitor.zerar()
 

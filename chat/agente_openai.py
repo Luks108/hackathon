@@ -99,6 +99,9 @@ class OpenAICompativel:
         leitor_uso["saida"] = leitor_uso.get("saida", 0) + int(uso.get("completion_tokens") or 0)
         if custo is not None:
             leitor_uso["custo_usd"] = leitor_uso.get("custo_usd", 0.0) + custo
+        if "prompt_cache_hit_tokens" in uso or (uso.get("prompt_tokens_details") or {}).get("cached_tokens") is not None:
+            lido = int(uso.get("prompt_cache_hit_tokens") or (uso.get("prompt_tokens_details") or {}).get("cached_tokens") or 0)
+            leitor_uso["cache_lido"] = leitor_uso.get("cache_lido", 0) + lido
 
     # ---------- sem acesso aos dados ----------
     def sem_base(self, pergunta: str, sistema: str, limite_s: float = 110) -> dict:
@@ -149,7 +152,7 @@ class OpenAICompativel:
         from mcp.client.stdio import stdio_client
 
         inicio = time.monotonic()
-        servidor = agente.perfis.config_mcp(perfil, python=agente.PYTHON)["mcpServers"]["transparencia"]
+        servidor = agente.perfis.config_mcp(perfil, python=agente.PYTHON, sessao=getattr(leitor, "request_id", None))["mcpServers"]["transparencia"]
         # O servidor lê o .env sozinho. As chaves de API de provedor NÃO vão para ele.
         ambiente = {k: v for k, v in os.environ.items() if not k.endswith("_API_KEY")}
         ambiente.update(servidor["env"])
@@ -176,11 +179,22 @@ class OpenAICompativel:
         mensagens = [{"role": "system", "content": agente.REGRAS}, {"role": "user", "content": agente.montar_prompt(texto, historico)}]
         leitor.uso = getattr(leitor, "uso", {}) or {}
 
-        for _ in range(MAX_RODADAS):
+        for rodada in range(1, MAX_RODADAS + 1):
             restante = limite - (time.monotonic() - inicio)
-            resposta = await asyncio.to_thread(self._chamar, {"messages": mensagens, "tools": ferramentas, "tool_choice": "auto"}, restante)
+            t_chamada = time.monotonic()
+            try:
+                resposta = await asyncio.to_thread(self._chamar, {"messages": mensagens, "tools": ferramentas, "tool_choice": "auto"}, restante)
+            except ErroDoProvedor as e:
+                agente._log(leitor, "chamada_modelo", "aviso", modelo=self.modelo, rodada=rodada, resultado="falha",
+                            duracao_ms=int((time.monotonic() - t_chamada) * 1000), motivo=str(e)[:160],
+                            **dict(zip(("causa", "codigo_http"), agente.causa_da_falha(str(e)))))
+                raise
             uso = resposta.get("usage") or {}
             self._somar(leitor.uso, uso, self._custo(uso))
+            leitor.uso["rodadas"] = rodada
+            agente._log(leitor, "chamada_modelo", "debug", modelo=self.modelo, rodada=rodada, resultado="ok",
+                        duracao_ms=int((time.monotonic() - t_chamada) * 1000), tokens_entrada=int(uso.get("prompt_tokens") or 0),
+                        tokens_saida=int(uso.get("completion_tokens") or 0))
             mensagem = resposta["choices"][0]["message"]
             chamadas = mensagem.get("tool_calls") or []
             for i, c in enumerate(chamadas):
@@ -205,6 +219,7 @@ class OpenAICompativel:
                 except ValueError:
                     argumentos = None
                 if nome not in permitidas or not isinstance(argumentos, dict):
+                    leitor.alertas.append(("ferramenta_negada", "aviso", {"ferramenta": str(nome)[:60], "motivo": "fora da lista ou argumentos inválidos"}))
                     mensagens.append({"role": "tool", "tool_call_id": c["id"], "content": "ferramenta não permitida ou argumentos inválidos"})
                     continue
                 for ev in leitor.ler({"type": "assistant", "message": {"content": [

@@ -25,6 +25,9 @@ from pathlib import Path
 from mcp.server.mcpserver import MCPServer
 from neo4j import GraphDatabase
 
+import deteccao
+import registro
+
 RAIZ = Path(__file__).resolve().parents[1]
 _env = RAIZ / ".env"
 for linha in _env.read_text(encoding="utf-8").splitlines() if _env.exists() else []:
@@ -101,6 +104,26 @@ def _gravar(registro: dict) -> None:
         print(f"transparencia: não gravei o log ({erro})", file=sys.stderr)
 
 
+def _registrar_chamada(tool: str, argumentos: dict, n: int, erro, excecao, duracao_ms: int) -> None:
+    """Log por subsistema (logs/ferramentas.jsonl e logs/seguranca.jsonl, ao lado do consultas.jsonl). O request_id vem da sessão.
+    Não substitui o consultas.jsonl, que segue igual. Nunca levanta."""
+    try:
+        pasta = LOG.parent
+        bloqueada = isinstance(excecao, ValueError)         # nossa validação de entrada recusou o argumento
+        registro.registrar("ferramentas", "chamada", "erro" if erro and not bloqueada else "aviso" if bloqueada else "info",
+                           request_id=SESSAO, pasta_destino=pasta, tool=tool, perfil=PERFIL, args=argumentos, resultados=n,
+                           vazio=(n == 0 and not erro), duracao_ms=duracao_ms, erro=erro)
+        if bloqueada:
+            registro.registrar("seguranca", "entrada_bloqueada", "aviso", request_id=SESSAO, pasta_destino=pasta, tool=tool,
+                               perfil=PERFIL, motivo=str(excecao)[:120])
+        for nome, valor in argumentos.items():
+            for sinal in deteccao.verificar(valor if isinstance(valor, str) else ""):
+                registro.registrar("seguranca", "injecao_em_argumento", "aviso", request_id=SESSAO, pasta_destino=pasta,
+                                   tool=tool, argumento=nome, perfil=PERFIL, **sinal)
+    except Exception:  # noqa: BLE001  o log nunca derruba a consulta
+        pass
+
+
 def registrado(fn):
     """Grava uma linha por chamada: perfil, tool, argumentos, quantos resultados e quais evidências."""
     assinatura = inspect.signature(fn)
@@ -108,12 +131,13 @@ def registrado(fn):
     @functools.wraps(fn)
     def interno(*args, **kwargs):
         inicio = time.perf_counter()
-        resultado, erro = None, None
+        resultado, erro, excecao = None, None, None
         try:
             resultado = fn(*args, **kwargs)
             return resultado
         except Exception as e:
             erro = f"{type(e).__name__}: {str(e)[:160]}"
+            excecao = e
             raise
         finally:
             try:
@@ -126,6 +150,7 @@ def registrado(fn):
                 n = 0 if "erro" in resultado else 1
             else:
                 n = 0
+            _registrar_chamada(fn.__name__, argumentos, n, erro, excecao, round((time.perf_counter() - inicio) * 1000))
             _gravar({
                 "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
                 "sessao": SESSAO,

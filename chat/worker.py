@@ -20,10 +20,13 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 import agente  # noqa: E402
+import deteccao  # noqa: E402
+import registro  # noqa: E402  (log por subsistema: logs/worker.jsonl, seguranca.jsonl e saude.jsonl)
 
 RAIZ = agente.RAIZ
 _ENV = RAIZ / ".env"
@@ -72,6 +75,88 @@ def campos_do_modelo(leitor) -> dict:
     curtas de motivo: nenhuma chave passa por aqui."""
     return {"modelo_pedido": leitor.modelo_pedido, "modelo": leitor.modelo, "tentados": list(leitor.tentados),
             "trocas": [{k: t[k] for k in ("de", "para", "motivo", "tentativa")} for t in leitor.trocas]}
+
+
+def r(evento: str, nivel: str = "info", request_id: str | None = None, **campos):
+    """Evento do worker em logs/worker.jsonl: uma linha, com o request_id que acompanha a pergunta."""
+    registro.registrar("worker", evento, nivel, request_id=request_id, **campos)
+
+
+def classificar_falha(motivo: str = "", *, nenhum_respondeu: bool = False, excecao=None, erros_ferramenta: int = 0) -> str:
+    """Por que a pergunta não foi respondida, em UMA palavra: timeout, provedor, ferramenta, guardrail ou interno.
+    ("fila" é decidido por quem chama, quando o site encerra a pergunta antes de o worker terminar.)"""
+    baixo = f"{motivo or ''} {excecao or ''}".lower()
+    if "perfil" in str(excecao or "").lower() or "não autorizadas" in baixo or "nenhum perfil" in baixo:
+        return "guardrail"
+    if excecao is not None:
+        return "interno"
+    if "demorou mais que o esperado" in baixo:
+        return "timeout"
+    if nenhum_respondeu or re.search(r"modelo |provedor|http \d{3}|chave|saldo|conexão|indisponível|resposta vazia", baixo):
+        return "provedor"
+    if erros_ferramenta or "ferramenta" in baixo:
+        return "ferramenta"
+    return "interno"
+
+
+def campos_de_uso(leitor) -> dict:
+    """Tokens e custo da pergunta para o chat.jsonl. Só o que o provedor informou: nada é estimado."""
+    uso = getattr(leitor, "uso", None) or {}
+    return {para: uso[de] for de, para in (("entrada", "tokens_entrada"), ("saida", "tokens_saida"), ("custo_usd", "custo_usd")) if de in uso}
+
+
+def desfecho_da_pergunta(rid: str, canal: str, respondeu: bool, t0: float, leitor, motivo: str | None = None, detalhe: str = "", **extra):
+    """O evento ÚNICO de fim de cada pergunta (logs/worker.jsonl). `motivo` só existe quando falhou:
+    timeout, provedor, fila, ferramenta, guardrail ou interno. É o campo para olhar primeiro quando algo quebra."""
+    if not respondeu and motivo == "timeout":
+        r("timeout", "aviso", rid, canal=canal, detalhe=str(detalhe)[:160])
+    r("desfecho", "info" if respondeu or motivo is None else "erro", rid, canal=canal, respondeu=respondeu,
+      motivo=None if respondeu else motivo, detalhe=None if respondeu or not detalhe else str(detalhe)[:160],
+      duracao_ms=int((time.monotonic() - t0) * 1000), modelo=leitor.modelo, modelo_pedido=leitor.modelo_pedido,
+      trocas=len(leitor.trocas), consultas=len(leitor.consultas), fontes=len(leitor.evidencias), **campos_de_uso(leitor), **extra)
+
+
+def olhar_entrada(rid: str, canal: str, texto: str, **quem):
+    """Sinais de ataque no texto de quem pergunta. Só registra (logs/seguranca.jsonl): a resposta não muda por causa disto."""
+    for sinal in deteccao.verificar(texto):
+        registro.registrar("seguranca", "entrada_suspeita", "aviso", request_id=rid, canal=canal, **quem, **sinal)
+    n_cpf = deteccao.contar_cpf(texto)
+    if n_cpf:
+        registro.registrar("seguranca", "cpf_mascarado", "info", request_id=rid, canal=canal, origem="pergunta", quantidade=n_cpf, **quem)
+
+
+def _espera_ms(m: dict):
+    """Há quanto tempo a mensagem chegou ao WhatsApp. Sem o horário, None: não inventamos."""
+    try:
+        return max(int((datetime.now().timestamp() - float(m["ts"])) * 1000), 0)
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _ler_batimento() -> dict:
+    try:
+        return json.loads((registro.pasta() / "saude-worker.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def batimento(iniciado_em: str, parando: bool = False):
+    """Arquivo que o vigia lê para saber se o worker está vivo (logs/saude-worker.json)."""
+    agora = datetime.now().astimezone()
+    try:
+        destino = registro.pasta()
+        destino.mkdir(parents=True, exist_ok=True)
+        escrever_atomico(destino / "saude-worker.json", json.dumps(
+            {"pid": os.getpid(), "ts": agora.isoformat(timespec="milliseconds"), "ts_epoch": agora.timestamp(),
+             "iniciado_em": iniciado_em, "parando": parando}))
+    except OSError:
+        pass     # o batimento nunca derruba o worker
+
+
+def laco_batimento(iniciado_em: str):
+    while not parar.is_set():
+        batimento(iniciado_em)
+        parar.wait(10)
 
 
 def api(metodo: str, rota: str, corpo=None):
@@ -139,8 +224,12 @@ class Lote:
 def atender_site(p: dict):
     inicio = time.monotonic()
     lote, leitor, primeiro = Lote(p["id"]), agente.Leitor(), None
+    rid = leitor.request_id = f"site:{p['id']}"
     chave = f"site:{p['usuario_id']}"
     desfecho = "erro"
+    espera = p.get("espera_ms")      # só vem do site novo; sem ele fica null (não inventamos)
+    r("inicio", request_id=rid, canal="site", tamanho_texto=len(p["texto"]), entes=len(p["tenants"]), espera_ms=espera)
+    olhar_entrada(rid, "site", p["texto"], usuario=p["usuario_id"])
     try:
         for tipo, dados in agente.perguntar(p["texto"], p["tenants"], list(historicos[chave]), leitor):
             if tipo == "fallback":
@@ -150,6 +239,7 @@ def atender_site(p: dict):
                 continue
             primeiro = primeiro or int((time.monotonic() - inicio) * 1000)
             if tipo == "erro":
+                leitor.falha = dict(dados)
                 registrar(*mensagem_de_falha(dados))
                 dados = {"motivo": dados["motivo"] if "demorou" in dados.get("motivo", "") else ERRO_PADRAO}
             elif tipo == "fim":
@@ -158,16 +248,26 @@ def atender_site(p: dict):
                 dados = {**dados, **campos_do_modelo(leitor)}    # o site guarda quem respondeu, para o pacote de prova
             lote.adicionar(tipo, dados)
             if lote.encerrada:
+                desfecho_da_pergunta(rid, "site", False, inicio, leitor, "fila", "o site encerrou a pergunta por tempo", espera_ms=espera)
                 return
     except Exception as e:  # a tela precisa de uma resposta, nunca de silêncio
+        leitor.excecao = e
         registrar("falha no site:", type(e).__name__, str(e)[:200])
         lote.adicionar("erro", {"motivo": ERRO_PADRAO})
     lote.enviar()
     if desfecho == "concluida" and leitor.resposta:
         historicos[chave].append((p["texto"], leitor.resposta[:600]))
+    motivo = None
+    if desfecho != "concluida":
+        motivo = "fila" if lote.encerrada else classificar_falha(
+            leitor.falha.get("motivo", ""), nenhum_respondeu=bool(leitor.falha.get("nenhum_respondeu")),
+            excecao=leitor.excecao, erros_ferramenta=leitor.erros_ferramenta)
+    desfecho_da_pergunta(rid, "site", desfecho == "concluida", inicio, leitor, motivo,
+                         leitor.falha.get("motivo") or (type(leitor.excecao).__name__ if leitor.excecao else ""),
+                         primeiro_sinal_ms=primeiro, espera_ms=espera)
     gravar_log(canal="site", id=p["id"], usuario=p["usuario_id"], tenants=p["tenants"], pergunta=p["texto"],
                consultas=leitor.consultas, evidencias=leitor.evidencias, desfecho=desfecho,
-               **campos_do_modelo(leitor),
+               **campos_do_modelo(leitor), **campos_de_uso(leitor), request_id=rid, motivo_falha=motivo,
                primeiro_sinal_ms=primeiro, duracao_ms=int((time.monotonic() - inicio) * 1000))
 
 
@@ -236,8 +336,9 @@ def transcrever(arquivo: str) -> str | None:
         return None
 
 
-def responder_whatsapp(texto: str, tenants: list[str], chave: str) -> tuple[str, agente.Leitor, str]:
+def responder_whatsapp(texto: str, tenants: list[str], chave: str, request_id: str | None = None) -> tuple[str, agente.Leitor, str]:
     leitor, fontes, desfecho = agente.Leitor(), [], "erro"
+    leitor.request_id = request_id
     try:
         for tipo, dados in agente.perguntar(texto, tenants, list(historicos[chave]), leitor):
             if tipo == "fonte":
@@ -245,10 +346,12 @@ def responder_whatsapp(texto: str, tenants: list[str], chave: str) -> tuple[str,
             elif tipo == "fim":
                 desfecho = "concluida"
             elif tipo == "erro":
+                leitor.falha = dict(dados)
                 registrar(*mensagem_de_falha(dados))
             elif tipo == "fallback":
                 registrar("fallback:", dados.get("de"), "->", dados.get("para"), "|", dados.get("motivo", "")[:120])
     except Exception as e:
+        leitor.excecao = e
         registrar("falha no WhatsApp:", type(e).__name__, str(e)[:200])
     if desfecho != "concluida" or not leitor.resposta:
         return ERRO_PADRAO, leitor, "erro"
@@ -256,30 +359,53 @@ def responder_whatsapp(texto: str, tenants: list[str], chave: str) -> tuple[str,
     return texto_whatsapp(leitor.resposta, fontes), leitor, desfecho
 
 
+def _sem_agente(rid: str, t0: float, respondeu: bool, **campos):
+    """Desfecho de uma mensagem que o worker resolveu sem chamar o agente (tipo não suportado, áudio ilegível, texto vazio)."""
+    r("desfecho", "info" if respondeu or campos.get("motivo") is None else "erro", rid, canal="whatsapp", respondeu=respondeu,
+      duracao_ms=int((time.monotonic() - t0) * 1000), **campos)
+
+
 def atender_whatsapp(m: dict):
     chat = m["chat_id"]
+    t0 = time.monotonic()
+    rid = f"wa:{m['id']}"
+    espera = _espera_ms(m)
+    r("entrada_na_fila", request_id=rid, canal="whatsapp", tipo=m.get("tipo"), espera_ms=espera, grupo=bool(m.get("grupo")))
     if m["tipo"] == "audio" and m.get("arquivo"):
         texto = transcrever(m["arquivo"])
         if not texto:
-            pedir({"op": "enviar", "chat_id": chat, "texto": "Não consegui entender o áudio. Pode mandar por texto?"})
+            pedir({"op": "enviar", "chat_id": chat, "texto": "Não consegui entender o áudio. Pode mandar por texto?", "request_id": rid})
+            _sem_agente(rid, t0, False, motivo="ferramenta", detalhe="transcrição do áudio falhou", via="sem_agente")
             return
     elif m["tipo"] == "texto":
         texto = m["texto"].strip()
     else:
-        pedir({"op": "enviar", "chat_id": chat, "texto": "Por aqui eu respondo perguntas por texto ou áudio sobre fornecedores."})
+        pedir({"op": "enviar", "chat_id": chat, "texto": "Por aqui eu respondo perguntas por texto ou áudio sobre fornecedores.", "request_id": rid})
+        _sem_agente(rid, t0, True, via="sem_agente", razao="tipo_nao_suportado", tipo=m["tipo"])
         return
     if not texto:
+        _sem_agente(rid, t0, False, motivo=None, via="ignorada", razao="texto_vazio")
         return
+    if len(texto) > 500:
+        r("texto_cortado", "aviso", rid, original=len(texto), limite=500)
     texto = texto[:500]
-    pedir({"op": "reagir", "chat_id": chat, "message_id": m["id"], "emoji": "👀"})
-    pedir({"op": "digitando", "chat_id": chat, "ligado": True})
+    olhar_entrada(rid, "whatsapp", texto, ator=registro.ator(m.get("remetente", "")))
+    pedir({"op": "reagir", "chat_id": chat, "message_id": m["id"], "emoji": "👀", "request_id": rid})
+    pedir({"op": "digitando", "chat_id": chat, "ligado": True, "request_id": rid})
     tenants = tenants_do_numero(m.get("remetente", ""))
     inicio = time.monotonic()
-    saida, leitor, desfecho = responder_whatsapp(texto, tenants, f"wa:{chat}")
-    pedir({"op": "enviar", "chat_id": chat, "texto": saida})
+    r("inicio", request_id=rid, canal="whatsapp", espera_ms=espera, entes=len(tenants))
+    saida, leitor, desfecho = responder_whatsapp(texto, tenants, f"wa:{chat}", request_id=rid)
+    pedir({"op": "enviar", "chat_id": chat, "texto": saida, "request_id": rid})
+    motivo = None
+    if desfecho != "concluida":
+        motivo = classificar_falha(leitor.falha.get("motivo", ""), nenhum_respondeu=bool(leitor.falha.get("nenhum_respondeu")),
+                                   excecao=leitor.excecao, erros_ferramenta=leitor.erros_ferramenta)
+    desfecho_da_pergunta(rid, "whatsapp", desfecho == "concluida", t0, leitor, motivo,
+                         leitor.falha.get("motivo") or (type(leitor.excecao).__name__ if leitor.excecao else ""), espera_ms=espera)
     gravar_log(canal="whatsapp", id=m["id"], tenants=tenants, pergunta=texto, consultas=leitor.consultas,
-               evidencias=leitor.evidencias, desfecho=desfecho, **campos_do_modelo(leitor),
-               duracao_ms=int((time.monotonic() - inicio) * 1000))
+               evidencias=leitor.evidencias, desfecho=desfecho, **campos_do_modelo(leitor), **campos_de_uso(leitor),
+               request_id=rid, motivo_falha=motivo, duracao_ms=int((time.monotonic() - inicio) * 1000))
 
 
 MARCA_DA_SESSAO = "dangerously-load-development-channels"
@@ -377,12 +503,22 @@ def main() -> int:
         return 0
     signal.signal(signal.SIGTERM, lambda *_: parar.set())
     signal.signal(signal.SIGINT, lambda *_: parar.set())
+    iniciado_em = datetime.now().astimezone().isoformat(timespec="milliseconds")
+    anterior = _ler_batimento()
+    lacuna = round(datetime.now().timestamp() - float(anterior["ts_epoch"]), 1) if anterior.get("ts_epoch") else None
+    registro.registrar("saude", "componente_iniciou", "aviso" if lacuna and lacuna > 120 and not anterior.get("parando") else "info",
+                       componente="worker", pid=os.getpid(), ultimo_batimento=anterior.get("ts"), lacuna_s=lacuna,
+                       parada_limpa=bool(anterior.get("parando")) if anterior else None, fora_ha_mais_de_2min=bool(lacuna and lacuna > 120))
+    batimento(iniciado_em)
     laços = [threading.Thread(target=laco_site, args=(i * 0.5,), daemon=True) for i in range(AGENTES_SITE)]
     laços += [threading.Thread(target=f, daemon=True) for f in (laco_whatsapp, laco_telefones)]
+    laços.append(threading.Thread(target=laco_batimento, args=(iniciado_em,), daemon=True))
     for t in laços:
         t.start()
     registrar("worker no ar:", API, f"com {AGENTES_SITE} agentes no site")
     parar.wait()
+    batimento(iniciado_em, parando=True)
+    registro.registrar("saude", "componente_parou", "info", componente="worker", pid=os.getpid(), parada_limpa=True)
     return 0
 
 
