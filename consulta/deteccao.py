@@ -24,14 +24,30 @@ REGRAS: list[tuple[str, re.Pattern]] = [(nome, re.compile(padrao, _F)) for nome,
     ("troca_de_papel",
      r"\b(voc[eê] agora [eé]|a partir de agora,? voc[eê]|finja (ser|que)|aja como|haja como|fa[cç]a de conta que|modo (desenvolvedor|dev|deus|admin)|jailbreak)\b|\bDAN\b"),
     ("escalada_de_acesso",
-     r"\b(libere|liberar|autorize|conceda|adicione|habilite|d[eê] acesso)\b.{0,50}\b(n[uú]mero|acesso|perfil|usu[aá]rio|admin|administrador|plano)\b"),
+     r"\b(libere|liberar|autorize|conceda|adicione|habilite|d[eê] acesso)\b.{0,50}\b(n[uú]mero|acesso|perfil|usu[aá]rio|admin|administrador|plano|telefone|celular)\b"),
     ("troca_de_perfil", r"\b(mude|troque|altere)\b.{0,30}\b(perfil|plano|tenant|ente)\b"),
     ("dado_pessoal",
      r"\b(cpf|rg|data de nascimento)\b.{0,40}\b(s[oó]cio|titular|propriet[aá]rio|associado|pessoa f[ií]sica)\b|\b(s[oó]cio|titular|propriet[aá]rio|associado)\b.{0,40}\b(cpf|rg)\b"),
     ("segredos", r"\b(mostre|revele|diga|qual|me d[eê])\b.{0,30}(\bchave\b|\bsenha\b|\btoken\b|api[ _-]?key|\.env\b|credenciais)"),
     ("tag_de_canal", r"</?\s*(channel|system|assistant|tool|instructions?)\b|\[/?INST\]|<\|im_(start|end)\|>"),
-    ("injecao_cypher", r"\bMATCH\s*\(|DETACH\s+DELETE|\bCALL\s+(db|apoc)\.|\bLOAD\s+CSV|;\s*(DROP|DELETE|MERGE|CREATE)\b"),
+    ("injecao_cypher", r"\bMATCH\s*\(|DETACH\s+DELETE|\bCALL\s+(db|apoc)\.|\bLOAD\s+CSV|;\s*(DROP|DELETE|MERGE|CREATE)\b|\bOR\s+1\s*=\s*1\b"),
     ("ofuscacao", r"\b(base64|rot13|decodifique|em hexadecimal)\b"),
+    # Ampliação de 13/11/2026, a partir do que bench/ataques.py mediu (o detector só reconhecia 12 de 39 prompts do catálogo).
+    ("falsa_autoridade",
+     r"\b(sou|eu sou|aqui [ée])\s+(o |a |um |uma )?(dono|dona|administrador|administradora|admin|desenvolvedor|desenvolvedora|programador|respons[aá]vel pelo (sistema|projeto))\b|\bmensagem do suporte\b"),
+    ("escolha_de_ente", r"\btenants?\s*[=:]|\bver_pessoal\b|\b(use|usar|consulte|consultar|acesse|acessar)\b.{0,25}\bo ente\b"),
+    ("pedido_de_cpf",
+     r"\b(mostre|liste|revele|exiba|me d[eê]|pass(?:e|ar|a)|informe|qual( [ée])?( o)?)\b.{0,40}\bcpfs?\b|\bcpfs?\b.{0,30}\b(de quem|dos? fiscais|das? fiscais|dos? contratad)|\bpessoas? f[ií]sicas?\b.{0,60}\b(documento|cpf)\b"),
+    ("repetir_contexto",
+     r"\b(repita|copie|transcreva|reproduza)\b.{0,40}\b(tudo|literalmente|palavra por palavra|integralmente)\b.{0,50}\b(acima|antes|anterior|desta conversa|recebeu)\b"),
+    ("nome_de_segredo", r"\b(NEO4J_SENHA|WORKER_KEY|CHAVE_PF|API_KEY|[A-Z0-9]+_API_KEY)\b|\bvari[aá]veis? de ambiente\b"),
+    ("execucao_de_comando", r"\b(execute|executar|rode|rodar)\b.{0,30}\b(comando|script|shell|bash|terminal)\b|\b(cat|ls|rm|curl|wget)\s+[-./~]"),
+    ("caminho_de_arquivo", r"\.\./|\.\.\\|/etc/(passwd|shadow)|(?<!\w)\.env\b"),
+    # texto codificado sem a palavra "base64": 24+ caracteres do alfabeto com 6+ maiúsculas e alguma minúscula (identificador em CamelCase não passa; o (?-i:) vale só aqui, o resto ignora caixa)
+    ("base64_solto", r"(?-i:(?<![A-Za-z0-9+/=])(?=(?:[A-Za-z0-9+/]*[A-Z]){6})(?=[A-Za-z0-9+/]*[a-z])[A-Za-z0-9+/]{24,}={0,2}(?![A-Za-z0-9+/=]))"),
+    ("letras_separadas", r"\b(?:[A-Za-z][.\-_]){5,}[A-Za-z]\b"),
+    # Conversa forjada dentro de UMA mensagem: linhas que começam com "Assistente:" ou "Usuário:" fingem falas anteriores (o histórico real é montado assim em agente.montar_prompt).
+    ("transcricao_forjada", r"(?m)^[ \t>*-]*(assistente|assistant|usu[aá]rio|user|sistema|system)\s*:"),
 ]]
 
 CONTEXTO = 15      # caracteres antes e depois do que casou
