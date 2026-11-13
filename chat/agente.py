@@ -65,7 +65,7 @@ def achar_claude() -> str:
 PYTHON = python_do_projeto()
 CLAUDE = achar_claude()
 NEUTRO = Path.home() / ".cache" / "fornexia-agente"
-MODELO = os.environ.get("AGENTE_MODELO", "claude-opus-5-5")
+MODELO = os.environ.get("AGENTE_MODELO", "claude-sonnet-5-5")
 LIMITE_S = int(os.environ.get("AGENTE_LIMITE_S", "110"))                 # orçamento TOTAL da pergunta, somando as tentativas
 LIMITE_PRIMEIRA = int(os.environ.get("AGENTE_LIMITE_PRIMEIRA", "35"))    # teto de cada tentativa que ainda tem substituto
 MINIMO_TENTATIVA_S = 5                                                   # com menos tempo que isso não vale começar outra tentativa
