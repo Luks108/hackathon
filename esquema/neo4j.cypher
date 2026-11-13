@@ -9,4 +9,9 @@ CREATE CONSTRAINT execucao_id IF NOT EXISTS FOR (n:ExecucaoFinanceira) REQUIRE n
 CREATE CONSTRAINT evidencia_id IF NOT EXISTS FOR (n:Evidencia) REQUIRE n.id IS UNIQUE;
 CREATE INDEX contrato_tenant IF NOT EXISTS FOR (n:Contrato) ON (n.tenant);
 CREATE INDEX processo_tenant IF NOT EXISTS FOR (n:ProcessoLicitatorio) ON (n.tenant);
-CREATE FULLTEXT INDEX fornecedor_nome IF NOT EXISTS FOR (n:Fornecedor) ON EACH [n.nome];
+// Índices de texto das buscas (consulta/busca.py monta a consulta). `standard-folding` ignora acento e maiúscula.
+// O antigo `fornecedor_nome` era do analisador padrão (acento conta): é recriado, e a carga espera os índices ficarem prontos.
+DROP INDEX fornecedor_nome IF EXISTS;
+CREATE FULLTEXT INDEX fornecedor_nome IF NOT EXISTS FOR (n:Fornecedor) ON EACH [n.nome] OPTIONS {indexConfig: {`fulltext.analyzer`: 'standard-folding'}};
+CREATE FULLTEXT INDEX contrato_objeto IF NOT EXISTS FOR (n:Contrato) ON EACH [n.objeto] OPTIONS {indexConfig: {`fulltext.analyzer`: 'standard-folding'}};
+CREATE FULLTEXT INDEX unidade_nome IF NOT EXISTS FOR (n:UnidadeJurisdicionada) ON EACH [n.nome] OPTIONS {indexConfig: {`fulltext.analyzer`: 'standard-folding'}};

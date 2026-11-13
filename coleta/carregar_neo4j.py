@@ -140,6 +140,7 @@ def main() -> int:
                 s.run(consulta, linhas=lote).consume()
             print(f"{nome}: {len(itens)}")
 
+        s.run("CALL db.awaitIndexes(120)").consume()     # os índices de texto são populados em segundo plano: a busca só vale depois
         print("\nnós:", {r["rotulo"]: r["n"] for r in s.run(
             "MATCH (n) UNWIND labels(n) AS rotulo RETURN rotulo, count(*) AS n ORDER BY n DESC")})
         print("relações:", {r["tipo"]: r["n"] for r in s.run(

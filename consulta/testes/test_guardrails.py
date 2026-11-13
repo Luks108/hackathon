@@ -31,7 +31,7 @@ PAYLOADS_DE_ID = [
 ]
 
 
-LINHA_QUALQUER = {"contratos": 1, "sancoes": 0, "de": "2026-11-05", "ate": "2026-11-05",
+LINHA_QUALQUER = {"id": "cnpj:11111111000111", "contratos": 1, "sancoes": 0, "de": "2026-11-05", "ate": "2026-11-05",
                   "arquivo": "exemplo.html", "documento_hash": "0" * 64}
 
 
@@ -106,7 +106,35 @@ class TestConsultasParametrizadas(unittest.TestCase):
         cypher, params = mod.driver.chamadas[-1]
         self.assertNotIn("DETACH", cypher)
         self.assertNotIn(hostil, cypher)
-        self.assertEqual(params["termo"], hostil)
+        # o texto do usuário não chega ao índice como veio: vira só palavras (consulta/busca.py), e vai como parâmetro
+        self.assertNotIn(hostil, params.values())
+        self.assertRegex(params["texto"], r"^[a-z0-9()*~ ANDOR]+$")
+        for perigoso in "'}{\"/:;":
+            self.assertNotIn(perigoso, params["texto"])
+
+    def test_busca_devolve_no_maximo_10_sem_repetir_e_o_indice_traz_mais_que_o_limite_final(self):
+        mod = trocar_banco(util.carregar_servidor("estado"), [{"id": f"cnpj:{i:014d}", "nome": f"Empresa {i}"} for i in range(12)])
+        achados = mod.buscar_fornecedor("Empresa 11.111.111/0001-11")      # com dígitos: as duas consultas devolvem as mesmas linhas
+        self.assertEqual(len(achados), 10)
+        self.assertEqual(len({a["id"] for a in achados}), 10)
+        self.assertGreaterEqual(mod.LIMITE_DO_INDICE, mod.LIMITE_LINHAS)    # o índice precisa trazer, antes do filtro de ente, mais do que sobra depois
+
+    def test_buscas_filtram_ente_e_pessoa_fisica_depois_do_indice(self):
+        mod = servidor("estado")
+        mod.buscar_fornecedor("Construtora 11.111.111/0001-11")
+        mod.buscar_contratos("reforma")
+        for cypher, params in mod.driver.chamadas:
+            self.assertIn("$tenants", cypher)
+            if "fornecedor_nome" in cypher or "f.cnpj" in cypher:
+                self.assertIn("size($sensibilidades) > 1", cypher)         # só PJ, salvo perfil com dado pessoal
+            if "contrato_objeto" in cypher:
+                self.assertIn("c.sensibilidade IN $sensibilidades", cypher)
+        self.assertEqual(len(mod.driver.chamadas), 3)                      # CNPJ, nome e contrato
+
+    def test_busca_sem_palavra_nao_consulta_o_indice(self):
+        mod = servidor()
+        self.assertEqual(mod.buscar_contratos("!!! ??? *"), [])
+        self.assertEqual(mod.driver.chamadas, [])
 
     def test_todas_as_consultas_usam_parametros_de_perfil(self):
         mod = servidor()

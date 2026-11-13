@@ -96,6 +96,58 @@ class TestIsolamentoEntrePerfis(unittest.TestCase):
         self.assertIn("erro", e.conferir_evidencia("g4"))
         self.assertEqual(e.buscar_fornecedor("pf"), [])
 
+    # ---------- Busca por texto (índice de texto, passo 4): tolera acento e erro, e não amplia o acesso ----------
+
+    def test_busca_ignora_acento_tolera_erro_de_digitacao_e_ordem(self):
+        m = self.perfil("municipio")
+        for texto in ("Serviços Modelo", "servicos modelo", "SERVICOS MODELO", "Servicos Modelos", "Serviçoz Modelo", "Modelo Servicos", "Serv", "modelo"):
+            self.assertEqual([f["id"] for f in m.buscar_fornecedor(texto)], [B], texto)
+        self.assertEqual([f["id"] for f in m.buscar_fornecedor("Construtra")], [A])          # uma letra a menos
+        self.assertEqual(m.buscar_fornecedor("Servicos Exemplo"), [])                        # palavras de duas empresas não formam uma terceira
+
+    def test_busca_difusa_nao_atravessa_o_isolamento(self):
+        # o erro de digitação e o começo de palavra não podem trazer empresa de outro ente
+        m = self.perfil("municipio")
+        for texto in ("Obras Exemplares", "obras exemplars", "Exemplares", "Obras", "Obra Exemplar", "33333333000133"):
+            self.assertEqual(m.buscar_fornecedor(texto), [], texto)
+        x = self.perfil("estado-exemplo")
+        for texto in ("Serviços Modelo", "servicos modelo", "Servicos Modelos"):
+            self.assertEqual(x.buscar_fornecedor(texto), [], texto)
+        self.assertEqual([f["id"] for f in x.buscar_fornecedor("obras exemplars")], [C])
+
+    def test_busca_sem_palavra_util_devolve_vazio_e_nao_tudo(self):
+        m = self.perfil("municipio")
+        for texto in ("!!!", "* ?", "a", "-"):
+            self.assertEqual(m.buscar_contratos(texto), [], texto)
+            self.assertEqual(m.buscar_fornecedor(texto), [], texto)
+
+    def test_busca_por_cnpj_continua_exata(self):
+        m = self.perfil("municipio")
+        self.assertEqual([f["id"] for f in m.buscar_fornecedor("11.111.111/0001-11")], [A])
+        self.assertEqual(m.buscar_fornecedor("11111111000112"), [])       # um dígito errado não casa
+
+    def test_busca_de_contrato_ignora_acento_e_tem_o_mesmo_isolamento(self):
+        m = self.perfil("municipio")
+        for texto in ("reforma", "Reformas", "REFORMA DE ESCOLA", "escola reforma", "reformas de escolas"):
+            self.assertEqual([c["numero"] for c in m.buscar_contratos(texto)], ["1/2026"], texto)
+        for texto in ("pavimentacao", "pavimentação", "pavimentcao", "consultoria"):         # outro estado e pessoa física
+            self.assertEqual(m.buscar_contratos(texto), [], texto)
+        x = self.perfil("estado-exemplo")
+        self.assertEqual([c["numero"] for c in x.buscar_contratos("pavimentacao")], ["1/2026"])
+        self.assertEqual(x.buscar_contratos("reforma"), [])
+
+    def test_busca_de_contrato_acha_pelo_nome_do_orgao_sem_acento(self):
+        m = self.perfil("municipio")
+        self.assertTrue(m.buscar_contratos("secretaria de exemplo"))
+        self.assertTrue(all(c["unidade"] == "SECRETARIA DE EXEMPLO" for c in m.buscar_contratos("SECRETARIA exemplo")))
+
+    def test_sintaxe_do_indice_digitada_pelo_usuario_nao_quebra_nem_amplia(self):
+        m = self.perfil("municipio")
+        for texto in ('x" OR 1=1', "*:*", "nome:*", "Construtora~", "((((", "AND OR NOT", "\\", "-Construtora +Obras", "/.*/", "*", "?"):
+            for busca in (m.buscar_fornecedor, m.buscar_contratos):
+                resultado = busca(texto)
+                self.assertTrue(set(r.get("id") or r["fornecedor_id"] for r in resultado) <= {A, B}, (busca.__name__, texto, resultado))
+
     # ---------- Outro estado (fictício): isolamento por estado ----------
 
     def test_outro_estado_so_ve_o_proprio_ente(self):

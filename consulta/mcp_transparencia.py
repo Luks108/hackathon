@@ -12,7 +12,6 @@ Camadas de proteção deste arquivo (ver docs/seguranca/ataques-de-prompt.md):
 """
 
 import functools
-import hashlib
 import inspect
 import json
 import os
@@ -25,7 +24,9 @@ from pathlib import Path
 from mcp.server.mcpserver import MCPServer
 from neo4j import GraphDatabase
 
+import busca
 import deteccao
+import prova
 import registro
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -40,13 +41,12 @@ PERFIL = os.environ.get("TRANSPARENCIA_PERFIL", "sem-perfil")
 TENANTS = [t for t in os.environ.get("TRANSPARENCIA_TENANTS", "").split(",") if t]
 VER_PESSOAL = os.environ.get("TRANSPARENCIA_VER_PESSOAL") == "sim"
 # O agente roda o servidor em outra pasta: um BRUTO relativo vale a partir da raiz do projeto, não do diretório atual.
-BRUTO = Path(os.environ.get("BRUTO") or "fixtures/exemplo/bruto")
-if not BRUTO.is_absolute():
-    BRUTO = RAIZ / BRUTO
+BRUTO = prova.pasta_bruto(os.environ.get("BRUTO"))
 SENSIBILIDADES = ["publico", "pessoal"] if VER_PESSOAL else ["publico"]
 LOG = Path(os.environ.get("TRANSPARENCIA_LOG") or RAIZ / "logs" / "consultas.jsonl")
 SESSAO = os.environ.get("TRANSPARENCIA_SESSAO")
 LIMITE_LINHAS = 50
+LIMITE_DO_INDICE = 200      # quantos acertos o índice de texto devolve ANTES do filtro de ente: depois dele sobram só os do perfil
 CADASTRO_DE_SANCOES_DE = os.environ.get("CADASTRO_DE_SANCOES_DE", "2025-06-05")
 
 if not TENANTS:
@@ -171,20 +171,12 @@ def registrado(fn):
 # ---------- validação de entrada ----------
 
 ID_FORNECEDOR = re.compile(r"^[a-z]{2,8}(-[a-z]{2,8})?:[0-9a-f]{8,64}$")
-ID_EVIDENCIA = re.compile(r"^[A-Za-z0-9:_\-]{1,80}$")
 
 
 def _fornecedor_id(valor: str) -> str:
     valor = (valor or "").strip()
     if not ID_FORNECEDOR.match(valor):
         raise ValueError("fornecedor_id inválido: use o id devolvido por buscar_fornecedor")
-    return valor
-
-
-def _evidencia_id(valor: str) -> str:
-    valor = (valor or "").strip()
-    if not ID_EVIDENCIA.match(valor):
-        raise ValueError("evidencia_id inválido: use o id devolvido pelas outras tools")
     return valor
 
 
@@ -247,12 +239,25 @@ def buscar_fornecedor(termo: str) -> list[dict]:
     if len(termo) > 100:
         raise ValueError("termo muito longo (máximo 100 caracteres)")
     digitos = "".join(c for c in termo if c.isdigit())
-    return consultar("""
-        MATCH (f:Fornecedor)-[:APARECE_EM]->(e:Ente)
-        WHERE e.id IN $tenants AND (f.tipo = 'PJ' OR size($sensibilidades) > 1)
-          AND (toUpper(f.nome) CONTAINS toUpper($termo) OR ($digitos <> '' AND f.cnpj = $digitos))
-        RETURN DISTINCT f.id AS id, f.nome AS nome, f.tipo AS tipo, f.cnpj AS cnpj, f.resolvido AS identidade_confirmada
-        LIMIT 10""", termo=termo, digitos=digitos)
+    achados: dict[str, dict] = {}
+    if digitos:      # o CNPJ digitado inteiro vem primeiro
+        for r in consultar("""
+            MATCH (f:Fornecedor)-[:APARECE_EM]->(e:Ente)
+            WHERE e.id IN $tenants AND (f.tipo = 'PJ' OR size($sensibilidades) > 1) AND f.cnpj = $digitos
+            RETURN DISTINCT f.id AS id, f.nome AS nome, f.tipo AS tipo, f.cnpj AS cnpj, f.resolvido AS identidade_confirmada
+            LIMIT 10""", digitos=digitos):
+            achados.setdefault(r["id"], r)
+    texto = busca.para_lucene(termo)
+    if texto:        # o nome: sem acento, por começo de palavra e com um erro de digitação (consulta/busca.py)
+        for r in consultar("""
+            CALL db.index.fulltext.queryNodes('fornecedor_nome', $texto, {limit: $teto}) YIELD node AS f, score
+            MATCH (f)-[:APARECE_EM]->(e:Ente)
+            WHERE e.id IN $tenants AND (f.tipo = 'PJ' OR size($sensibilidades) > 1)
+            RETURN f.id AS id, f.nome AS nome, f.tipo AS tipo, f.cnpj AS cnpj, f.resolvido AS identidade_confirmada, max(score) AS pontos
+            ORDER BY pontos DESC, id LIMIT 10""", texto=texto, teto=LIMITE_DO_INDICE):
+            r.pop("pontos", None)
+            achados.setdefault(r["id"], r)
+    return list(achados.values())[:10]
 
 
 @mcp.tool()
@@ -279,17 +284,28 @@ def buscar_contratos(termo: str) -> list[dict]:
         raise ValueError("termo vazio")
     if len(termo) > 100:
         raise ValueError("termo muito longo (máximo 100 caracteres)")
+    texto = busca.para_lucene(termo)
+    if not texto:
+        return []
     return consultar("""
-        MATCH (c:Contrato)-[:CONTRATA]->(f:Fornecedor)
+        CALL {
+            CALL db.index.fulltext.queryNodes('contrato_objeto', $texto, {limit: $teto}) YIELD node AS c, score
+            RETURN c
+            UNION
+            CALL db.index.fulltext.queryNodes('unidade_nome', $texto, {limit: $teto}) YIELD node AS orgao, score
+            MATCH (c:Contrato)-[:CELEBRADO_POR]->(orgao)
+            RETURN c
+        }
+        WITH DISTINCT c
+        MATCH (c)-[:CONTRATA]->(f:Fornecedor)
         MATCH (c)-[:CELEBRADO_POR]->(u:UnidadeJurisdicionada)
         WHERE c.tenant IN $tenants AND c.sensibilidade IN $sensibilidades
-          AND (toUpper(c.objeto) CONTAINS toUpper($termo) OR toUpper(u.nome) CONTAINS toUpper($termo))
         OPTIONAL MATCH (c)-[:PROVADO_POR]->(e:Evidencia)
         RETURN c.numero AS numero, c.objeto AS objeto, u.nome AS unidade, f.id AS fornecedor_id, f.nome AS fornecedor,
                c.valor_contratado AS valor_contratado, c.inicio AS inicio, c.fim AS fim, c.tenant AS ente,
                e.id AS evidencia
         ORDER BY c.valor_contratado DESC
-        LIMIT $limite""", termo=termo, limite=LIMITE_LINHAS)
+        LIMIT $limite""", texto=texto, teto=LIMITE_DO_INDICE, limite=LIMITE_LINHAS)
 
 
 @mcp.tool()
@@ -348,20 +364,7 @@ def execucao_do_fornecedor(fornecedor_id: str, ano: str = "") -> list[dict]:
 @registrado
 def conferir_evidencia(evidencia_id: str) -> dict:
     """Abre a evidência: trecho, endereço da fonte e se o arquivo guardado ainda bate com o hash."""
-    achado = consultar("""
-        MATCH (e:Evidencia {id: $id}) WHERE e.tenant IN $tenants
-        MATCH (fato)-[:PROVADO_POR]->(e)
-        WHERE NOT fato:Fornecedor AND fato.sensibilidade IN $sensibilidades
-        RETURN e.trecho AS trecho, e.url AS url, e.arquivo AS arquivo, e.documento_hash AS documento_hash,
-               e.tabela AS tabela, e.linha AS linha, e.capturado_em AS capturado_em,
-               e.trecho_mascarado AS trecho_mascarado
-        LIMIT 1""", id=_evidencia_id(evidencia_id))
-    if not achado:
-        return {"erro": "evidência não encontrada para este perfil"}
-    e = achado[0]
-    arquivo = BRUTO / Path(e["arquivo"]).name
-    e["hash_confere"] = arquivo.is_file() and hashlib.sha256(arquivo.read_bytes()).hexdigest() == e["documento_hash"]
-    return e
+    return prova.abrir(consultar, evidencia_id, BRUTO)     # a mesma consulta que o agente usa para abrir a prova que faltou
 
 
 if __name__ == "__main__":
