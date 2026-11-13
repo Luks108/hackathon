@@ -77,7 +77,7 @@ vazio) também fecham com `desfecho`, com `via` (`sem_agente` ou `ignorada`) e a
   `tipo_nao_tratado`, `midia_recebida` (tipo, bytes, baixada, tempo), `envio` (op, ok, duração; `reagir` e `digitando` em debug), `sem_confirmacao_reenviando`,
   `sem_confirmacao_apos_reenvio`, `erro_nao_tratado`, `encerrou`.
 - **worker:** `entrada_na_fila`, `inicio`, `texto_cortado`, `timeout`, `desfecho`.
-- **agente:** `inicio`, `tentativa_inicio`, `chamada_modelo` (só nos modelos de API: debug se deu certo, aviso se falhou), `tentativa_fim`, `troca_de_provedor`, `resumo`.
+- **agente:** `inicio`, `tentativa_inicio`, `chamada_modelo` (só nos modelos de API: debug se deu certo, aviso se falhou), `tentativa_fim`, `troca_de_provedor`, `prova_automatica` (o código abriu a prova que o modelo citou e não abriu: quantas escolheu, quais abriu, quantas falharam), `prova_automatica_falhou` (aviso: não conseguiu abrir uma), `resposta_sem_prova` (aviso: a resposta traz valor ou número de contrato, as tools devolveram evidências e nenhuma ficou ligada ao que foi dito), `resumo`.
 - **ferramentas:** `chamada`.
 - **seguranca:** `entrada_suspeita`, `cpf_mascarado`, `injecao_em_fonte`, `injecao_em_argumento`, `entrada_bloqueada`, `ferramenta_negada`,
   `ferramentas_nao_autorizadas`, `evidencia_negada`, `perfil_invalido`, `remetente_nao_autorizado`.

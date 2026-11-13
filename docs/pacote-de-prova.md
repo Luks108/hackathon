@@ -49,7 +49,7 @@ O ZIP é gravado por um escritor mínimo em PHP (sem compressão), porque o PHP 
   e confere o `documento_hash` (`verificar_prova.py --bruto PASTA` ajuda). Sem o bruto, o pacote só prova a integridade do trecho, não a origem.
 - **`trecho_sha256` é calculado na exportação** (o grafo não guarda hash do trecho). Protege contra alteração posterior; a origem é o `documento_hash`.
 - **Versão do extrator:** ausente. Registrá-la exige gravar a versão em cada `Evidencia` e recarregar o grafo.
-- **Só os trechos conferidos** (no máximo 3 por resposta, regra do agente) entram; fato citado sem `conferir_evidencia` não gera trecho.
+- **Só os trechos conferidos** (no máximo 3 por resposta) entram. Conferem o modelo (regra do agente) e, desde 13/11/2026, o **código**: se a resposta cita um fato (número do contrato, valor ou nome) cuja evidência o modelo não abriu, ela é aberta ao fim pelo mesmo filtro de perfil (`consulta/prova.py`) e vem marcada `automatica`. Fato que a resposta não cita não gera trecho, e fato sem evidência nas tools (a contagem de `cobertura`, o nome por CNPJ de `buscar_fornecedor`) continua sem trecho.
 - Consultas feitas **antes** desta mudança saem com modelo/troca `null` e `prova_incompleta` (o `fonte` antigo não tem `documento_hash`).
 - Exportação pelo WhatsApp, "sessão" no servidor (o site não tem; o dossiê é por conta ou por ids) e assinatura digital do pacote.
 - Não rodei prova real de fallback nem pergunta com modelo real (nenhum token gasto por mim neste trabalho).
