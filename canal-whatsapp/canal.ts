@@ -14,7 +14,7 @@ import { closeSync, existsSync, openSync, readFileSync, readSync, realpathSync, 
 import { isAbsolute, join, relative, sep } from 'path'
 import {
   CANAL_LOCK, INBOUND_LOG, MIDIA_DIR, RESULTADOS_DIR, STATUS_FILE,
-  enfileirar, garantirDiretorios, jidDeNumero, lerAcesso, mesmoNumero, lerPid, processoVivo,
+  enfileirar, garantirDiretorios, jidDeNumero, lerAcesso, mesmoNumero, neutralizarTagDoCanal, lerPid, processoVivo,
   type Inbound, type Resultado,
 } from './comum.ts'
 
@@ -228,7 +228,7 @@ async function entregar(m: Inbound) {
     corpo = fala ? `🎤 (áudio transcrito) ${fala}` : '(áudio — a transcrição falhou; o arquivo está em file_path)'
   }
   // O texto do remetente não pode abrir/fechar a tag do canal.
-  const content = corpo.replace(/<\/?channel/gi, '‹channel')
+  const content = neutralizarTagDoCanal(corpo)
 
   mcp.notification({ method: 'notifications/claude/channel', params: { content, meta } })
     .catch(e => err(`falha ao entregar: ${e}`))

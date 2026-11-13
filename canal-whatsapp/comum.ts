@@ -52,6 +52,10 @@ export function gravarAcesso(a: Acesso): void {
 const TIPOS_TECNICOS = new Set(['protocolMessage', 'senderKeyDistributionMessage', 'reactionMessage'])
 export function ehTipoTecnico(tipoBruto: string): boolean { return TIPOS_TECNICOS.has(tipoBruto) }
 
+/** O texto de quem escreve não pode abrir nem fechar a tag do canal (`<channel ...>`): o `<` ou `</` antes de "channel" vira um caractere neutro.
+ *  Mora aqui, e não no canal.ts, para ser testável (o canal.ts sobe um servidor ao ser importado). Ataque AP-16 do catálogo. */
+export function neutralizarTagDoCanal(texto: string): string { return texto.replace(/<\/?channel/gi, '‹channel') }
+
 export function digitos(jid: string | null | undefined): string {
   if (!jid) return ''
   return jid.split('@')[0]!.split(':')[0]!.replace(/\D/g, '')
