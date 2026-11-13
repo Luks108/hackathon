@@ -36,7 +36,7 @@ Celular do usuário ──WhatsApp──► [ gateway ]  (bun + Baileys: único 
 |---|---|---|
 | O gateway sobe no Windows, acha a versão atual do WhatsApp Web, é aceito pelo servidor (sem erro 405) e entrega o QR em ~1 s | Rodado em 11/11/2026 numa pasta temporária, **sem parear** | `cd canal-whatsapp && bun gateway.ts` (use `WHATSAPP_STATE_DIR` temporária) |
 | O TypeScript compila | `bun x tsc --noEmit -p .` sai com 0 | idem |
-| Números, acesso e fila de saída (12 testes) | `bun test testes` em `canal-whatsapp/` | idem |
+| Números, acesso, fila de saída e log estruturado (24 testes) | `bun test testes` em `canal-whatsapp/` | idem |
 | Caminho de uma mensagem dentro do worker (30 testes): ordem reação → digitando → resposta, fontes, perfil, tipos de mensagem, cursor, falhas, CPF no log | `python -m unittest chat.testes.test_whatsapp_fluxo` | idem |
 | O worker e o gateway falam o mesmo formato de arquivo (operações, campos, JID) | testes de contrato no mesmo arquivo | idem |
 | Pré-requisitos desta máquina | `python chat/provas/whatsapp_preparar.py` | idem (só lê) |
@@ -179,6 +179,11 @@ O log deve mostrar `worker no ar: http://127.0.0.1:8080 ...`. Rode `python chat/
 | T23 | Fallback | Aponte `DEEPSEEK_BASE_URL` para uma porta fechada e use `AGENTE_MODELO=deepseek:deepseek-flash`, ou derrube o provedor principal | A resposta chega pelo substituto; **o usuário não vê diferença**. L: `trocas` preenchido | L, W | Vivo (lógica: Auto; já provada com clientes reais no site) |
 | T24 | Site em paralelo | Durante o teste, faça uma pergunta pelo site | As duas respondem; o site usa os 3 agentes dele, o WhatsApp o dele | site, C | Vivo |
 | T25 | Pacote de prova | No site, exporte a prova de uma consulta | Só vale para o site (o WhatsApp não gera pacote): **fora do escopo** | — | n/a |
+
+**Como conferir cada linha pelo log (desde 12/11/2026):** toda mensagem tem um `request_id` (`wa:<id da mensagem>`) que aparece no gateway, no worker, no agente, nas
+ferramentas e na segurança. `python scripts/jornada.py --ultimas` lista os últimos desfechos (respondeu ou não, e o motivo) e `python scripts/jornada.py wa:<id>` mostra a
+jornada inteira de uma mensagem (chegada, espera, cada tentativa de modelo, cada ferramenta, resposta enviada). T09 e T10 aparecem em `--seguranca`; T18 e T19 a T20 em `--saude`.
+Guia: [observabilidade.md](observabilidade.md). **A perna do gateway com mensagem real ainda não foi vista depois desta mudança.**
 
 **Critério de pronto:** T01 a T08 e T11 a T13 passando; T09/T10 sem vazamento; T16 a T19 passando. T14 (áudio), T20, T21 e T23 são desejáveis.
 Registre o resultado de cada um (OK / falhou / não feito) **no diário de sessões**, sem número de telefone.

@@ -472,13 +472,15 @@ simples, sem espaços). Não mexa nas linhas do banco: elas já combinam com o D
 | `BRUTO` | Não | Deixe `fixtures/exemplo/bruto` (dados fictícios). Caminho relativo vale a partir da raiz do projeto | O agente diz que o hash da prova "não confere" |
 | `WORKER_KEY` | **Sim** (para o chat) | Gerada pelo `--preparar` (24+ caracteres). **Tem de ser igual** à de `site/hackathon-config.php`. Na exibição: a do site publicado, passada pelo Lucas em canal privado | O worker não inicia (`KeyError: 'WORKER_KEY'`); se for diferente da do site, o worker mostra `site: API respondeu 401` sem parar e as perguntas ficam paradas |
 | `API_BASE` | Não, mas **recomendada local** | Local: `http://127.0.0.1:8080`. Na exibição: **apague a linha** | **Sem ela, o worker aponta para o site PUBLICADO**, e não para o seu |
-| `AGENTE_MODELO` | Não | Padrão `claude-opus-5-5`. Aceita o prefixo de provedor (`deepseek:deepseek-flash`) | Usa o padrão |
+| `AGENTE_MODELO` | Não | Padrão `claude-sonnet-5-5` (era `claude-opus-5-5` até 12/11/2026). Aceita o prefixo de provedor (`deepseek:deepseek-flash`) | Usa o padrão |
 | `ANTHROPIC_API_KEY` | **Não**, e normalmente deve ficar vazia | O `claude` usa o login da sua conta. Se preencher, o uso passa a ser cobrado pela API | Usa o login |
 | `DEEPSEEK_API_KEY`, `GOOGLE_API_KEY`, `OPENAI_API_KEY` | **Não** (veja a seção 18.6) | A chave que você tiver em cada provedor. Pode estar no `.env` ou nas variáveis de ambiente do sistema (a do sistema vence) | Os modelos daquele provedor ficam fora da lista, com aviso. Nada quebra |
 | `AGENTES_SITE` | Não | Padrão `3` perguntas ao mesmo tempo | Usa o padrão |
 | `AGENTE_LIMITE_S` | Não | Padrão `110` segundos por pergunta | Usa o padrão |
 | `AGENTE_PYTHON`, `CLAUDE_BIN` | Não | Caminhos completos, só se a detecção automática falhar | O projeto procura sozinho (`.venv` e `claude`) |
 | `WHATSAPP_STATE_DIR` | Não | Pasta de estado do gateway | Usa `~/.claude/channels/whatsapp-hackathon` |
+| `LOG_NIVEL`, `LOG_MAX_MB`, `LOG_ARQUIVOS`, `FORNEXIA_LOGS_DIR` | Não | Nível dos logs por subsistema (`debug`, `info`, `aviso`, `erro`; padrão `info`), tamanho para girar o arquivo (10 MB), quantas cópias guardar (5) e a pasta (`logs/`). Veja [observabilidade.md](observabilidade.md) | Usa os padrões |
+| `VIGIA_INTERVALO_S`, `VIGIA_LIMITE_S`, `VIGIA_COMPONENTES` | Não | O vigia de saúde olha a cada 15 s, alerta após 120 s fora e vigia `gateway,worker,site,neo4j` | Usa os padrões |
 
 
 O site PHP **não lê** o `.env`: ele lê `site/hackathon-config.php`, por isso a `WORKER_KEY` existe nos dois arquivos. O número do
@@ -765,8 +767,8 @@ python site/dev/test_api.py
 | Comando | Esperado | Se vier diferente |
 |---|---|---|
 | `consulta/testes` | `Ran 65 tests` e `OK` | `skipped=...`: o Neo4j está parado ou sem os dados (etapas 6 e 7). Falha: leia o nome do teste |
-| `chat/testes` | `Ran 125 tests` e `OK (skipped=12)` no Windows (portabilidade, provedores, fallback, dados do pacote de prova, robustez do worker, o fluxo do WhatsApp e os scripts de shell; sem internet e sem `.env`; os 12 pulados só rodam no Linux; os de shell levam ~100 s) | |
-| `canal-whatsapp` (`bun test testes`) | `12 pass` (números, acesso e fila de saída do gateway; sem WhatsApp) | `bun` não instalado: veja a etapa 11 |
+| `chat/testes` | `Ran 202 tests` e `OK (skipped=12)` no Windows (portabilidade, provedores, fallback, dados do pacote de prova, robustez do worker, o fluxo do WhatsApp e os scripts de shell; sem internet e sem `.env`; os 12 pulados só rodam no Linux; os de shell levam ~100 s) | |
+| `canal-whatsapp` (`bun test testes`) | `24 pass` (números, acesso, fila de saída e log estruturado do gateway; sem WhatsApp) | `bun` não instalado: veja a etapa 11 |
 | `site/dev/test_api.py` | `Ran 80 tests` e `OK` (leva uns 40 s) | `php não encontrado`: defina `PHP_BIN` (abaixo). `servidor ... não subiu`: o MariaDB não está no ar. Uma falha em `dois_pedidos_ao_mesmo_tempo...`: o worker estava rodando |
 
 `PHP_BIN` no Windows (PowerShell), se o PHP não estiver no PATH:

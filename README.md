@@ -7,7 +7,7 @@ da fonte, e cada perfil vê só o que está autorizado a ver.
 
 > **Estado:** extração, grafo, consultas com filtro de perfil, registro de consultas, catálogo de ataques, **o site com contas,
 > chat em fila e administração** e **o worker que liga o site e o WhatsApp ao agente** estão prontos. Testes: 65 de consulta (18 deles exigem o
-> Neo4j no ar e são pulados sem ele), 125 de chat (12 só rodam no Linux), 80 da API e 33 do pacote de prova. Ainda falta rodar os ataques de prompt com o modelo real
+> Neo4j no ar e são pulados sem ele), 202 de chat (12 só rodam no Linux), 80 da API e 33 do pacote de prova. Ainda falta rodar os ataques de prompt com o modelo real
 > e fazer o deploy na Hostinger. Veja
 > [Onde estamos no desafio](#onde-estamos-no-desafio), [Site e chat (Dev A)](#site-e-chat-dev-a) e [Pendências conhecidas](#pendências-conhecidas).
 > Detalhes do site e do chat: [spec](docs/specs/001-site-e-chat/spec.md), [plano técnico](docs/specs/001-site-e-chat/plan.md) e [tasks](docs/specs/001-site-e-chat/tasks.md).
@@ -192,8 +192,8 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt     # no Windo
 docker compose --env-file .env -f infra/docker-compose.yml up -d neo4j
 python coleta/carregar_neo4j.py --zerar --exemplo
 python -m unittest discover -s consulta/testes -v                     # 65 testes (18 só com o Neo4j no ar)
-python -m unittest discover -s chat/testes -v                         # 125 testes (12 pulados no Windows), sem internet nem .env (2 exigem o pacote `mcp`; 26 simulam os scripts de shell e levam ~100 s)
-(cd canal-whatsapp && bun test testes)                                # 12 testes do gateway (números, acesso, fila de saída)
+python -m unittest discover -s chat/testes -v                         # 202 testes (12 pulados no Windows), sem internet nem .env (2 exigem o pacote `mcp`; 26 simulam os scripts de shell e levam ~100 s)
+(cd canal-whatsapp && bun test testes)                                # 24 testes do gateway (números, acesso, fila de saída, log estruturado)
 python site/dev/test_prova.py                                         # 33 testes do pacote de prova (PHP e MariaDB)
 ```
 
@@ -226,7 +226,23 @@ modelo escolher o mais permissivo (AP-19).
 
 Cada chamada de tool grava uma linha em `logs/consultas.jsonl`: horário, sessão, perfil, entes, tool, argumentos, quantos
 resultados e quais evidências. Tentativas recusadas também entram. Defina `TRANSPARENCIA_SESSAO` para ligar as consultas à
-pergunta que as originou.
+pergunta que as originou (o agente já faz isso: a sessão é o `request_id`).
+
+### Logs por subsistema e saúde
+
+Além do `consultas.jsonl` e do `chat.jsonl` (que seguem como sempre), há um arquivo NDJSON por subsistema em `logs/`: `gateway`, `worker`, `agente`,
+`ferramentas`, `seguranca` e `saude`. Todos levam o mesmo `request_id` (`wa:<id da mensagem>` ou `site:<id da pergunta>`), então **uma pergunta pode ser
+reconstruída de ponta a ponta**. Cada pergunta termina com um `desfecho` (respondeu ou não e, se não, o motivo: timeout, provedor, fila, ferramenta,
+guardrail ou interno). O **vigia** (`chat/vigia.py`, sobe com o `ligar-tudo`) escreve quando o gateway, o worker, o site ou o Neo4j caem e voltam, com a duração.
+
+```bash
+python scripts/jornada.py --ultimas        # últimos desfechos (pega o request_id)
+python scripts/jornada.py --falhas         # só o que não foi respondido, com o motivo
+python scripts/jornada.py wa:3EB0A49AA2B2  # a jornada inteira de uma pergunta
+python scripts/jornada.py --saude          # quedas e voltas de cada peça
+```
+
+Nenhum log leva chave, token, telefone, CPF nem o texto de uma mensagem. Detalhes, variáveis e limites conhecidos: [docs/observabilidade.md](docs/observabilidade.md).
 
 ### Testar ataques
 
@@ -344,6 +360,7 @@ O que **não** está resolvido, para ninguém se surpreender na hora da demonstr
 - [Tasks](docs/specs/001-site-e-chat/tasks.md)
 - [Como rodar o site localmente](site/dev/README.md)
 - [Rodar no Windows e no Linux](docs/rodar-no-windows-e-no-linux.md): worker, WhatsApp, variáveis e testes
+- [Observabilidade](docs/observabilidade.md): reconstruir uma pergunta, achar por que não respondeu, ver quedas e tentativas de ataque
 - [Pacote de prova: registro de trabalho](docs/pacote-de-prova.md)
 - [Diário de sessões](docs/sessoes/LEIAME.md): o que cada pessoa fez e o que ficou em aberto (leia antes de começar)
 - [Backlog](docs/BACKLOG.md)
