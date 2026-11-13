@@ -30,6 +30,7 @@ import {
   anexarJsonl, digitos, ehTipoTecnico, escreverAtomico, garantirDiretorios, lerAcesso, lerPid, mesmoNumero, processoVivo,
   type Inbound, type Pedido, type Resultado,
 } from './comum.ts'
+import { registrar } from './registro.ts'
 
 const log = (m: string) => console.log(`[${new Date().toISOString()}] ${m}`)
 
@@ -53,6 +54,20 @@ if (pidAntigo && pidAntigo !== process.pid && processoVivo(pidAntigo)) {
   process.exit(0)
 }
 writeFileSync(GATEWAY_PID, String(process.pid))
+
+// ----- saúde: início, e quanto tempo o gateway ficou fora desde o último sinal de vida (o status.json é o batimento) -----
+{
+  let anterior: { atualizado?: string; parado?: boolean } = {}
+  try { anterior = JSON.parse(readFileSync(STATUS_FILE, 'utf8')) } catch {}
+  const ultimo = anterior.atualizado ? Date.parse(anterior.atualizado) : NaN
+  const lacuna = Number.isFinite(ultimo) ? Math.round((Date.now() - ultimo) / 100) / 10 : null
+  const longa = lacuna !== null && lacuna > 120
+  registrar('saude', 'componente_iniciou', {
+    componente: 'gateway', pid: process.pid, ultimo_sinal: anterior.atualizado ?? null, lacuna_s: lacuna,
+    parada_limpa: anterior.parado === true, fora_ha_mais_de_2min: longa,
+  }, longa && anterior.parado !== true ? 'aviso' : 'info')
+  registrar('gateway', 'iniciou', { pid: process.pid })
+}
 
 // ----- versão do WhatsApp Web -----
 // O Baileys traz a versão fixa no código e o WhatsApp recusa builds velhas com 405 antes mesmo do QR
@@ -85,6 +100,7 @@ let sock: ReturnType<typeof makeWASocket> | null = null
 let conectado = false
 let tentativas = 0
 let encerrando = false
+let quedaEm: number | null = null      // quando a conexão caiu (para medir a duração da queda)
 const cacheMsgs = new Map<string, WAMessage>() // para citar (reply_to) e reagir
 
 function status(extra: Record<string, unknown> = {}) {
@@ -143,17 +159,25 @@ async function conectar() {
       qrTerminal.generate(u.qr, { small: true }, (out: string) => console.log(out))
     }
     if (u.connection === 'open') {
+      const tentativasAntes = tentativas
       conectado = true
       tentativas = 0
       rmSync(QR_PNG, { force: true })
       log(`conectado como ${digitos(s.user?.id)}`)
       status()
+      registrar('gateway', 'conectado', { tentativas_antes: tentativasAntes })
+      if (quedaEm !== null) {
+        registrar('gateway', 'reconectado', { queda_s: Math.round((Date.now() - quedaEm) / 100) / 10 })
+        quedaEm = null
+      }
     }
     if (u.connection === 'close') {
       conectado = false
       const code = (u.lastDisconnect?.error as Boom | undefined)?.output?.statusCode
       status({ ultimoErro: code })
+      quedaEm ??= Date.now()
       if (code === DisconnectReason.loggedOut) {
+        registrar('gateway', 'deslogado', { codigo: code }, 'erro')
         // Quarentena, nunca apagar: um 401 transitório não pode custar um pareamento novo.
         const destino = `${AUTH_DIR}.quarentena-${Date.now()}`
         try { renameSync(AUTH_DIR, destino); log(`desconectado (401) — auth movida para ${destino}; novo QR a seguir`) } catch {}
@@ -163,6 +187,7 @@ async function conectar() {
       tentativas++
       const espera = Math.min(60_000, 3000 * 2 ** Math.min(tentativas - 1, 5))
       log(`conexão caiu (código ${code}) — reconectando em ${espera / 1000}s`)
+      registrar('gateway', 'queda', { codigo: code ?? null, motivo: code !== undefined ? (DisconnectReason as Record<number, string>)[code] ?? 'desconhecido' : 'sem_codigo', tentativa: tentativas, reconectar_em_s: espera / 1000 }, 'aviso')
       setTimeout(() => void conectar(), espera)
     }
   })
@@ -202,6 +227,7 @@ async function receber(m: WAMessage) {
   const chat = m.key.remoteJid ?? ''
   if (chat === 'status@broadcast') return
   guardarNoCache(m)
+  const rid = `wa:${m.key.id ?? ''}`      // o mesmo id que o worker usa: a pergunta vira uma linha do tempo só
 
   const grupo = chat.endsWith('@g.us')
   // Baileys 7: o remetente pode chegar como @lid; o telefone vem no campo *Alt.
@@ -215,22 +241,27 @@ async function receber(m: WAMessage) {
   if (!liberado) {
     // Silêncio para quem não está na lista; o dono consulta com `bun acesso.ts desconhecidos`.
     anexarJsonl(DESCONHECIDOS_LOG, { ts: Date.now(), chat, remetente, nome: m.pushName ?? '' })
+    registrar('seguranca', 'remetente_nao_autorizado', { grupo }, 'aviso', rid)      // sem número: quem quiser ver quem foi usa `acesso.ts desconhecidos`
     log(`ignorado: ${grupo ? 'grupo ' + chat : remetente || chat} (fora do ${basename(ACCESS_FILE)})`)
     return
   }
 
   const conteudo = normalizeMessageContent(m.message)
   const tipoBruto = getContentType(conteudo) ?? ''
-  if (ehTipoTecnico(tipoBruto)) { log(`ignorado (mensagem técnica): ${tipoBruto}`); return }
+  if (ehTipoTecnico(tipoBruto)) { log(`ignorado (mensagem técnica): ${tipoBruto}`); registrar('gateway', 'ignorada_tecnica', { tipo: tipoBruto }, 'debug', rid); return }
   const tipo = TIPOS[tipoBruto] ?? (textoDe(conteudo) ? 'texto' : 'outro')
   // Só o nome técnico do tipo (nunca o conteúdo), para saber o que é cada "outro".
-  if (tipo === 'outro') log(`tipo não tratado: ${tipoBruto || '(vazio)'} | chaves: ${Object.keys(conteudo ?? {}).join(',') || '(nenhuma)'}`)
+  if (tipo === 'outro') {
+    log(`tipo não tratado: ${tipoBruto || '(vazio)'} | chaves: ${Object.keys(conteudo ?? {}).join(',') || '(nenhuma)'}`)
+    registrar('gateway', 'tipo_nao_tratado', { tipo: tipoBruto || '(vazio)' }, 'info', rid)
+  }
   const reg: Inbound = {
     id: m.key.id ?? '', chat_id: chat, remetente, nome: m.pushName ?? remetente,
     ts: Number(m.messageTimestamp ?? Math.floor(Date.now() / 1000)),
     texto: textoDe(conteudo), tipo, grupo,
   }
 
+  const tMidia = Date.now()
   if (TIPOS[tipoBruto]) {
     const midia = (conteudo as any)[tipoBruto]
     const tamanho = Number(midia?.fileLength ?? 0)
@@ -247,8 +278,12 @@ async function receber(m: WAMessage) {
     }
   }
 
+  if (TIPOS[tipoBruto]) {
+    registrar('gateway', 'midia_recebida', { tipo, mime: reg.mime, bytes: Number((conteudo as any)[tipoBruto]?.fileLength ?? 0), baixada: Boolean(reg.arquivo), duracao_ms: Date.now() - tMidia }, 'info', rid)
+  }
   anexarJsonl(INBOUND_LOG, reg)
   log(`recebida de ${reg.nome} (${tipo})`)
+  registrar('gateway', 'recebida', { tipo, grupo, tamanho_texto: reg.texto.length }, 'info', rid)
 }
 
 function extensao(mime?: string, nome?: string): string {
@@ -301,8 +336,9 @@ setInterval(() => {
   for (const [id, m] of semAck) {
     if (Date.now() - m.em < 15_000) continue
     semAck.delete(id)
-    if (m.reenviada) { log(`sem confirmação do servidor mesmo após reenvio (${id})`); continue }
+    if (m.reenviada) { log(`sem confirmação do servidor mesmo após reenvio (${id})`); registrar('gateway', 'sem_confirmacao_apos_reenvio', {}, 'erro'); continue }
     log(`sem confirmação do servidor em 15s — reenviando (${id})`)
+    registrar('gateway', 'sem_confirmacao_reenviando', { espera_s: 15 }, 'aviso')
     void enviar(sock, m.chat, m.conteudo, undefined, true).catch(e => log(`reenvio falhou: ${e}`))
   }
 }, 5000)
@@ -348,7 +384,10 @@ async function drenarOutbox() {
       let pedido: Pedido
       try { pedido = JSON.parse(readFileSync(path, 'utf8')) } catch { continue } // ainda sendo escrito
       let res: Resultado
+      const tEnvio = Date.now()
       try { res = await executar(pedido) } catch (e) { res = { id: pedido.id, ok: false, erro: String(e) } }
+      registrar('gateway', 'envio', { op: pedido.op, ok: res.ok, duracao_ms: Date.now() - tEnvio, ...(res.ok ? {} : { erro: res.erro }) },
+        res.ok ? (pedido.op === 'enviar' ? 'info' : 'debug') : 'erro', pedido.request_id)
       escreverAtomico(join(RESULTADOS_DIR, nome), JSON.stringify(res))
       rmSync(path, { force: true })
       if (!res.ok) log(`envio falhou (${pedido.id}): ${res.erro}`)
@@ -361,19 +400,23 @@ async function drenarOutbox() {
   } finally { drenando = false }
 }
 setInterval(() => void drenarOutbox(), 400)
+// Batimento: o vigia lê o campo `atualizado` do status.json e conclui que o gateway morreu se ele parar de mudar.
+setInterval(() => { if (!encerrando) status() }, 30_000)
 
 // ----- ciclo de vida -----
 function sair() {
   encerrando = true
   conectado = false
   status({ parado: true })
+  registrar('gateway', 'encerrou', { pid: process.pid })
+  registrar('saude', 'componente_parou', { componente: 'gateway', pid: process.pid, parada_limpa: true })
   try { sock?.end(undefined) } catch {}
   if (lerPid(GATEWAY_PID) === process.pid) rmSync(GATEWAY_PID, { force: true })
   process.exit(0)
 }
 process.on('SIGINT', sair)
 process.on('SIGTERM', sair)
-process.on('unhandledRejection', e => log(`unhandledRejection: ${e}`))
+process.on('unhandledRejection', e => { log(`unhandledRejection: ${e}`); registrar('gateway', 'erro_nao_tratado', { erro: String(e) }, 'erro') })
 
 if (lerAcesso().allowFrom.length === 0) log(`ATENÇÃO: ${ACCESS_FILE} sem números — ninguém será atendido. Use: bun acesso.ts add <numero>`)
 void conectar()

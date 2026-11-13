@@ -102,9 +102,9 @@ export interface Inbound {
 }
 
 export type Pedido =
-  | { id: string; op: 'enviar'; chat_id: string; texto?: string; arquivos?: string[]; responder_a?: string }
-  | { id: string; op: 'reagir'; chat_id: string; message_id: string; emoji: string }
-  | { id: string; op: 'digitando'; chat_id: string; ligado: boolean }
+  | { id: string; op: 'enviar'; chat_id: string; texto?: string; arquivos?: string[]; responder_a?: string; request_id?: string }
+  | { id: string; op: 'reagir'; chat_id: string; message_id: string; emoji: string; request_id?: string }
+  | { id: string; op: 'digitando'; chat_id: string; ligado: boolean; request_id?: string }
 
 export interface Resultado { id: string; ok: boolean; ids?: string[]; erro?: string }
 
