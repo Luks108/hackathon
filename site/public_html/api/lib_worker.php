@@ -31,7 +31,11 @@ function rota_worker_proxima(): never {
         $up = $pdo->prepare('UPDATE perguntas SET status = "processando", iniciada_em = NOW(3) WHERE id = ? AND status = "fila"');
         $up->execute([$id]);
         if ($up->rowCount() === 1) {
-            $st = $pdo->prepare('SELECT id, usuario_id, plano_id, texto, tenants FROM perguntas WHERE id = ?');
+            // espera_ms: quanto a pergunta ficou na fila (criada_em até a reserva acima). Calculada pelo banco, com o mesmo relógio
+            // dos dois horários, para não depender do fuso nem do relógio do notebook. Só entra no log do worker.
+            $st = $pdo->prepare('SELECT id, usuario_id, plano_id, texto, tenants,
+                                        TIMESTAMPDIFF(MICROSECOND, criada_em, iniciada_em) DIV 1000 AS espera_ms
+                                 FROM perguntas WHERE id = ?');
             $st->execute([$id]);
             $p = $st->fetch();
             responder(200, [
@@ -41,6 +45,7 @@ function rota_worker_proxima(): never {
                 'texto' => $p['texto'],
                 'tenants' => json_decode((string)$p['tenants'], true) ?: [],
                 'ver_pessoal' => false,   // nenhum plano de demonstração enxerga pessoa física
+                'espera_ms' => max(0, (int)$p['espera_ms']),
             ]);
         }
         // outro worker foi mais rápido: tenta a próxima

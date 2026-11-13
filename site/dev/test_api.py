@@ -528,6 +528,21 @@ class TestA07Worker(Base):
         self.assertEqual(worker(self.base, "POST", "/api/worker/proxima").status, 204)
         self.assertEqual(sql(f"SELECT status FROM perguntas WHERE id={ida}"), "processando")
 
+    def test_entrega_a_espera_na_fila_em_ms_medida_pelo_banco(self):
+        """espera_ms = criada_em até a reserva, calculada no banco (o log do worker precisa dela para saber por que demorou)."""
+        c = self.cliente_com_plano(plano_unico())
+        pid = c.perguntar("quanto esperei?")["id"]
+        sql(f"UPDATE perguntas SET criada_em = NOW(3) - INTERVAL 5 SECOND WHERE id={pid}")
+        p = worker(self.base, "POST", "/api/worker/proxima")
+        self.assertEqual(p["id"], pid)
+        self.assertIsInstance(p["espera_ms"], int)
+        self.assertTrue(5000 <= p["espera_ms"] < 8000, p["espera_ms"])     # 5 s de atraso forçado + a folga do próprio teste
+        self.assertEqual(sql(f"SELECT TIMESTAMPDIFF(MICROSECOND, criada_em, iniciada_em) DIV 1000 FROM perguntas WHERE id={pid}").strip(),
+                         str(p["espera_ms"]))                                # o número entregue é o que está gravado no banco
+
+    def test_espera_nunca_e_negativa_nem_inventada_com_a_fila_vazia(self):
+        self.assertEqual(worker(self.base, "POST", "/api/worker/proxima").status, 204)
+
     def test_dois_pedidos_ao_mesmo_tempo_nao_pegam_a_mesma_pergunta(self):
         # 80 perguntas na fila e 12 workers brigando por elas ao mesmo tempo, em três servidores. Cada pergunta
         # precisa sair exatamente uma vez. Sem o UPDATE condicional, aparecem entregas repetidas.
