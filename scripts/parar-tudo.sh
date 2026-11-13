@@ -49,7 +49,7 @@ if tem systemctl && systemctl --user is-active --quiet wa-gateway 2>/dev/null; t
   if [ "$SIMULAR" = sim ]; then echo "  [simulação] pararia o serviço systemd --user wa-gateway"
   else systemctl --user stop wa-gateway && printf '  %s[OK]%s serviço wa-gateway parado\n' "$V" "$Z"; fi
 fi
-for item in 'gateway do WhatsApp|gateway\.ts' 'worker|chat/worker\.py' 'site local|php -S 127\.0\.0\.1:8080'; do
+for item in 'gateway do WhatsApp|gateway\.ts' 'worker|chat/worker\.py' 'vigia de saúde|chat/vigia\.py' 'site local|php -S 127\.0\.0\.1:8080'; do
   quem="${item%%|*}"; padrao="${item#*|}"
   for pid in $(pids_de "$padrao"); do achou=sim; encerrar "$pid" "$quem"; done
 done
@@ -57,7 +57,7 @@ done
 tem pgrep || echo "(pgrep não encontrado: não consigo listar processos; instale procps)"
 
 if [ "$SIMULAR" = nao ]; then
-  rm -f "$RUN"/site.pid "$RUN"/gateway.pid "$RUN"/worker.pid "$RUN"/gateway.inicio 2>/dev/null
+  rm -f "$RUN"/site.pid "$RUN"/gateway.pid "$RUN"/worker.pid "$RUN"/vigia.pid "$RUN"/gateway.inicio 2>/dev/null
   if [ "$COM_BANCOS" = sim ]; then
     echo "Desligando os bancos (os dados ficam guardados nos volumes)..."
     ( cd "$RAIZ" && docker compose -f site/dev/docker-compose.yml stop >/dev/null 2>&1; docker compose --env-file .env -f infra/docker-compose.yml stop neo4j >/dev/null 2>&1 )

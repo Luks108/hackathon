@@ -149,13 +149,15 @@ class TestLogica(unittest.TestCase):
         self.assertEqual(posicoes, sorted(posicoes))
         for esperado in ("hackathon-site-db saudável", "no ar (http://127.0.0.1:8080)", "conectado ao WhatsApp", "Worker rodando"):
             self.assertIn(esperado, r.stdout)
-        self.assertEqual((self.vivos("php"), self.vivos("bun"), self.vivos("python3")), (1, 1, 1))
+        self.assertEqual((self.vivos("php"), self.vivos("bun"), self.vivos("python3")), (1, 1, 2))      # python3 = worker + vigia
         chamadas = (self.stub / "docker.calls").read_text()
         self.assertIn("site/dev/docker-compose.yml up -d", chamadas)
         self.assertIn("infra/docker-compose.yml up -d neo4j", chamadas)
-        for nome in ("site", "gateway", "worker"):
+        for nome in ("site", "gateway", "worker", "vigia"):
             self.assertTrue((self.repo / "logs" / "run" / f"{nome}.pid").exists(), nome)
         self.assertIn("worker no ar", (self.repo / "logs" / "worker.log").read_text())
+        self.assertIn("vigia de saúde no ar", r.stdout)
+        self.assertIn("chat/vigia.py", (self.stub / "procs").read_text())          # o vigia subiu com o python do projeto
 
     def test_rodar_de_novo_nao_duplica_nada(self):
         self.rodar("ligar-tudo.sh")
@@ -163,14 +165,17 @@ class TestLogica(unittest.TestCase):
         r = self.rodar("ligar-tudo.sh")
         self.assertEqual(self.pids(), antes)
         self.assertEqual(r.stdout.count("já estava"), 3)           # site, gateway e worker
-        self.assertEqual((self.vivos("php"), self.vivos("bun"), self.vivos("python3")), (1, 1, 1))
+        self.assertIn("vigia de saúde já rodando", r.stdout)
+        self.assertEqual((self.vivos("php"), self.vivos("bun"), self.vivos("python3")), (1, 1, 2))      # python3 = worker + vigia
 
     def test_status_so_mostra_e_nao_sobe_nada(self):
         r = self.rodar("ligar-tudo.sh", "--status")
         self.assertEqual(self.pids(), 0)
         self.assertIn("Site local fora do ar", r.stdout)
         self.assertIn("Worker parado", r.stdout)
+        self.assertIn("Vigia de saúde parado", r.stdout)
         self.rodar("ligar-tudo.sh")
+        self.assertIn("Vigia de saúde rodando", self.rodar("ligar-tudo.sh", "--status").stdout)
         self.assertIn("Gateway do WhatsApp conectado", self.rodar("ligar-tudo.sh", "--status").stdout)
 
     def test_sem_pareamento_avisa_nao_sobe_o_gateway_e_sobe_o_worker(self):
@@ -178,7 +183,7 @@ class TestLogica(unittest.TestCase):
         r = self.rodar("ligar-tudo.sh")
         self.assertIn("ainda não foi pareado", r.stdout)
         self.assertIn("parear.sh", r.stdout)
-        self.assertEqual((self.vivos("bun"), self.vivos("python3")), (0, 1))
+        self.assertEqual((self.vivos("bun"), self.vivos("python3")), (0, 2))
 
     def test_status_antigo_conectado_nao_engana_quando_o_gateway_nao_conecta(self):
         (self.stub / "bun_mudo").write_text("")                     # o bun de mentira sobe, mas nunca escreve um status novo
@@ -205,14 +210,14 @@ class TestLogica(unittest.TestCase):
     def test_parar_simular_lista_e_nao_mata(self):
         self.rodar("ligar-tudo.sh")
         r = self.rodar("parar-tudo.sh", "--simular")
-        self.assertEqual(r.stdout.count("[simulação]"), 3)
-        self.assertEqual((self.vivos("php"), self.vivos("bun"), self.vivos("python3")), (1, 1, 1))
+        self.assertEqual(r.stdout.count("[simulação]"), 4)       # gateway, worker, vigia e site
+        self.assertEqual((self.vivos("php"), self.vivos("bun"), self.vivos("python3")), (1, 1, 2))      # python3 = worker + vigia
 
-    def test_parar_encerra_os_tres_limpa_os_pids_e_rodar_de_novo_diz_que_nao_ha_nada(self):
+    def test_parar_encerra_os_quatro_limpa_os_pids_e_rodar_de_novo_diz_que_nao_ha_nada(self):
         self.rodar("ligar-tudo.sh")
         r = self.rodar("parar-tudo.sh")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(r.stdout.count("encerrado PID"), 3)
+        self.assertEqual(r.stdout.count("encerrado PID"), 4)
         time.sleep(0.5)
         self.assertEqual(self.pids(), 0)
         self.assertEqual(list((self.repo / "logs" / "run").glob("*.pid")), [])
@@ -238,7 +243,7 @@ class TestLogica(unittest.TestCase):
         (self.estado / "status.json").write_text('{"conectado":false,"parado":true}', encoding="utf-8")
         r = self.rodar("ligar-tudo.sh")
         self.assertIn("conectado ao WhatsApp", r.stdout)
-        self.assertEqual((self.vivos("php"), self.vivos("bun"), self.vivos("python3")), (1, 1, 1))
+        self.assertEqual((self.vivos("php"), self.vivos("bun"), self.vivos("python3")), (1, 1, 2))      # python3 = worker + vigia
 
 
 @unittest.skipUnless(BASH and not NT and shutil.which("pgrep") and Path("/proc/self/cwd").exists(), "precisa de pgrep e /proc de verdade (Linux)")

@@ -4,6 +4,7 @@
 #   Só ver o que está no ar:           ... -Status
 #
 # O que sobe, nesta ordem:  1) Docker Desktop  2) bancos (MariaDB do site e Neo4j)  3) site local :8080  4) gateway do WhatsApp  5) worker
+# (+ o vigia de saúde, que grava em logs\saude.jsonl quando uma peça cai e quando volta)
 # Cada peça (3, 4 e 5) abre na própria janela, para você ver o log. Feche a janela para desligar só aquela peça, ou use parar-tudo.bat.
 # Se o número do bot ainda não foi pareado, abre o pareamento (canal-whatsapp\parear.ps1), que pede o número na hora.
 # Isto NÃO apaga dado nenhum, não mexe no .env e não imprime número de telefone.
@@ -60,6 +61,8 @@ function Mostrar-Status {
     else { Aviso 'Gateway do WhatsApp parado' }
     $w = @(Achar 'chat.worker\.py')
     if ($w.Count -gt 0) { Ok 'Worker rodando' } else { Aviso 'Worker parado' }
+    $v = @(Achar 'chat.vigia\.py')
+    if ($v.Count -gt 0) { Ok 'Vigia de saúde rodando (logs\saude.jsonl)' } else { Aviso 'Vigia de saúde parado' }
     if (-not (Pareado)) { Aviso 'O número do bot ainda NÃO foi pareado (rode canal-whatsapp\parear.ps1)' }
 }
 
@@ -143,6 +146,16 @@ else {
         $no_ar = (Test-Path (Join-Path $logs 'worker.log')) -and ((Get-Content (Join-Path $logs 'worker.log') -Raw -ErrorAction SilentlyContinue) -match 'worker no ar')
     }
     if ($no_ar) { Ok 'no ar' } else { Aviso 'não confirmei o "worker no ar": veja a janela "FornexIA - worker"' }
+}
+
+# Vigia de saúde (não bloqueia nada): escreve em logs\saude.jsonl quando uma peça cai e quando volta, com a duração da queda.
+$v = @(Achar 'chat.vigia\.py')
+if ($v.Count -gt 0) { Ok 'vigia de saúde já rodando' }
+elseif (Test-Path (Join-Path $raiz '.venv\Scripts\python.exe')) {
+    $cmdV = "`$env:PYTHONIOENCODING='utf-8'; .\.venv\Scripts\python.exe -u chat\vigia.py"
+    Janela 'FornexIA - vigia' $raiz $cmdV
+    Start-Sleep -Seconds 2
+    if (@(Achar 'chat.vigia\.py').Count -gt 0) { Ok 'vigia de saúde no ar (logs\saude.jsonl)' } else { Aviso 'não confirmei o vigia: veja a janela "FornexIA - vigia"' }
 }
 
 Mostrar-Status

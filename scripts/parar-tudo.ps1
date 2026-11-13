@@ -16,6 +16,7 @@ $todos = Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID }
 $alvos = @()
 $alvos += $todos | Where-Object { $_.Name -notmatch 'powershell|pwsh|cmd' -and $_.CommandLine -match 'gateway\.ts' }           | ForEach-Object { [pscustomobject]@{ Pid = $_.ProcessId; Quem = 'gateway do WhatsApp' } }
 $alvos += $todos | Where-Object { $_.Name -notmatch 'powershell|pwsh|cmd' -and $_.CommandLine -match 'chat.worker\.py' }        | ForEach-Object { [pscustomobject]@{ Pid = $_.ProcessId; Quem = 'worker' } }
+$alvos += $todos | Where-Object { $_.Name -notmatch 'powershell|pwsh|cmd' -and $_.CommandLine -match 'chat.vigia\.py' }         | ForEach-Object { [pscustomobject]@{ Pid = $_.ProcessId; Quem = 'vigia de saúde' } }
 $alvos += $todos | Where-Object { $_.Name -match '^php' -and $_.CommandLine -match '127\.0\.0\.1:8080' }                          | ForEach-Object { [pscustomobject]@{ Pid = $_.ProcessId; Quem = 'site local' } }
 $alvos += $todos | Where-Object { $_.Name -match 'powershell|pwsh' -and $_.CommandLine -match "WindowTitle='FornexIA - " }       | ForEach-Object { [pscustomobject]@{ Pid = $_.ProcessId; Quem = 'janela do ligar-tudo' } }
 

@@ -85,6 +85,7 @@ mostrar_status() {
     if gateway_conectado; then ok "Gateway do WhatsApp conectado"; else aviso "Gateway rodando, mas ainda sem conexão com o WhatsApp"; fi
   else aviso "Gateway do WhatsApp parado"; fi
   if rodando 'chat/worker\.py'; then ok "Worker rodando"; else aviso "Worker parado"; fi
+  if rodando 'chat/vigia\.py'; then ok "Vigia de saúde rodando (logs/saude.jsonl)"; else aviso "Vigia de saúde parado"; fi
   pareado || aviso "O número do bot ainda NÃO foi pareado (rode canal-whatsapp/parear.sh)"
   tem pgrep || aviso "pgrep não encontrado: não consigo ver os processos (instale procps)"
 }
@@ -155,6 +156,18 @@ else
     for _ in $(seq 1 $((ESPERA / 4 + 1))); do sleep 1; if grep -q 'worker no ar' "$LOGS/worker.log" 2>/dev/null; then no_ar=sim; break; fi; done
     if [ "$no_ar" = sim ]; then ok "no ar"; else aviso "não confirmei o \"worker no ar\": veja logs/worker.log"; fi
   fi
+fi
+
+# Vigia de saúde (não bloqueia nada): grava em logs/saude.jsonl quando uma peça cai e quando volta, com a duração da queda.
+if rodando 'chat/vigia\.py'; then ok "vigia de saúde já rodando"
+else
+  PYV="$(python_do_projeto)"
+  if [ -n "$PYV" ]; then
+    : >"$LOGS/vigia.log"
+    PYTHONIOENCODING=utf-8 iniciar vigia "$RAIZ" "$PYV" -u chat/vigia.py
+    sleep 1
+    ok "vigia de saúde no ar (logs/saude.jsonl)"
+  else aviso "vigia de saúde não iniciado: sem python"; fi
 fi
 
 mostrar_status
