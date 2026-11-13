@@ -48,7 +48,7 @@ ERRO_PADRAO = "Não consegui concluir agora. Tente de novo em instantes."
 AGENTES_SITE = int(os.environ.get("AGENTES_SITE", "3"))   # o WhatsApp tem o próprio agente, um por vez
 
 parar = threading.Event()
-historicos: dict[str, collections.deque] = collections.defaultdict(lambda: collections.deque(maxlen=3))
+historicos: dict[str, collections.deque] = collections.defaultdict(lambda: collections.deque(maxlen=agente.HISTORICO_TURNOS))
 perfis_por_numero: dict[str, list[str]] = {}
 
 
@@ -256,7 +256,7 @@ def atender_site(p: dict):
         lote.adicionar("erro", {"motivo": ERRO_PADRAO})
     lote.enviar()
     if desfecho == "concluida" and leitor.resposta:
-        historicos[chave].append((p["texto"], leitor.resposta[:600]))
+        historicos[chave].append((p["texto"], leitor.resposta[:agente.HISTORICO_RESPOSTA]))
     motivo = None
     if desfecho != "concluida":
         motivo = "fila" if lote.encerrada else classificar_falha(
@@ -355,7 +355,7 @@ def responder_whatsapp(texto: str, tenants: list[str], chave: str, request_id: s
         registrar("falha no WhatsApp:", type(e).__name__, str(e)[:200])
     if desfecho != "concluida" or not leitor.resposta:
         return ERRO_PADRAO, leitor, "erro"
-    historicos[chave].append((texto, leitor.resposta[:600]))
+    historicos[chave].append((texto, leitor.resposta[:agente.HISTORICO_RESPOSTA]))
     return texto_whatsapp(leitor.resposta, fontes), leitor, desfecho
 
 

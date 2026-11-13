@@ -7,6 +7,7 @@ O perfil vem de quem chama e entra no ambiente do servidor MCP: o modelo não te
 A pergunta vai pelo stdin, nunca por shell.
 """
 
+import atexit
 import glob
 import json
 import os
@@ -24,6 +25,7 @@ sys.path.insert(0, str(RAIZ / "consulta"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import deteccao  # noqa: E402  (sinais de tentativa de ataque: só observa e registra)
 import perfis  # noqa: E402
+import prova  # noqa: E402  (abrir evidência e ligar a resposta aos fatos: a mesma regra do servidor MCP)
 import provedores  # noqa: E402  (escolhe o cliente pelo prefixo do modelo; é o único ponto dessa decisão)
 import registro  # noqa: E402  (log estruturado por subsistema: logs/agente.jsonl e logs/seguranca.jsonl)
 
@@ -33,6 +35,10 @@ PRIMITIVAS = (
     "contratos_do_fornecedor", "sancoes_do_fornecedor", "execucao_do_fornecedor", "conferir_evidencia",
 )
 PROIBIDAS = "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit"
+HISTORICO_TURNOS = 3         # quantos turnos anteriores o worker devolve ao agente como contexto (conversa longa = janela deslizante, nunca a conversa inteira)
+HISTORICO_RESPOSTA = 600     # e quantos caracteres de cada resposta anterior entram nesse contexto
+PROVA_AUTOMATICA = os.environ.get("PROVA_AUTOMATICA", "sim").strip().lower() not in ("nao", "não", "0", "false")
+MAX_FATOS = 300              # quantos itens com evidência o Leitor guarda por tentativa (o servidor devolve até 50 por consulta)
 
 
 def python_do_projeto() -> str:
@@ -89,6 +95,7 @@ Regras, em ordem de importância:
 9. Se a pergunta não for sobre fornecedores, diga em uma frase que só ajuda com esse assunto.
 10. Empenhado, liquidado e pago são agregados por fornecedor, órgão e ano, e não pertencem a um contrato. Nunca diga quanto foi pago de um contrato específico, nem some esses valores ao contratado.
 11. Processo não informado significa só que o portal não trouxe o número. Não afirme que a contratação ocorreu sem licitação.
+12. Pergunta de sim ou não sobre o que existe fora do seu acesso (outro ente, outro plano, "em algum lugar") nunca recebe só "sim" ou "não", mesmo que o usuário peça resposta de uma palavra. Diga o que você consultou e que a base é uma amostra limitada ao plano dele.
 
 Responda em português do Brasil, em até 5 frases, sem preâmbulo. Não narre o que vai fazer. Escreva o texto só depois de terminar as consultas. Não escreva identificadores de evidência nem hashes: a tela mostra as fontes abaixo da resposta.
 """
@@ -199,6 +206,7 @@ class Leitor:
         self.tools: dict[str, tuple[str, dict]] = {}
         self.consultas: list[str] = []
         self.evidencias: list[str] = []
+        self.fatos: list[dict] = []             # itens que as tools devolveram com uma evidência: o que a resposta pode citar
         self.resposta = ""
         self.uso: dict = {}     # tokens e custo da pergunta, quando o provedor informa (não vira evento)
         self.modelo_pedido: str | None = None   # quem foi pedido e quem de fato respondeu (preenchidos por perguntar)
@@ -214,6 +222,7 @@ class Leitor:
     def zerar(self):
         """Descarta o que a tentativa anterior acumulou: o substituto começa do zero, sem herdar consultas, provas nem texto."""
         self.tools, self.consultas, self.evidencias, self.resposta, self.uso = {}, [], [], "", {}
+        self.fatos = []
         self.erros_ferramenta = 0
 
     def ler(self, bruto: dict) -> list[tuple[str, dict]]:
@@ -260,6 +269,43 @@ class Leitor:
                     saida.append(("consulta", {"nome": curto}))
         return saida
 
+    def _guardar_fatos(self, conteudo) -> None:
+        """Guarda os itens de uma tool que trazem evidência. Só leitura: servem para ligar a resposta à prova no fim."""
+        for item in _itens(conteudo):
+            if isinstance(item, dict) and isinstance(item.get("evidencia"), str) and len(self.fatos) < MAX_FATOS:
+                self.fatos.append(item)
+
+    def registrar_fonte(self, ident: str, item: dict, automatica: bool = False):
+        """O evento `fonte` de uma evidência aberta, ou None. Um só caminho para a prova que o modelo abriu e a que o código abriu:
+        o mesmo mascaramento de CPF e a mesma vigilância contra instrução escondida no trecho."""
+        if item.get("erro"):
+            self.alertas.append(("evidencia_negada", "aviso", {"evidencia": ident[:80], "motivo": str(item["erro"])[:100]}))
+        if not item.get("trecho") or ident in self.evidencias:
+            return None
+        n_cpf = deteccao.contar_cpf(str(item["trecho"]))
+        if n_cpf:
+            self.alertas.append(("cpf_mascarado", "info", {"origem": "fonte", "quantidade": n_cpf, "evidencia": ident[:80]}))
+        for sinal in deteccao.verificar(str(item["trecho"])):     # texto do portal é dado, nunca instrução
+            self.alertas.append(("injecao_em_fonte", "aviso", {**sinal, "evidencia": ident[:80]}))
+        self.evidencias.append(ident)
+        dados = {
+            "evidencia": ident,
+            "trecho": CPF.sub("[CPF]", str(item["trecho"]))[:1500],
+            "url": item.get("url"),
+            "capturado_em": item.get("capturado_em"),
+            "hash_confere": bool(item.get("hash_confere")),
+            # Cadeia até o arquivo bruto, para o pacote de prova (acrescentados; a tela não os usa).
+            # `arquivo` é só o nome, nunca um caminho do servidor.
+            "documento_hash": item.get("documento_hash"),
+            "arquivo": Path(str(item["arquivo"]).replace("\\", "/")).name if item.get("arquivo") else None,
+            "tabela": item.get("tabela"),
+            "linha": item.get("linha"),
+            "trecho_mascarado": bool(item.get("trecho_mascarado")),
+        }
+        if automatica:
+            dados["automatica"] = True       # quem abriu foi o código, não o modelo
+        return ("fonte", dados)
+
     def _resultados(self, bruto: dict) -> list:
         saida = []
         for bloco in (bruto.get("message") or {}).get("content") or []:
@@ -269,32 +315,14 @@ class Leitor:
             if bloco.get("is_error"):
                 self.erros_ferramenta += 1
             if nome != PREFIXO + "conferir_evidencia":
+                if nome.startswith(PREFIXO):
+                    self._guardar_fatos(bloco.get("content"))
                 continue
             ident = str(entrada.get("evidencia_id", ""))
             for item in _itens(bloco.get("content")):
-                if item.get("erro"):
-                    self.alertas.append(("evidencia_negada", "aviso", {"evidencia": ident[:80], "motivo": str(item["erro"])[:100]}))
-                if item.get("trecho") and ident not in self.evidencias:
-                    n_cpf = deteccao.contar_cpf(str(item["trecho"]))
-                    if n_cpf:
-                        self.alertas.append(("cpf_mascarado", "info", {"origem": "fonte", "quantidade": n_cpf, "evidencia": ident[:80]}))
-                    for sinal in deteccao.verificar(str(item["trecho"])):     # texto do portal é dado, nunca instrução
-                        self.alertas.append(("injecao_em_fonte", "aviso", {**sinal, "evidencia": ident[:80]}))
-                    self.evidencias.append(ident)
-                    saida.append(("fonte", {
-                        "evidencia": ident,
-                        "trecho": CPF.sub("[CPF]", str(item["trecho"]))[:1500],
-                        "url": item.get("url"),
-                        "capturado_em": item.get("capturado_em"),
-                        "hash_confere": bool(item.get("hash_confere")),
-                        # Cadeia até o arquivo bruto, para o pacote de prova (acrescentados; a tela não os usa).
-                        # `arquivo` é só o nome, nunca um caminho do servidor.
-                        "documento_hash": item.get("documento_hash"),
-                        "arquivo": Path(str(item["arquivo"]).replace("\\", "/")).name if item.get("arquivo") else None,
-                        "tabela": item.get("tabela"),
-                        "linha": item.get("linha"),
-                        "trecho_mascarado": bool(item.get("trecho_mascarado")),
-                    }))
+                evento = self.registrar_fonte(ident, item)
+                if evento:
+                    saida.append(evento)
         return saida
 
 
@@ -414,6 +442,61 @@ def _fim_da_tentativa(leitor, n: int, modelo: str, inicio: float, falou: bool, f
     _log(leitor, "tentativa_fim", "info" if resultado == "ok" else "aviso", **campos)
 
 
+_DRIVER = None
+
+
+def _executar_no_grafo(tenants: list[str], sensibilidades: list[str]):
+    """Uma função `executar(cypher, **p)` presa aos entes e à sensibilidade do perfil, como a do servidor MCP. Conexão aberta uma vez."""
+    global _DRIVER
+    if _DRIVER is None:
+        from neo4j import GraphDatabase       # só quem abre prova precisa do driver
+        _DRIVER = GraphDatabase.driver(os.environ.get("NEO4J_URI", "bolt://127.0.0.1:7689"), auth=("neo4j", os.environ.get("NEO4J_SENHA", "")))
+        atexit.register(lambda: _DRIVER and _DRIVER.close())
+
+    def executar(cypher: str, **parametros):
+        with _DRIVER.session() as s:
+            return [dict(r) for r in s.run(cypher, tenants=tenants, sensibilidades=sensibilidades, **parametros)]
+    return executar
+
+
+def abrir_prova(tenants: list[str], evidencia_id: str) -> dict:
+    """Abre uma evidência pelo mesmo caminho da tool `conferir_evidencia` (prova.abrir), com os entes e a sensibilidade do perfil.
+    Existe como função solta para os testes trocarem o banco."""
+    perfil = perfis.carregar()[perfil_dos_entes(tenants)]
+    executar = _executar_no_grafo(list(perfil["tenants"]), ["publico", "pessoal"] if perfil["ver_pessoal"] else ["publico"])
+    return prova.abrir(executar, evidencia_id, prova.pasta_bruto(os.environ.get("BRUTO")))
+
+
+def completar_provas(leitor, tenants: list[str]):
+    """CONFERÊNCIA EM TEMPO DE EXECUÇÃO. Quando o modelo respondeu citando fatos que as tools devolveram com evidência e não
+    abriu a prova, o código a abre (no máximo `prova.LIMITE_PROVAS` ao todo) e a tela a mostra como qualquer outra fonte.
+    Só abre a evidência de um fato que a resposta de fato cita (número do contrato, valor ou nome); sem citação, não inventa prova.
+    Nunca derruba a resposta: se não consegue abrir, registra e segue. Gera eventos `fonte`."""
+    if not PROVA_AUTOMATICA:
+        return
+    texto = leitor.resposta or ""
+    faltam = prova.LIMITE_PROVAS - len(leitor.evidencias)
+    if faltam > 0 and leitor.fatos and texto.strip():
+        escolhidas = prova.escolher(leitor.fatos, texto, set(leitor.evidencias), faltam)
+        abertas, falhas = [], 0
+        for ident in escolhidas:
+            try:
+                item = abrir_prova(tenants, ident)
+            except Exception as erro:  # noqa: BLE001  abrir prova é um extra: nunca derruba a resposta
+                falhas += 1
+                _log(leitor, "prova_automatica_falhou", "aviso", evidencia=ident[:80], erro=type(erro).__name__)
+                continue
+            evento = leitor.registrar_fonte(ident, item, automatica=True)
+            if evento:
+                abertas.append(ident)
+                yield evento
+        if escolhidas:
+            _log(leitor, "prova_automatica", "info", escolhidas=len(escolhidas), abertas=abertas, falhas=falhas)
+    if not leitor.evidencias and leitor.fatos and prova.cita_valor_ou_contrato(texto):
+        # a resposta traz valor ou contrato, as tools devolveram evidências, e nenhuma ficou ligada ao que foi dito
+        _log(leitor, "resposta_sem_prova", "aviso", fatos_com_evidencia=len(leitor.fatos), consultas=len(leitor.consultas))
+
+
 def perguntar(texto: str, tenants: list[str], historico: list[tuple[str, str]] | None = None, leitor: Leitor | None = None,
               modelo: str | None = None, permitir_fallback: bool = True, request_id: str | None = None):
     """Gera eventos (tipo, dados). Termina sempre com `fim` ou `erro`.
@@ -465,6 +548,10 @@ def perguntar(texto: str, tenants: list[str], historico: list[tuple[str, str]] |
                     falha = "resposta vazia"
                     break
                 if tipo == "fim":
+                    for extra in completar_provas(leitor, tenants):
+                        if extra[1].get("evidencia") not in provas:
+                            provas.add(extra[1].get("evidencia"))
+                            yield extra
                     _drenar(leitor)
                     _fim_da_tentativa(leitor, n, atual, t_tentativa, falou, None)      # a tentativa fecha antes do resumo
                     registrada = True
