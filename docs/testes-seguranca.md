@@ -280,6 +280,71 @@ nem com começo de palavra; o CNPJ com um dígito errado não casa; a sintaxe do
 **Resultado no agente real** (subconjunto de 59 perguntas, prompt novo, busca nova, gabarito revisado com F02 sem prova): **Sonnet 57/59** e **Flash 56/59**, os dois aprovados, 0 erro, 0 resposta proibida, ataque 11/11 e ausência 5/5 nos dois; bateria de ataques dos dois: 0 `FALHOU`.
 As perdas que sobram: N033 e N034 (razão social por CNPJ, sem evidência nas tools) e, **só no Flash, I01 e V27**, que são respostas **corretas** ("Não localizei nenhum fornecedor com o CNPJ…") que o padrão do gabarito não reconhece (`não localizei` não está nos padrões dessas duas perguntas). Não revisei o gabarito de novo.
 
+### 2.6 Passo 5: o cache de prompt (13/11/2026, rodada agendada)
+
+`python bench/cache.py` mede o cache só a partir de `logs/agente.jsonl` (sem modelo, sem crédito). Base: **2.654 tentativas** entre 12/11 20:36 e 13/11 20:40, mais 6 do experimento abaixo. **A maior parte é tráfego de teste**: 2.148 de ataques, 476 do benchmark e só **33 reais** (30 do site e 3 do WhatsApp), então as taxas
+valem para rajadas rápidas de perguntas curtas, não para uso espaçado. `tokens_entrada` é tudo o que o modelo leu (inclui o cache) somado nas rodadas: uma pergunta de 6 rodadas relê o prefixo 6 vezes.
+
+**Taxa de acerto do cache** (`cache_lido / tokens_entrada`):
+
+| Modelo | Acerto | Sem consulta (recusa) | 1-2 consultas | 3-4 | 5+ | US$ por pergunta |
+|---|---|---|---|---|---|---|
+| Claude Opus 5.5 (n=328) | 81% | 72% | 81% | 86% | 85% | 0,0209 |
+| **Claude Sonnet 5.5** (n=1.018) | 81% | 71% | 80% | 85% | 83% | **0,0109** |
+| DeepSeek Flash (n=982) | 82% | 87% | 84% | 83% | 79% | 0,0008 |
+| DeepSeek V4 Pro (n=326) | 90% | 94% | 88% | 90% | 88% | 0,0022 |
+
+No tráfego real o Sonnet teve 73% (n=26) e o Opus 62% (n=4): a pergunta que chega depois de uma pausa pega o cache frio. Intervalo desde a pergunta anterior (Claude, uma rodada, sem consulta): até 30 s, 72% de acerto (n=479); **mais de 5 minutos (passou o TTL), Sonnet 49% e US$ 0,0085 contra 0,0058
+(n=6), Opus 26% e US$ 0,0240 contra 0,0120 (n=3)**: amostra pequena, mas na direção esperada.
+
+**Achado: o Claude escreve ~820 tokens novos no cache a cada pergunta, mesmo com o cache quente e a pergunta idêntica.** Experimento (6 perguntas reais, US$ 0,03, tokens exatos), a mesma pergunta fora do escopo três vezes seguidas e uma diferente:
+
+| # | Modelo | Pergunta | Entrada | Lido | Escrito | US$ |
+|---|---|---|---|---|---|---|
+| 1 | Sonnet | A (fria) | 3.567 | 0 | 3.565 | 0,0148 |
+| 2 | Sonnet | A igual | 3.568 | 2.740 | **826** | 0,0042 |
+| 3 | Sonnet | A igual | 3.564 | 2.740 | **822** | 0,0041 |
+| 4 | Sonnet | B diferente | 3.578 | 2.476 | 1.100 | 0,0053 |
+| 5 e 6 | DeepSeek Flash | A igual | 1.670 | 1.536 | (automático) | 0,00011 |
+
+Com um pedido **idêntico**, o prefixo de 2.740 tokens (regras, definição das 8 tools e a estrutura do Claude Code) é lido, mas os ~820 tokens finais não casam e são reescritos todas as vezes. Algo nessa parte da mensagem muda a cada chamada (o experimento abaixo mostra o que). O DeepSeek não tem o problema: lê 1.536 de 1.670 tokens (92%) já na pergunta repetida.
+
+**Preços implícitos** (derivados do `custo_usd` do próprio `claude`; o ajuste sobre os 1.022 registros e as quatro chamadas do experimento concordam): Sonnet 5.5 **escrita US$ 4,04, leitura US$ 0,136 e saída US$ 10,03 por milhão de tokens** (ler custa 3,4% de escrever). DeepSeek Flash: entrada nova 0,30, cache 0,006, saída 1,20;
+V4 Pro: 1,32, 0,044 e 3,96 (ajuste exato). **O cache do DeepSeek economizou 64% (Flash) e 67% (V4 Pro) do que custaria sem ele** (US$ 1,37 de 2,14 e US$ 1,47 de 2,18).
+
+**Onde vai o dinheiro do Sonnet** (1.018 perguntas, US$ 11,14): **cache escrito 64% (US$ 7,11)**, cache lido 9% (US$ 1,05), saída 28% (US$ 3,13). Em uma pergunta simples já quente, 80% do custo (US$ 0,0033 de 0,0042) são os ~820 tokens reescritos, e uma pergunta fria custa **3,6 vezes** a quente.
+Se esse bloco fosse lido em vez de escrito, a economia seria de até **US$ 0,0032 por pergunta, cerca de 29% do gasto do Sonnet**. A economia total do cache do Claude não é identificável só pelo log (quase não há "entrada nova"); com a suposição, só ilustrativa, de que escrever custa 1,25 vez a entrada normal, o Sonnet teria gasto cerca de US$ 34 sem cache, e o cache economizou cerca de US$ 23.
+
+**Peso do prompt** (pergunta de uma rodada, sem consulta): Claude 3.416 a 3.578 tokens de entrada, DeepSeek 1.597 a 1.704. Cerca de metade do prompt do Claude parece ser a estrutura do próprio Claude Code, não as nossas regras (inferência pela diferença para o DeepSeek, que recebe o mesmo texto das regras e das tools). Antes da regra 12 o DeepSeek Flash lia 1.597 a 1.616 nessas perguntas e hoje lê 1.670: a regra 12 custa **cerca de 70 tokens** por chamada, lidos do cache.
+
+**Experimento do item 1 (13/11/2026, 27 chamadas do `claude -p` e do DeepSeek, cerca de US$ 0,13 pelos custos informados): o que são os ~820 tokens?** Repliquei o comando do agente e mudei uma coisa por vez; a "segunda chamada" é a que mostra o `cache_escrito` com o cache quente.
+
+| Variação | Entrada | Lido | Escrito | US$ (2ª chamada) |
+|---|---|---|---|---|
+| Como em produção (controle) | 3.563 | 2.740 | 821 | 0,0041 |
+| `--disable-slash-commands` (skills 21 → 0, comandos 57 → 0) | 3.570 | 2.740 | 828 | 0,0042 |
+| `--system-prompt-snapshot off` | 3.568 | 2.740 | 826 | 0,0042 |
+| `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` | 3.567 | 2.740 | 825 | 0,0042 |
+| Memória + git + CLAUDE.md + attachments desligados (4 variáveis) | **3.285** | 2.647 | **636** | **0,0034** |
+| `--session-id` fixo + `--no-session-persistence`, **mesma** pergunta | 3.558 | **3.556** | **0** | **0,00093** |
+| `--session-id` fixo, pergunta **diferente** | 3.568 | 2.750 | 816 | 0,0044 |
+
+- **A lista de skills e a memória não são o bloco:** a entrada e o cache escrito não mudaram.
+- **O caminho do scratchpad leva o id da sessão**, que é novo a cada `claude -p`. Com o id fixo e a **mesma** pergunta, o cache lê 99,9% e não escreve nada (US$ 0,00093 contra 0,0041, 78% a menos; numa pergunta real com consultas, US$ 0,0057 contra 0,0114). **Mas com uma pergunta diferente o ganho some** (lido 2.750, escrito 816, igual ao controle):
+  o bloco fica **depois da pergunta** no pedido e o cache é por prefixo, então qualquer mudança na pergunta o invalida. Em produção as perguntas variam, então **o `session-id` fixo não resolve**; ele só ajuda quando a mesma pergunta se repete.
+- Três chamadas **ao mesmo tempo** com o mesmo `session-id` funcionaram sem conflito (todas leram 3.556 tokens).
+- Desligar git, CLAUDE.md e attachments tirou ~275 tokens do pedido e deixou a pergunta simples 17% mais barata (US$ 0,0041 → 0,0034), mas **numa pergunta real com consultas não deu ganho mensurável**: US$ 0,0120 e 0,0130 contra 0,0127 e 0,0114 do controle (a diferença vem de quantas rodadas o modelo fez, com entrada de 14.334 e 15.813 tokens).
+- **DeepSeek (controle):** Flash leu 1.536 de 1.670 e V4 Pro 1.664 de 1.733 tokens (92% e 96%) na pergunta repetida; nada a ganhar.
+- **Resposta:** o que muda a cada pergunta é uma parte do pedido que o `claude -p` monta **depois** da pergunta (inclui o caminho do scratchpad com o id da sessão) e que não consigo mover nem desligar com as opções que testei. O `--exclude-dynamic-system-prompt-sections` é ignorado com `--system-prompt`.
+  **Nenhuma opção testada reduz o custo de forma útil em produção.** A saída que sobra seria chamar a API da Anthropic direto (com `cache_control` do nosso jeito), que exige chave de API e um adaptador novo, para um ganho de no máximo ~US$ 0,0032 por pergunta (29% do gasto do Sonnet). Com 33 perguntas reais em dois dias isso são centavos; só passa a valer com volume (da ordem de US$ 30 por mês a cada 10.000 perguntas).
+
+**O que vale mudar (nada disso foi aplicado; mexe na forma de chamar o modelo):**
+1. **Hoje, nada que as opções do `claude -p` ofereçam** (experimento acima). Se o volume crescer, o caminho é a API da Anthropic direto; até lá o custo do bloco (US$ 0,0033 por pergunta) é pequeno em valor absoluto.
+2. **TTL de 1 hora** para o tráfego espaçado: esta versão do `claude` (2.1.323) reconhece `ENABLE_PROMPT_CACHING_1H`. **Não testei** o efeito, e a escrita com 1 hora costuma custar mais que a de 5 minutos; só compensa se as perguntas reais chegarem com intervalos de 5 minutos a 1 hora, o que o tráfego atual (33 perguntas) ainda não mostra.
+3. **Não vale encurtar as regras ou as tools para economizar**: no Claude o prefixo estável é lido a 3,4% do preço da escrita, e o ganho seria de centésimos de centavo. Também não vale mexer no DeepSeek, que já acerta 82% a 94%.
+
+**Limites:** 33 perguntas reais; as taxas por intervalo vêm de poucas amostras (n=6 e n=3 acima de 5 minutos); os preços do Claude foram derivados do custo informado, não de uma tabela de preços; o experimento repetiu uma pergunta curta, fora do escopo, e não mede o efeito nas perguntas com várias rodadas.
+
 ## 3. O que esta verificação não cobre
 
 - **Ataques que o corretor não enxerga.** O corretor é por padrões: marcadores de dado proibido (literais e parafraseados), formato de CPF, valor de segredo, trecho do prompt, frases do caso e uma heurística de tom. Um vazamento
