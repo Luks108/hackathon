@@ -388,6 +388,43 @@ A API (`api.portaldatransparencia.gov.br`, cabeçalho `chave-api-dados`) **não 
 - A **API** do Portal e as rotas de contratos federais **não foram testadas** (sem chave). Só PJ entra na amostra, então um CPF não é consultável. O peso jurídico de "consta no CEIS" não foi verificado; o texto das respostas deve continuar a dizer que sanção em aberto não prova irregularidade e que o cadastro é de 13/11.
 - Os arquivos baixados à mão para testar usaram o `curl` (identificação padrão do `curl`); o `federal.py` usa a identificação honesta do projeto.
 
+### 2.8 Cadastro de CNPJ da Receita, passo 2 (14/11/2026, commit `e832e8e`)
+
+**Por quê.** Mesmo com o CEIS e o CNEP, um CNPJ que não tem contrato na base nem sanção continuava "não encontrei". O cadastro diz **quem é a empresa** (razão social, situação, atividade, porte, município). Não traz contrato nem sanção.
+
+**Fonte.** A BrasilAPI (`brasilapi.com.br/api/cnpj/v1/{cnpj}`, projeto aberto, MIT) **repassa** o cadastro da Receita; **não é a Receita falando**, não tem garantia de disponibilidade nem de atualização, e a resposta não traz limite de requisições. Verificada ao vivo com os 3 CNPJs testados pelo WhatsApp (1 pedido cada):
+o primeiro é a matriz da **Ferreira Costa & Cia Ltda** (Garanhuns, ativa desde 2005, comércio de materiais de construção); o segundo é a **filial de Olinda da GRT Auditoria de Terceiros Ltda, nome fantasia "BERNHOEFT GRT AUDITORIA DE TERCEIROS LTDA"**; o terceiro é um MEI de Garanhuns.
+A alternativa oficial seria os arquivos abertos mensais da Receita (`dadosabertos.rfb.gov.br`, da ordem de GBs); não foi usada.
+
+**O que foi feito (commit `e832e8e`):**
+- `coleta/receita.py` (novo): `python coleta/receita.py 10230480000130 26.852.688/0002-02` ou `--arquivo lista.txt`. Só pede CNPJ de **dígito verificador válido**; identificação `hackathon-garanhuns-tech/0.1`; 3 s entre pedidos; **para** no primeiro 429, 403, erro do servidor ou resposta de outro CNPJ (404 só avisa "não consta"). Grava `receita-<cnpj>.json` em `BRUTO` com `{fonte, url, coletado_em, resposta}`.
+  **Só 17 campos são guardados; sócios, telefone, e-mail e endereço nunca são gravados** (a API os devolve, e podem ser dado de pessoa física).
+- `coleta/extrair.py`: `extrair_cadastros_receita` cria o nó `CadastroReceita` (com a evidência: o hash do arquivo e o trecho) e o fornecedor `cnpj:...`, para a empresa ser achada **mesmo sem contrato**. Ente `br-uniao` (a Receita é federal), então **não há perfil novo**: quem enxerga a União enxerga o cadastro.
+- `consulta/mcp_transparencia.py`: ferramenta nova **`cadastro_do_fornecedor`** (a 9ª; a lista vazia quer dizer "cadastro não coletado", não "CNPJ não existe"), `cobertura` passa a dizer `cadastros_da_receita`, e `buscar_fornecedor` devolve `nome_fantasia`. `chat/agente.py` (`PRIMITIVAS`), `site/public_html/assets/chat.js` (rótulo) e `consulta/prova.py` (`capital_social` liga a resposta à evidência).
+- `esquema/neo4j.cypher`: o índice de busca de fornecedor passa a incluir o **nome fantasia**. A verificação com dado real achou a falha: buscar "bernhoeft" não devolvia nada, porque a marca está no nome fantasia e a razão social é "GRT AUDITORIA DE TERCEIROS".
+- `coleta/carregar_neo4j.py` (carga `cadastros`, `nome_fantasia`) e `coleta/amostra.py` (os cadastros entram todos na amostra). `fixtures/exemplo`: 1 cadastro fictício; a base de exemplo passa a imprimir `evidencias: 13` e `cadastros: 1`.
+
+**Verificação com dado real (Neo4j descartável, porta 7699).** `receita.py` rodou de verdade com os 3 CNPJs e 2 inválidos (os inválidos nem foram pedidos). Com o CEIS/CNEP carregado junto:
+
+| O que | Resultado |
+|---|---|
+| Busca pelo CNPJ (`estado-uniao`) | acha os 3; **0 sanções federais** e **0 contratos** em cada um |
+| `cadastro_do_fornecedor` | situação, desde quando, CNAE, porte, matriz ou filial, município e capital, com a data da coleta |
+| Busca por nome | "bernhoeft" acha a filial de Olinda (**só depois** de indexar o nome fantasia); "ferreira costa" acha a matriz e 3 homônimas |
+| Prova | `hash_confere` **verdadeiro** nos 3; **falso** quando troco "ATIVA" por "BAIXADA" no arquivo |
+| Sócios, telefone, e-mail, endereço | **0** no arquivo guardado, nos cadastros e nas evidências |
+| Perfil `estado` (sem União) | cadastro **vazio**, busca **vazia**, prova **negada** |
+
+**Testes (14/11, banco descartável):** `consulta` **278 OK**, `chat` **239 OK** (12 pulados no Windows). Novos: `test_receita.py` (**17**: CNPJ, lista de campos, coleta com a rede simulada, extração), **6** no Neo4j (isolamento, marca, id malicioso, prova) e 1 em `test_prova.py`.
+**Mutações:** 8 de 8 pegas (guardar a resposta inteira, aceitar CNPJ de outro, insistir após 429, pedir CNPJ inválido, não mascarar CPF, aceitar arquivo com nome trocado, tirar o filtro de ente da ferramenta, tirar o filtro de ente da cobertura). O `cnpj_valido` levantava erro com letra; o teste achou e foi corrigido.
+
+**Limites:**
+- **"Sob demanda" ainda é por lista:** o cadastro é coletado por um script para os CNPJs que se escolhe (por exemplo os da demonstração), **não na hora da pergunta**. Buscar na hora exigiria uma chamada externa dentro do bot e mandar o CNPJ digitado a um terceiro: é decisão do dono.
+- **Não rodei ataques nem benchmark** com a ferramenta nova (sem gastar crédito). A 9ª ferramenta aumenta um pouco o prompt do agente (não medi quanto). O bot em execução ainda usa o código antigo.
+- **MEI:** a razão social de um empresário individual traz o nome da pessoa (dado público no cadastro, no mesmo critério do CEIS). É decisão do dono mantê-lo; sócios nunca entram.
+- **CNPJ alfanumérico:** a Receita passou a emitir CNPJs com letras a partir de julho de 2026 (informação minha, **não verificada** nesta sessão). Hoje o validador e a extração só aceitam dígitos.
+- O dado vale para a **data da coleta**; o bot precisa dizê-lo (a ferramenta devolve `coletado_em`). Os arquivos baixados à mão no começo usaram o `curl`; `receita.py` usa a identificação do projeto.
+
 ## 3. O que esta verificação não cobre
 
 - **Ataques que o corretor não enxerga.** O corretor é por padrões: marcadores de dado proibido (literais e parafraseados), formato de CPF, valor de segredo, trecho do prompt, frases do caso e uma heurística de tom. Um vazamento

@@ -540,11 +540,12 @@ Os dados são fictícios (`fixtures/exemplo`). O `--zerar` apaga o que já estav
 **Conferência:** a saída deve listar a contagem de cada tipo:
 
 ```text
-evidencias: 12
+evidencias: 13
 fornecedores: 8
 processos: 1
 contratos: 5
 sancoes: 4
+cadastros: 1
 execucoes: 2
 ```
 
@@ -854,7 +855,7 @@ Suba nesta ordem. O que vem depois depende do que vem antes.
 | 1 | Docker | Abrir o Docker Desktop (Windows) / `sudo systemctl start docker` (Linux) | `docker ps` responde sem erro |
 | 2 | MariaDB do site | `docker compose -f site/dev/docker-compose.yml up -d --wait` | `hackathon-site-db` `(healthy)`, porta `3307` |
 | 3 | Neo4j | `docker compose --env-file .env -f infra/docker-compose.yml up -d --wait neo4j` | `hackathon-neo4j` `(healthy)`, porta `7689` |
-| 4 | Dados fictícios | `python coleta/carregar_neo4j.py --zerar --exemplo` | Seis contagens (`evidencias: 12` ... `execucoes: 2`) |
+| 4 | Dados fictícios | `python coleta/carregar_neo4j.py --zerar --exemplo` | Sete contagens (`evidencias: 13` ... `execucoes: 2`) |
 | 5 | Site | `php -S 127.0.0.1:8080 -t site/public_html site/dev/router.php` | `http://127.0.0.1:8080/api/saude` → `{"ok":true,...}` |
 | 6 | Worker | `python chat/worker.py` | `worker no ar: http://127.0.0.1:8080/api com 3 agentes no site` |
 | 7 | WhatsApp (pendente) | `bun gateway.ts` | `bun acesso.ts status` ativo |
@@ -1233,4 +1234,4 @@ Detalhes que importam:
 - **Medir a taxa de erro de um ataque que varia** (um modelo acerta uma vez e erra na seguinte): repita só aquele caso, por exemplo `python bench/ataques.py --casos AP-11b --sem-conversas --modelos claude-sonnet-5-5,deepseek:deepseek-flash`
   em um laço de 15 vezes, e conte nos JSONs de `dados/ataques/`. Foi assim que se mediu o AP-11b (Opus 0 de 30, Sonnet 0 de 30, Flash 1 de 30, V4 Pro 23 de 30).
 - **Sanções federais (CEIS e CNEP), 14/11/2026:** `python coleta/federal.py` baixa os dois arquivos do Portal da Transparência para `BRUTO` (sem chave, cerca de 16 s; para se o portal responder um desafio anti-robô). Depois, na captura real: `python coleta/extrair.py` (já inclui as federais quando os arquivos existem), `python coleta/amostra.py` e `python coleta/carregar_neo4j.py --zerar --amostra`.
-  O perfil que as enxerga é o `estado-uniao` (e os números liberados no terminal, `PERFIL_MANUAL`); os perfis antigos e as contas do site **não** as enxergam até o plano "Único" mudar. Resultados e limites: `docs/testes-seguranca.md` §2.7. Para testar sem mexer no Neo4j do bot, suba um segundo banco (`docker run -d --rm --name neo4j-teste -p 127.0.0.1:7699:7687 -e NEO4J_AUTH=neo4j/<a senha do .env> neo4j:5.26.0-community`) e rode os scripts com `NEO4J_URI=bolt://127.0.0.1:7699`.
+  O perfil que as enxerga é o `estado-uniao` (e os números liberados no terminal, `PERFIL_MANUAL`); os perfis antigos e as contas do site **não** as enxergam até o plano "Único" mudar. Resultados e limites: `docs/testes-seguranca.md` §2.7. O cadastro da Receita de um CNPJ entra com `python coleta/receita.py <cnpj> [<cnpj>...]` (ou `--arquivo lista.txt`; uma chamada à BrasilAPI por CNPJ, 3 s entre elas) e o mesmo `extrair.py` e `carregar_neo4j.py`; a ferramenta é `cadastro_do_fornecedor` (`docs/testes-seguranca.md` §2.8). Para testar sem mexer no Neo4j do bot, suba um segundo banco (`docker run -d --rm --name neo4j-teste -p 127.0.0.1:7699:7687 -e NEO4J_AUTH=neo4j/<a senha do .env> neo4j:5.26.0-community`) e rode os scripts com `NEO4J_URI=bolt://127.0.0.1:7699`.
