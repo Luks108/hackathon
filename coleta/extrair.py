@@ -492,14 +492,64 @@ def extrair_sancoes_federais(saida: dict, relatorio: dict, bruto: Path | None = 
             })
 
 
+def extrair_cadastros_receita(saida: dict, relatorio: dict, bruto: Path | None = None) -> None:
+    """Cadastro de CNPJ da Receita (coleta/receita.py), de `receita-<cnpj>.json`. Opcional.
+
+    Cada cadastro vira um `CadastroReceita` (com a evidência do arquivo e o hash dele) e garante o fornecedor `cnpj:...`,
+    para a empresa ser achada mesmo sem contrato na base. A coleta já deixou de fora sócios, telefone, e-mail e endereço."""
+    bruto = bruto or BRUTO
+    iso = lambda v: v if isinstance(v, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", v) else None  # noqa: E731
+    br = lambda v: f"{v[8:]}/{v[5:7]}/{v[:4]}" if iso(v) else None  # noqa: E731
+    for arquivo in sorted(bruto.glob("receita-*.json")):
+        try:
+            doc = json.loads(arquivo.read_text(encoding="utf-8"))
+            r = doc["resposta"]
+            cnpj = digitos(str(r["cnpj"]))
+        except (ValueError, KeyError, TypeError):
+            relatorio["receita_arquivo_invalido"] += 1
+            continue
+        if not cnpj_valido(cnpj) or arquivo.name != f"receita-{cnpj}.json" or not r.get("razao_social"):
+            relatorio["receita_arquivo_invalido"] += 1
+            continue
+        relatorio["receita_cadastros"] += 1
+        razao = sem_cpf(str(r["razao_social"]))
+        fantasia = sem_cpf(str(r["nome_fantasia"])) if r.get("nome_fantasia") else None
+        situacao, desde = r.get("descricao_situacao_cadastral"), iso(r.get("data_situacao_cadastral"))
+        cnae, cnae_nome = r.get("cnae_fiscal"), r.get("cnae_fiscal_descricao")
+        local = "/".join(p for p in (r.get("municipio"), r.get("uf")) if p)
+        trecho = " | ".join(p for p in (
+            "Cadastro de CNPJ (Receita Federal, via BrasilAPI)", f"CNPJ {cnpj}", razao, f"nome fantasia: {fantasia}" if fantasia else None,
+            f"situação {situacao}" + (f" desde {br(desde)}" if desde else "") if situacao else None,
+            f"início das atividades {br(iso(r.get('data_inicio_atividade')))}" if iso(r.get("data_inicio_atividade")) else None,
+            f"CNAE {cnae} {cnae_nome}" if cnae else None, r.get("natureza_juridica"), f"porte {r['porte']}" if r.get("porte") else None,
+            r.get("descricao_identificador_matriz_filial"), local or None) if p)
+        ev = evidencia(arquivo, "cadastro", 1, trecho, doc.get("url") or "https://brasilapi.com.br/", UNIAO, capturado_em=doc.get("coletado_em") or "desconhecido")
+        saida["evidencias"].append(ev)
+        saida["fornecedores"].append({"id": f"cnpj:{cnpj}", "tipo": "PJ", "cnpj": cnpj, "nome": razao, "nome_fantasia": fantasia, "resolvido": True, "evidencia": ev["id"], "tenant": UNIAO})
+        try:
+            capital = float(r["capital_social"]) if r.get("capital_social") not in (None, "") else None
+        except (TypeError, ValueError):
+            capital = None
+        saida["cadastros"].append({
+            "id": f"receita:{cnpj}", "cnpj": cnpj, "razao_social": razao, "nome_fantasia": fantasia,
+            "situacao": situacao, "situacao_desde": desde, "motivo_situacao": r.get("descricao_motivo_situacao_cadastral") or None,
+            "inicio_atividade": iso(r.get("data_inicio_atividade")), "cnae": str(cnae) if cnae else None, "cnae_descricao": cnae_nome or None,
+            "natureza_juridica": r.get("natureza_juridica"), "porte": r.get("porte"),
+            "matriz_filial": r.get("descricao_identificador_matriz_filial"), "municipio": r.get("municipio"), "uf": r.get("uf"),
+            "capital_social": capital, "optante_simples": r.get("opcao_pelo_simples"), "mei": r.get("opcao_pelo_mei"),
+            "fonte": doc.get("fonte"), "fornecedor": f"cnpj:{cnpj}", "tenant": UNIAO, "sensibilidade": "publico", "evidencia": ev["id"],
+        })
+
+
 def main() -> int:
     SAIDA.mkdir(exist_ok=True)
-    saida = {k: [] for k in ("contratos", "processos", "fornecedores", "sancoes", "execucoes", "evidencias")}
+    saida = {k: [] for k in ("contratos", "processos", "fornecedores", "sancoes", "cadastros", "execucoes", "evidencias")}
     relatorio: dict = {k: 0 for k in (
         "pj_resolvido", "pf_resolvido", "pj_sem_documento", "pf_sem_documento", "mascara_divergente",
         "contrato_fora_do_padrao", "licitacao_fora_do_padrao", "sancao_linha_repetida", "sancao_pj",
         "sancao_documento_nao_cnpj", "estado_pj", "estado_pf", "estado_invalido", "execucao_outro_credor",
         "federal_pj", "federal_pf", "federal_documento_invalido", "federal_linha_repetida", "federal_sem_codigo",
+        "receita_cadastros", "receita_arquivo_invalido",
     )}
     sensiveis: set[str] = set()
     extrair_contratos(saida, relatorio)
@@ -507,6 +557,7 @@ def main() -> int:
     extrair_contratos_estado(saida, relatorio, sensiveis)
     extrair_sancoes(saida, relatorio)
     extrair_sancoes_federais(saida, relatorio, sensiveis=sensiveis)
+    extrair_cadastros_receita(saida, relatorio)
     extrair_execucao(saida, relatorio)
 
     for f in saida["fornecedores"]:

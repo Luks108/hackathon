@@ -14,6 +14,7 @@
     execucao_do_fornecedor: 'Consultando valores pagos',
     contratos_do_fornecedor: 'Consultando os contratos do fornecedor',
     sancoes_do_fornecedor: 'Consultando sanções',
+    cadastro_do_fornecedor: 'Consultando o cadastro da empresa',
     conferir_evidencia: 'Conferindo a fonte',
   }
   const SUGESTOES = [

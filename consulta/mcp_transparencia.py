@@ -212,8 +212,12 @@ def cobertura() -> dict:
     datas = consultar("""
         MATCH (e:Evidencia) WHERE e.tenant IN $tenants
         RETURN min(e.capturado_em) AS de, max(e.capturado_em) AS ate""")[0]
+    cadastros = consultar("""
+        MATCH (c:CadastroReceita) WHERE c.tenant IN $tenants AND c.sensibilidade IN $sensibilidades
+        RETURN count(c) AS n""")[0]["n"]
     return {
         **totais,
+        "cadastros_da_receita": cadastros,
         "contratos_por_ente": por_ente,
         "orgaos": orgaos,
         "execucao_financeira": anos,
@@ -232,7 +236,7 @@ def cobertura() -> dict:
 @mcp.tool()
 @registrado
 def buscar_fornecedor(termo: str) -> list[dict]:
-    """Busca fornecedor por parte do nome ou pelo CNPJ. Devolve o id usado nas outras tools."""
+    """Busca fornecedor por parte do nome (razão social ou nome fantasia) ou pelo CNPJ. Devolve o id usado nas outras tools."""
     termo = (termo or "").strip()
     if not termo:
         raise ValueError("termo vazio")
@@ -244,7 +248,7 @@ def buscar_fornecedor(termo: str) -> list[dict]:
         for r in consultar("""
             MATCH (f:Fornecedor)-[:APARECE_EM]->(e:Ente)
             WHERE e.id IN $tenants AND (f.tipo = 'PJ' OR size($sensibilidades) > 1) AND f.cnpj = $digitos
-            RETURN DISTINCT f.id AS id, f.nome AS nome, f.tipo AS tipo, f.cnpj AS cnpj, f.resolvido AS identidade_confirmada
+            RETURN DISTINCT f.id AS id, f.nome AS nome, f.nome_fantasia AS nome_fantasia, f.tipo AS tipo, f.cnpj AS cnpj, f.resolvido AS identidade_confirmada
             LIMIT 10""", digitos=digitos):
             achados.setdefault(r["id"], r)
     texto = busca.para_lucene(termo)
@@ -253,7 +257,7 @@ def buscar_fornecedor(termo: str) -> list[dict]:
             CALL db.index.fulltext.queryNodes('fornecedor_nome', $texto, {limit: $teto}) YIELD node AS f, score
             MATCH (f)-[:APARECE_EM]->(e:Ente)
             WHERE e.id IN $tenants AND (f.tipo = 'PJ' OR size($sensibilidades) > 1)
-            RETURN f.id AS id, f.nome AS nome, f.tipo AS tipo, f.cnpj AS cnpj, f.resolvido AS identidade_confirmada, max(score) AS pontos
+            RETURN f.id AS id, f.nome AS nome, f.nome_fantasia AS nome_fantasia, f.tipo AS tipo, f.cnpj AS cnpj, f.resolvido AS identidade_confirmada, max(score) AS pontos
             ORDER BY pontos DESC, id LIMIT 10""", texto=texto, teto=LIMITE_DO_INDICE):
             r.pop("pontos", None)
             achados.setdefault(r["id"], r)
@@ -342,6 +346,26 @@ def sancoes_do_fornecedor(fornecedor_id: str) -> list[dict]:
                s.abrangencia AS abrangencia, s.valor_multa AS valor_multa, s.descricao AS descricao,
                s.tenant AS ente, e.id AS evidencia
         ORDER BY s.publicada_em DESC
+        LIMIT $limite""", id=_fornecedor_id(fornecedor_id), limite=LIMITE_LINHAS)
+
+
+@mcp.tool()
+@registrado
+def cadastro_do_fornecedor(fornecedor_id: str) -> list[dict]:
+    """Cadastro de CNPJ da Receita Federal do fornecedor (razão social, situação, atividade, porte, município), se foi coletado.
+
+    Vem repassado pela BrasilAPI e vale para a data da coleta (`coletado_em`), não para hoje. Lista vazia quer dizer que o cadastro
+    NÃO foi coletado, não que o CNPJ não existe. Sócios, telefone, e-mail e endereço não são guardados."""
+    return consultar("""
+        MATCH (f:Fornecedor {id: $id})-[:TEM_CADASTRO]->(c:CadastroReceita)
+        WHERE c.tenant IN $tenants AND c.sensibilidade IN $sensibilidades
+        OPTIONAL MATCH (c)-[:PROVADO_POR]->(e:Evidencia)
+        RETURN c.razao_social AS razao_social, c.nome_fantasia AS nome_fantasia, c.situacao AS situacao,
+               c.situacao_desde AS situacao_desde, c.motivo_situacao AS motivo_situacao, c.inicio_atividade AS inicio_atividade,
+               c.cnae AS cnae, c.cnae_descricao AS cnae_descricao, c.natureza_juridica AS natureza_juridica, c.porte AS porte,
+               c.matriz_filial AS matriz_filial, c.municipio AS municipio, c.uf AS uf, c.capital_social AS capital_social,
+               c.optante_simples AS optante_simples, c.mei AS mei, c.fonte AS fonte, e.capturado_em AS coletado_em,
+               c.tenant AS ente, e.id AS evidencia
         LIMIT $limite""", id=_fornecedor_id(fornecedor_id), limite=LIMITE_LINHAS)
 
 

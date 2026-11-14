@@ -8,7 +8,7 @@ Critério fixo, para a seleção não depender de quem roda:
 - em Garanhuns, os casos com sanção, com processo, sem processo e com aditivo;
 - o restante do Estado vem do maior contrato de cada órgão, em rodízio, para cobrir mais órgãos;
 - pessoas físicas ficam na base para provar que o perfil as esconde;
-- as sanções federais (CEIS e CNEP) de pessoa jurídica entram todas, e não influem na escolha dos contratos: é o que permite consultar qualquer CNPJ.
+- as sanções federais (CEIS e CNEP) de pessoa jurídica e os cadastros da Receita entram todos, e não influem na escolha dos contratos: é o que permite consultar qualquer CNPJ.
 Grava também a lista de CNPJs usada na coleta de execução financeira.
 """
 
@@ -46,8 +46,8 @@ class Selecao:
 
 
 def main() -> None:
-    contratos, processos, fornecedores, sancoes, execucoes, evidencias = map(
-        ler, ("contratos", "processos", "fornecedores", "sancoes", "execucoes", "evidencias"))
+    contratos, processos, fornecedores, sancoes, cadastros, execucoes, evidencias = map(
+        ler, ("contratos", "processos", "fornecedores", "sancoes", "cadastros", "execucoes", "evidencias"))
     federais = [s for s in sancoes if s["tenant"] == UNIAO and s["sensibilidade"] == "publico"]
     sancoes = [s for s in sancoes if s["tenant"] != UNIAO]      # a escolha dos contratos olha só as sanções estaduais
     abertas = {s["fornecedor"] for s in sancoes if s["situacao"] == "EM ABERTO"}
@@ -111,13 +111,14 @@ def main() -> None:
     sanc = [s for s in sancoes if s["fornecedor"] in forn]
     exec_ = [x for x in execucoes if x["fornecedor"] in forn]
     procs = [p for p in processos if p["id"] in {c["processo"] for c in escolhidos}]
-    federais_ids = {s["fornecedor"] for s in federais}
-    evs = {x["evidencia"] for grupo in (escolhidos, sanc, exec_, procs, federais) for x in grupo}
+    federais_ids = {s["fornecedor"] for s in federais} | {c["fornecedor"] for c in cadastros}
+    evs = {x["evidencia"] for grupo in (escolhidos, sanc, exec_, procs, federais, cadastros) for x in grupo}
     SAIDA.mkdir(exist_ok=True)
     conjuntos = {
         "contratos": escolhidos,
         "processos": procs,
         "sancoes": sanc + federais,
+        "cadastros": cadastros,
         "execucoes": exec_,
         "fornecedores": [f for f in fornecedores if f["tenant"] != UNIAO and f["id"] in forn and f["evidencia"] in evs]
                         + [f for f in fornecedores if f["tenant"] == UNIAO and f["id"] in federais_ids and f["evidencia"] in evs],

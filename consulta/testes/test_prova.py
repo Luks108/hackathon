@@ -160,6 +160,11 @@ class TestEscolher(unittest.TestCase):
         self.assertEqual(prova.escolher(fatos, "O CNEP registra multa de R$ 25.000,50.", set()), ["u2"])
         self.assertEqual(prova.escolher(fatos, "O CNEP registra uma multa.", set()), [])      # sem o valor, só o nome do órgão não liga
 
+    def test_o_capital_social_do_cadastro_liga_pelo_valor(self):
+        fatos = [{"razao_social": "EMPRESA EXEMPLO LTDA", "situacao": "ATIVA", "capital_social": 500000000.0, "evidencia": "c1"}]
+        self.assertEqual(prova.escolher(fatos, "O capital social é de R$ 500.000.000,00.", set()), ["c1"])
+        self.assertEqual(prova.escolher(fatos, "A empresa EXEMPLO está ATIVA.", set()), [])          # só nome e situação não ligam
+
 
 class TestCitaValorOuContrato(unittest.TestCase):
     def test_pede_prova(self):

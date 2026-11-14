@@ -43,7 +43,7 @@ CARGAS = [
     ("fornecedores", """
         UNWIND $linhas AS l
         MERGE (f:Fornecedor {id: l.id})
-        SET f.tipo = l.tipo, f.cnpj = coalesce(l.cnpj, f.cnpj), f.nome = coalesce(f.nome, l.nome),
+        SET f.tipo = l.tipo, f.cnpj = coalesce(l.cnpj, f.cnpj), f.nome = coalesce(f.nome, l.nome), f.nome_fantasia = coalesce(f.nome_fantasia, l.nome_fantasia),
             f.resolvido = l.resolvido
         WITH f, l
         MATCH (e:Evidencia {id: l.evidencia})
@@ -93,6 +93,19 @@ CARGAS = [
         WITH s, l
         MATCH (t:Ente {id: l.tenant})
         MERGE (s)-[:DO_ENTE]->(t)"""),
+    ("cadastros", """
+        UNWIND $linhas AS l
+        MERGE (c:CadastroReceita {id: l.id})
+        SET c += l.props
+        WITH c, l
+        MATCH (f:Fornecedor {id: l.fornecedor})
+        MERGE (f)-[:TEM_CADASTRO]->(c)
+        WITH c, l
+        MATCH (e:Evidencia {id: l.evidencia})
+        MERGE (c)-[:PROVADO_POR]->(e)
+        WITH c, l
+        MATCH (t:Ente {id: l.tenant})
+        MERGE (c)-[:DO_ENTE]->(t)"""),
     ("execucoes", """
         UNWIND $linhas AS l
         MERGE (x:ExecucaoFinanceira {id: l.id})

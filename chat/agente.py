@@ -32,7 +32,7 @@ import registro  # noqa: E402  (log estruturado por subsistema: logs/agente.json
 PREFIXO = "mcp__transparencia__"
 PRIMITIVAS = (
     "cobertura", "buscar_fornecedor", "listar_contratos", "buscar_contratos",
-    "contratos_do_fornecedor", "sancoes_do_fornecedor", "execucao_do_fornecedor", "conferir_evidencia",
+    "contratos_do_fornecedor", "sancoes_do_fornecedor", "cadastro_do_fornecedor", "execucao_do_fornecedor", "conferir_evidencia",
 )
 PROIBIDAS = "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit"
 HISTORICO_TURNOS = 3         # quantos turnos anteriores o worker devolve ao agente como contexto (conversa longa = janela deslizante, nunca a conversa inteira)

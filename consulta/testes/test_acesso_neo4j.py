@@ -156,6 +156,50 @@ class TestIsolamentoEntrePerfis(unittest.TestCase):
         (a,) = [f for f in u.buscar_fornecedor("Construtora") if f["id"] == A]
         self.assertEqual(a["nome"], "Construtora Exemplo Ltda (fictícia)")
 
+    # ---------- Cadastro de CNPJ da Receita: mesmo isolamento da União ----------
+
+    def test_cadastro_da_receita_so_aparece_para_quem_enxerga_a_uniao(self):
+        for nome in ("municipio", "estado", "estado-exemplo"):
+            m = self.perfil(nome)
+            self.assertEqual(m.cadastro_do_fornecedor(D), [], nome)
+            self.assertIn("erro", m.conferir_evidencia("u3"), nome)
+            self.assertEqual(m.cobertura()["cadastros_da_receita"], 0, nome)
+
+    def test_estado_e_uniao_le_o_cadastro_com_a_data_da_coleta_e_a_fonte(self):
+        u = self.perfil("estado-uniao")
+        (c,) = u.cadastro_do_fornecedor(D)
+        self.assertEqual((c["razao_social"], c["situacao"], c["situacao_desde"], c["cnae"], c["porte"], c["matriz_filial"], c["capital_social"]),
+                         ("FEDERAL EXEMPLO S.A. (FICTÍCIA)", "ATIVA", "2010-02-01", "0000000", "DEMAIS", "MATRIZ", 77000.0))
+        self.assertEqual((c["ente"], c["evidencia"], c["coletado_em"]), ("br-uniao", "u3", "2026-11-05"))
+        self.assertIn("BrasilAPI", c["fonte"])
+        self.assertEqual(u.cobertura()["cadastros_da_receita"], 1)
+
+    def test_a_marca_do_nome_fantasia_acha_a_empresa_e_nao_atravessa_o_isolamento(self):
+        u = self.perfil("estado-uniao")
+        (f,) = u.buscar_fornecedor("marca exemplar")
+        self.assertEqual((f["id"], f["nome_fantasia"]), (D, "Marca Exemplar"))
+        self.assertEqual([x["id"] for x in u.buscar_fornecedor("marca exemplr")], [D])           # erro de digitação
+        for nome in ("municipio", "estado", "estado-exemplo"):
+            self.assertEqual(self.perfil(nome).buscar_fornecedor("marca exemplar"), [], nome)
+
+    def test_fornecedor_sem_cadastro_coletado_devolve_lista_vazia(self):
+        u = self.perfil("estado-uniao")
+        self.assertEqual(u.cadastro_do_fornecedor(A), [])                  # tem contrato e sanção, mas ninguém coletou o cadastro
+        self.assertEqual(u.cadastro_do_fornecedor(PF), [])
+
+    def test_cadastro_do_fornecedor_rejeita_id_estranho(self):
+        u = self.perfil("estado-uniao")
+        for ruim in ("", "x" * 200, "cnpj:1 OR 1=1", "cnpj:11'; MATCH (n) DETACH DELETE n //"):
+            with self.assertRaises(ValueError):
+                u.cadastro_do_fornecedor(ruim)
+
+    def test_prova_do_cadastro_confere_o_hash_e_traz_a_situacao(self):
+        u = self.perfil("estado-uniao", BRUTO="fixtures/exemplo/bruto")
+        r = u.conferir_evidencia("u3")
+        self.assertNotIn("erro", r)
+        self.assertTrue(r["hash_confere"])
+        self.assertIn("situação ATIVA desde 01/02/2010", r["trecho"])
+
     # ---------- Busca por texto (índice de texto, passo 4): tolera acento e erro, e não amplia o acesso ----------
 
     def test_busca_ignora_acento_tolera_erro_de_digitacao_e_ordem(self):

@@ -22,7 +22,7 @@ import perfis  # noqa: E402
 CPF = re.compile(r"(?<!\d)\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?!\d)")
 SEGREDOS = ("NEO4J_SENHA", "CHAVE_PF", "TRANSPARENCIA_TENANTS", "TRANSPARENCIA_VER_PESSOAL", "WORKER_KEY", "API_KEY")
 TOOLS_PERMITIDAS = {"cobertura", "buscar_fornecedor", "listar_contratos", "buscar_contratos", "contratos_do_fornecedor",
-                    "sancoes_do_fornecedor", "execucao_do_fornecedor", "conferir_evidencia"}
+                    "sancoes_do_fornecedor", "cadastro_do_fornecedor", "execucao_do_fornecedor", "conferir_evidencia"}
 
 # Trechos que só existem em dados que o perfil NÃO pode ver. Se aparecem na resposta, houve vazamento.
 PROIBIDOS = {
