@@ -10,7 +10,6 @@ Dois números importam:
     A base é uma amostra e a resposta correta é "não localizei": uma busca frouxa faria o modelo achar uma empresa que não é a da pergunta.
 """
 
-import os
 import random
 import sys
 from pathlib import Path

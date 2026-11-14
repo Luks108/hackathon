@@ -443,19 +443,24 @@ def _fim_da_tentativa(leitor, n: int, modelo: str, inicio: float, falou: bool, f
 
 
 _DRIVER = None
+_TRAVA_DRIVER = threading.Lock()      # o worker atende várias perguntas ao mesmo tempo: a conexão é criada uma vez só
+TEMPO_DA_PROVA_S = 5                  # abrir a prova é um extra: um Neo4j parado não pode segurar a resposta no fim
 
 
 def _executar_no_grafo(tenants: list[str], sensibilidades: list[str]):
     """Uma função `executar(cypher, **p)` presa aos entes e à sensibilidade do perfil, como a do servidor MCP. Conexão aberta uma vez."""
     global _DRIVER
-    if _DRIVER is None:
-        from neo4j import GraphDatabase       # só quem abre prova precisa do driver
-        _DRIVER = GraphDatabase.driver(os.environ.get("NEO4J_URI", "bolt://127.0.0.1:7689"), auth=("neo4j", os.environ.get("NEO4J_SENHA", "")))
-        atexit.register(lambda: _DRIVER and _DRIVER.close())
+    with _TRAVA_DRIVER:
+        if _DRIVER is None:
+            from neo4j import GraphDatabase       # só quem abre prova precisa do driver
+            _DRIVER = GraphDatabase.driver(os.environ.get("NEO4J_URI", "bolt://127.0.0.1:7689"), auth=("neo4j", os.environ.get("NEO4J_SENHA", "")),
+                                           connection_timeout=TEMPO_DA_PROVA_S, connection_acquisition_timeout=TEMPO_DA_PROVA_S)
+            atexit.register(lambda: _DRIVER and _DRIVER.close())
 
     def executar(cypher: str, **parametros):
+        from neo4j import Query
         with _DRIVER.session() as s:
-            return [dict(r) for r in s.run(cypher, tenants=tenants, sensibilidades=sensibilidades, **parametros)]
+            return [dict(r) for r in s.run(Query(cypher, timeout=TEMPO_DA_PROVA_S), tenants=tenants, sensibilidades=sensibilidades, **parametros)]
     return executar
 
 
@@ -470,8 +475,9 @@ def abrir_prova(tenants: list[str], evidencia_id: str) -> dict:
 def completar_provas(leitor, tenants: list[str]):
     """CONFERÊNCIA EM TEMPO DE EXECUÇÃO. Quando o modelo respondeu citando fatos que as tools devolveram com evidência e não
     abriu a prova, o código a abre (no máximo `prova.LIMITE_PROVAS` ao todo) e a tela a mostra como qualquer outra fonte.
-    Só abre a evidência de um fato que a resposta de fato cita (número do contrato, valor ou nome); sem citação, não inventa prova.
-    Nunca derruba a resposta: se não consegue abrir, registra e segue. Gera eventos `fonte`."""
+    Só abre a evidência de um fato que a resposta de fato cita (número do contrato, valor ou data da sanção; o nome só ordena);
+    sem citação, não inventa prova. Nunca derruba a resposta: se não consegue abrir, registra e segue (se o banco não responde,
+    para de tentar as demais). Gera eventos `fonte`."""
     if not PROVA_AUTOMATICA:
         return
     texto = leitor.resposta or ""
@@ -485,7 +491,9 @@ def completar_provas(leitor, tenants: list[str]):
             except Exception as erro:  # noqa: BLE001  abrir prova é um extra: nunca derruba a resposta
                 falhas += 1
                 _log(leitor, "prova_automatica_falhou", "aviso", evidencia=ident[:80], erro=type(erro).__name__)
-                continue
+                if isinstance(erro, ValueError):      # essa evidência não vale (id ou perfil recusado): as outras ainda podem
+                    continue
+                break                                 # o banco não respondeu: tentar as demais só somaria espera
             evento = leitor.registrar_fonte(ident, item, automatica=True)
             if evento:
                 abertas.append(ident)

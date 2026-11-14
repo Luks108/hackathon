@@ -237,7 +237,7 @@ padrão do gabarito que não conhece "não consigo executar" (a resposta é uma 
 Mostrar mais fontes é uma mudança que o usuário vê: **até 3 por resposta**, o mesmo teto de antes.
 
 **Limites:** o experimento com o prompt sem o pedido de abrir prova (Sonnet, 2 perguntas) mostrou o caminho funcionando com tools reais (abriu `e1` e `g1` e só elas), mas é uma amostra mínima; a prova automática **não cria** prova para os fatos sem evidência (contagens, razão social por CNPJ); o ligamento por valor
-só vale para valores a partir de R$ 1.000 (abaixo disso o número solto é ambíguo). O código tem 32 + 29 testes e 35 de 36 mutações detectadas (a que sobrou é equivalente).
+só vale para valores a partir de R$ 1.000 (abaixo disso o número solto é ambíguo). O código tem 32 + 32 testes e 35 de 36 mutações detectadas (a que sobrou é equivalente). Revisão final (sem gastar modelo): a conexão com o grafo passou a ter trava contra criação dupla entre as threads do worker e limite de tempo de 5 s, e o código para de tentar as demais provas quando o banco não responde.
 
 ### 2.4 Mitigação do AP-11b: a regra 12 do prompt (13/11/2026)
 

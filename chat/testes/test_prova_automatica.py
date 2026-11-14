@@ -163,6 +163,15 @@ class TestCompletarProvas(unittest.TestCase):
         self.assertEqual(leitor.evidencias, [])
         self.assertIn("prova_automatica_falhou", [c.args[1] for c in log.call_args_list])
 
+    def test_banco_parado_para_de_tentar_as_demais_mas_id_recusado_nao(self):
+        fatos = [{**CONTRATO, "numero": f"{i}/2026", "evidencia": f"c{i}"} for i in range(1, 4)]
+        resposta = "Contratos 1/2026, 2/2026 e 3/2026."
+        eventos, abrir, _ = self.rodar(leitor_com(fatos, resposta), abrir=mock.Mock(side_effect=ConnectionError("neo4j fora")))
+        self.assertEqual((eventos, abrir.call_count), ([], 1))             # o banco não responde: uma tentativa só, não três esperas
+        recusa = mock.Mock(side_effect=[ValueError("evidencia_id inválido"), dict(ABERTA), dict(ABERTA)])
+        eventos, abrir, _ = self.rodar(leitor_com(fatos, resposta), abrir=recusa)
+        self.assertEqual((len(eventos), abrir.call_count), (2, 3))         # uma evidência recusada não impede as outras
+
     def test_evidencia_negada_nao_vira_fonte(self):
         leitor = leitor_com([CONTRATO], "O contrato 3/2026.")
         eventos, _, _ = self.rodar(leitor, abrir=mock.Mock(return_value={"erro": "evidência não encontrada para este perfil"}))
@@ -191,6 +200,43 @@ class TestCompletarProvas(unittest.TestCase):
     def test_resposta_sem_valor_nem_contrato_nao_e_sem_prova(self):
         _, _, log = self.rodar(leitor_com([OUTRO], "Há contratos na área de cultura."))
         self.assertNotIn("resposta_sem_prova", [c.args[1] for c in log.call_args_list])
+
+
+class TestConexaoComOGrafo(unittest.TestCase):
+    def setUp(self):
+        self.addCleanup(setattr, agente, "_DRIVER", agente._DRIVER)
+        agente._DRIVER = None
+
+    def test_varias_threads_criam_uma_conexao_so_e_com_limite_de_tempo(self):
+        import threading
+        import time
+        import neo4j
+        criados = []
+
+        def criar(*a, **kw):
+            time.sleep(0.05)          # criar a conexão demora: sem a trava, as outras threads passam pelo `if` enquanto isso
+            criados.append(kw)
+            return mock.Mock()
+
+        with mock.patch.object(neo4j.GraphDatabase, "driver", side_effect=criar), mock.patch.object(agente.atexit, "register"):
+            ts = [threading.Thread(target=agente._executar_no_grafo, args=(["pe-estado"], ["publico"])) for _ in range(16)]
+            [t.start() for t in ts]
+            [t.join() for t in ts]
+        self.assertEqual(len(criados), 1)
+        self.assertEqual(criados[0]["connection_timeout"], agente.TEMPO_DA_PROVA_S)
+        self.assertEqual(criados[0]["connection_acquisition_timeout"], agente.TEMPO_DA_PROVA_S)
+
+    def test_a_consulta_leva_limite_de_tempo_e_os_entes_do_perfil(self):
+        import neo4j
+        sessao = mock.MagicMock()
+        sessao.__enter__.return_value.run.return_value = iter([{"trecho": "t"}])
+        agente._DRIVER = mock.Mock(session=mock.Mock(return_value=sessao))
+        linhas = agente._executar_no_grafo(["pe-garanhuns"], ["publico"])("MATCH (n) RETURN n", id="g1")
+        consulta, = sessao.__enter__.return_value.run.call_args.args
+        self.assertIsInstance(consulta, neo4j.Query)
+        self.assertEqual(consulta.timeout, agente.TEMPO_DA_PROVA_S)
+        self.assertEqual(sessao.__enter__.return_value.run.call_args.kwargs, {"tenants": ["pe-garanhuns"], "sensibilidades": ["publico"], "id": "g1"})
+        self.assertEqual(linhas, [{"trecho": "t"}])
 
 
 class Falso:
