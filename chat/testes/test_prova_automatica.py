@@ -4,6 +4,7 @@ Sem internet e sem gastar token: o agente é falso e, para o banco, há um teste
     python -m unittest discover -s chat/testes -v
 """
 import json
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -310,6 +311,12 @@ class TestAbrirProvaNoGrafoDeVerdade(unittest.TestCase):
         if agente._DRIVER is not None:         # não deixa a conexão aberta depois dos testes
             agente._DRIVER.close()
             agente._DRIVER = None
+
+    def setUp(self):
+        # O teste não pode depender do BRUTO do .env de quem roda (na demonstração ele aponta para a captura real, que não tem o exemplo.html).
+        patcher = mock.patch.dict(os.environ, {"BRUTO": "fixtures/exemplo/bruto"})
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def abrir(self, tenants, ident):
         return agente.abrir_prova(tenants, ident)

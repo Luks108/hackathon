@@ -22,7 +22,7 @@ import util
 A = "cnpj:11111111000111"      # Construtora Exemplo: aparece em pe-garanhuns, pe-estado e ex-estado
 B = "cnpj:22222222000122"      # Serviços Modelo: só em pe-garanhuns (um contrato tem texto malicioso)
 C = "cnpj:33333333000133"      # Obras Exemplares: só em ex-estado
-D = "cnpj:44444444000144"      # Federal Exemplo: só tem sanção da União (CNEP), nenhum contrato
+D = "cnpj:44444444000144"      # Federal Exemplo: só existe na União (sanção CNEP, cadastro da Receita e um contrato federal); nenhum contrato de Estado ou município
 PF = "pf:0123456789abcdef01234567"
 
 
@@ -115,17 +115,19 @@ class TestIsolamentoEntrePerfis(unittest.TestCase):
         por_ente = {s["ente"]: s for s in u.sancoes_do_fornecedor(A)}
         self.assertEqual(set(por_ente), {"pe-estado", "br-uniao"})
         federal = por_ente["br-uniao"]
-        self.assertEqual((federal["cadastro"], federal["inicio_suspensao"], federal["fim_suspensao"], federal["publicada_em"], federal["valor_multa"]),
+        self.assertEqual((federal["cadastro"], federal["inicio_suspensao"], federal["fim_suspensao"], federal["publicada_em"], federal.get("valor_multa")),
                          ("CEIS", "2026-03-01", "2028-03-01", "2026-03-05", None))
         self.assertEqual((federal["abrangencia"], federal["situacao"]), ("Todas as Esferas em todos os Poderes", None))
-        self.assertIsNone(por_ente["pe-estado"]["cadastro"])                          # a estadual não ganhou campo que não tem
+        for campo in ("cadastro", "inicio_suspensao", "abrangencia", "valor_multa"):
+            self.assertNotIn(campo, por_ente["pe-estado"], campo)                      # a estadual não ganhou campo que não tem (nem como nulo)
+        self.assertNotIn("valor_multa", federal)                                       # o CEIS não tem multa
 
-    def test_empresa_so_com_sancao_federal_aparece_na_busca_sem_contrato(self):
+    def test_empresa_so_da_uniao_aparece_na_busca_sem_contrato_de_estado_ou_municipio(self):
         u = self.perfil("estado-uniao")
         self.assertEqual([f["id"] for f in u.buscar_fornecedor("Federal Exemplo")], [D])
         self.assertEqual([f["id"] for f in u.buscar_fornecedor("44444444000144")], [D])         # CNPJ exato
         self.assertEqual([f["id"] for f in u.buscar_fornecedor("federal exemlo")], [D])         # erro de digitação
-        self.assertEqual(u.contratos_do_fornecedor(D), [])
+        self.assertEqual({c["ente"] for c in u.contratos_do_fornecedor(D)}, {"br-uniao"})          # os contratos dela são todos federais
         (s,) = u.sancoes_do_fornecedor(D)
         self.assertEqual((s["cadastro"], s["tipo"], s["valor_multa"], s["ente"]), ("CNEP", "Multa", 25000.5, "br-uniao"))
 
@@ -157,6 +159,17 @@ class TestIsolamentoEntrePerfis(unittest.TestCase):
         self.assertEqual(a["nome"], "Construtora Exemplo Ltda (fictícia)")
 
     # ---------- Cadastro de CNPJ da Receita: mesmo isolamento da União ----------
+
+    def test_a_cobertura_diz_de_quando_e_cada_cadastro_de_sancoes_e_a_data_de_pe_so_vale_para_pe(self):
+        cob = self.perfil("estado").cobertura()
+        self.assertEqual([(x["ente"], x["sancoes"]) for x in cob["sancoes_por_ente"]], [("Estado de Pernambuco", 1)])
+        self.assertEqual(cob["cadastro_de_sancoes_de"], "2025-06-05")
+        uniao = self.perfil("estado-uniao").cobertura()
+        self.assertEqual({x["ente"]: x["sancoes"] for x in uniao["sancoes_por_ente"]}, {"Estado de Pernambuco": 1, "União (governo federal)": 2})
+        self.assertTrue(all(x["coletado_de"] and x["coletado_ate"] for x in uniao["sancoes_por_ente"]))
+        # um perfil sem sanção de Pernambuco não pode receber a data de Pernambuco
+        sem_pe = self.perfil("estado-exemplo").cobertura()
+        self.assertNotIn("Estado de Pernambuco", [x["ente"] for x in sem_pe["sancoes_por_ente"]])
 
     def test_cadastro_da_receita_so_aparece_para_quem_enxerga_a_uniao(self):
         for nome in ("municipio", "estado", "estado-exemplo"):
@@ -199,6 +212,48 @@ class TestIsolamentoEntrePerfis(unittest.TestCase):
         self.assertNotIn("erro", r)
         self.assertTrue(r["hash_confere"])
         self.assertIn("situação ATIVA desde 01/02/2010", r["trecho"])
+
+    # ---------- Contratos federais: mesmo isolamento da União, e os dois valores separados ----------
+
+    def test_contrato_federal_so_aparece_para_quem_enxerga_a_uniao(self):
+        for nome in ("municipio", "estado", "estado-exemplo"):
+            m = self.perfil(nome)
+            self.assertEqual(m.contratos_do_fornecedor(D), [], nome)
+            self.assertNotIn("9/2026", [c["numero"] for c in m.listar_contratos()], nome)
+            self.assertIn("erro", m.conferir_evidencia("u4"), nome)
+            self.assertNotIn("União (governo federal)", [x["ente"] for x in m.cobertura()["contratos_por_ente"]], nome)
+
+    def test_estado_e_uniao_ve_o_contrato_federal_com_valor_inicial_e_final_separados(self):
+        u = self.perfil("estado-uniao", BRUTO="fixtures/exemplo/bruto")
+        (c,) = [x for x in u.contratos_do_fornecedor(D) if x["numero"] == "9/2026"]
+        self.assertEqual((c["numero"], c["valor_contratado"], c["valor_final"], c["situacao"], c["orgao_superior"], c["ente"], c["evidencia"]),
+                         ("9/2026", 61000.0, 63000.0, "Em execução", "MEX", "br-uniao", "u4"))
+        self.assertEqual((c["modalidade"], c["fonte"]), ("Pregão", "Portal da Transparência (federal)"))
+        self.assertIsNone(c["tem_aditivo"])
+        self.assertIn("9/2026", [x["numero"] for x in u.listar_contratos()])
+        self.assertIn("União (governo federal)", [x["ente"] for x in u.cobertura()["contratos_por_ente"]])
+        r = u.conferir_evidencia("u4")
+        self.assertTrue(r["hash_confere"])
+        self.assertIn("valor final R$ 63.000,00", r["trecho"])
+
+    def test_contrato_sem_valor_vai_para_o_fim_da_lista_dos_maiores(self):
+        """Valor nulo ordena como o maior no Cypher: sem tratamento, o contrato sem valor (comum no PNCP) abriria a lista `do maior para o menor`."""
+        u = self.perfil("estado-uniao")
+        lista = u.listar_contratos()
+        valores = [c["valor_contratado"] for c in lista]
+        self.assertEqual(lista[-1]["numero"], "10/2026")                                 # o sem valor vai para o fim
+        com_valor = [v for v in valores if v is not None]
+        self.assertEqual(com_valor, sorted(com_valor, reverse=True))                      # e os demais seguem do maior para o menor
+        self.assertEqual(valores.count(None), 1)
+        self.assertEqual([c["numero"] for c in u.buscar_contratos("fictício sem valor")], ["10/2026"])
+
+    def test_contrato_antigo_continua_com_os_campos_novos_nulos(self):
+        u = self.perfil("estado-uniao")
+        contratos = u.contratos_do_fornecedor(B)
+        self.assertTrue(contratos)
+        for c in contratos:
+            for campo in ("valor_final", "situacao", "orgao_superior", "fonte"):
+                self.assertNotIn(campo, c, campo)                                      # nem como nulo: o modelo comentaria o que a fonte nem tem
 
     # ---------- Busca por texto (índice de texto, passo 4): tolera acento e erro, e não amplia o acesso ----------
 

@@ -8,7 +8,7 @@ Critério fixo, para a seleção não depender de quem roda:
 - em Garanhuns, os casos com sanção, com processo, sem processo e com aditivo;
 - o restante do Estado vem do maior contrato de cada órgão, em rodízio, para cobrir mais órgãos;
 - pessoas físicas ficam na base para provar que o perfil as esconde;
-- as sanções federais (CEIS e CNEP) de pessoa jurídica e os cadastros da Receita entram todos, e não influem na escolha dos contratos: é o que permite consultar qualquer CNPJ.
+- as sanções federais (CEIS e CNEP) de pessoa jurídica e os cadastros da Receita e os contratos federais por CNPJ entram todos, e não influem na escolha dos contratos: é o que permite consultar qualquer CNPJ.
 Grava também a lista de CNPJs usada na coleta de execução financeira.
 """
 
@@ -48,12 +48,15 @@ class Selecao:
 def main() -> None:
     contratos, processos, fornecedores, sancoes, cadastros, execucoes, evidencias = map(
         ler, ("contratos", "processos", "fornecedores", "sancoes", "cadastros", "execucoes", "evidencias"))
+    contratos_federais = [c for c in contratos if c["tenant"] == UNIAO and c["sensibilidade"] == "publico"]
+    contratos = [c for c in contratos if c["tenant"] != UNIAO]          # a escolha dos 100 contratos não vê os federais
     federais = [s for s in sancoes if s["tenant"] == UNIAO and s["sensibilidade"] == "publico"]
     sancoes = [s for s in sancoes if s["tenant"] != UNIAO]      # a escolha dos contratos olha só as sanções estaduais
     abertas = {s["fornecedor"] for s in sancoes if s["situacao"] == "EM ABERTO"}
     sancionados = {s["fornecedor"] for s in sancoes}
     processos_ids = {p["id"] for p in processos}
-    ordem = lambda c: (-c["valor_contratado"], c["id"])  # noqa: E731
+    valor = lambda c: c.get("valor_contratado") or 0.0     # contrato do PNCP pode vir sem valor  # noqa: E731
+    ordem = lambda c: (-valor(c), c["id"])  # noqa: E731
     pj = sorted((c for c in contratos if c["sensibilidade"] == "publico" and c["fornecedor"].startswith("cnpj:")), key=ordem)
     estado = [c for c in pj if c["tenant"] == ESTADO]
     garanhuns = [c for c in pj if c["tenant"] == GARANHUNS]
@@ -62,13 +65,13 @@ def main() -> None:
 
     sel = Selecao()
     cruzados = sorted(primeiro_e.keys() & primeiro_g.keys(),
-                      key=lambda f: (f not in sancionados, -primeiro_e[f]["valor_contratado"], f))
+                      key=lambda f: (f not in sancionados, -valor(primeiro_e[f]), f))
     for f in cruzados[:CRUZADOS]:
         sel.por(primeiro_e[f], "nos_dois_entes")
         sel.por(primeiro_g[f], "nos_dois_entes")
 
     com_sancao = sorted((f for f in primeiro_e if f in sancionados),
-                        key=lambda f: (f not in abertas, -primeiro_e[f]["valor_contratado"], f))
+                        key=lambda f: (f not in abertas, -valor(primeiro_e[f]), f))
     for f in com_sancao[:SANCIONADOS_ESTADO]:
         sel.por(primeiro_e[f], "com_sancao")
 
@@ -111,11 +114,11 @@ def main() -> None:
     sanc = [s for s in sancoes if s["fornecedor"] in forn]
     exec_ = [x for x in execucoes if x["fornecedor"] in forn]
     procs = [p for p in processos if p["id"] in {c["processo"] for c in escolhidos}]
-    federais_ids = {s["fornecedor"] for s in federais} | {c["fornecedor"] for c in cadastros}
-    evs = {x["evidencia"] for grupo in (escolhidos, sanc, exec_, procs, federais, cadastros) for x in grupo}
+    federais_ids = {s["fornecedor"] for s in federais} | {c["fornecedor"] for c in cadastros} | {c["fornecedor"] for c in contratos_federais}
+    evs = {x["evidencia"] for grupo in (escolhidos, sanc, exec_, procs, federais, cadastros, contratos_federais) for x in grupo}
     SAIDA.mkdir(exist_ok=True)
     conjuntos = {
-        "contratos": escolhidos,
+        "contratos": escolhidos + contratos_federais,
         "processos": procs,
         "sancoes": sanc + federais,
         "cadastros": cadastros,
@@ -131,7 +134,7 @@ def main() -> None:
     print({k: len(v) for k, v in conjuntos.items()}, "cnpjs", len(cnpjs))
     print(Counter((c["tenant"], c["caso_demo"]) for c in escolhidos))
     print("órgãos do Estado:", len({c["uj_nome"] for c in escolhidos if c["tenant"] == ESTADO}))
-    print("valor Estado:", round(sum(c["valor_contratado"] for c in escolhidos if c["tenant"] == ESTADO)))
+    print("valor Estado:", round(sum(valor(c) for c in escolhidos if c["tenant"] == ESTADO)))
 
 
 if __name__ == "__main__":

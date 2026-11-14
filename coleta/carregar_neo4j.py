@@ -1,6 +1,6 @@
 """Projeta os fatos extraídos no Neo4j. O grafo é descartável: --zerar reconstrói tudo.
 
-    .venv/bin/python coleta/carregar_neo4j.py [--zerar] [--amostra | --exemplo | --benchmark]
+    .venv/bin/python coleta/carregar_neo4j.py [--zerar] [--amostra | --exemplo | --benchmark | --externas]
 """
 
 import json
@@ -19,6 +19,8 @@ for linha in (_ENV.read_text(encoding="utf-8-sig").splitlines() if _ENV.exists()
             os.environ.setdefault(k.strip(), v.strip())
 
 DADOS = RAIZ / "dados" / ("amostra" if "--amostra" in sys.argv else "")
+if "--externas" in sys.argv:  # só as fontes de fora (extrair.py --so-externas): CEIS/CNEP, cadastro da Receita, contratos federais e PNCP
+    DADOS = RAIZ / "dados" / "externas"
 if "--exemplo" in sys.argv:  # dados fictícios, versionados, para quem não tem a captura
     DADOS = RAIZ / "fixtures" / "exemplo"
 if "--benchmark" in sys.argv:  # base fictícia maior (120 contratos), gerada por fixtures/gerar_benchmark.py

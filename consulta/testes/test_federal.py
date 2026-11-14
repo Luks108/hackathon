@@ -249,6 +249,9 @@ class TestAmostra(unittest.TestCase):
                 sancoes.append({"id": f"br-uniao:ceis:{k}", "tenant": "br-uniao", "sensibilidade": sens, "situacao": None, "fornecedor": forn, "evidencia": f"ev-f{k}"})
                 fornecedores.append({"id": forn, "tipo": "PF" if sens == "pessoal" else "PJ", "tenant": "br-uniao", "evidencia": f"ev-f{k}", "nome": "y"})
                 evidencias.append({"id": f"ev-f{k}", "tenant": "br-uniao"})
+            contratos.append({"id": "br-uniao:contrato:f1", "tenant": "br-uniao", "sensibilidade": "publico", "fornecedor": f"cnpj:{PJ}", "valor_contratado": 9e9,
+                              "uj_nome": "Unidade federal", "processo": None, "processo_informado": False, "tem_aditivo": None, "evidencia": "ev-fc"})
+            evidencias.append({"id": "ev-fc", "tenant": "br-uniao"})
         return {"contratos": contratos, "processos": [], "fornecedores": fornecedores, "sancoes": sancoes, "execucoes": [], "evidencias": evidencias}
 
     def rodar(self, com_federal: bool) -> dict:
@@ -268,8 +271,8 @@ class TestAmostra(unittest.TestCase):
 
     def test_a_escolha_dos_contratos_nao_muda_com_as_sancoes_federais(self):
         sem, com = self.rodar(False), self.rodar(True)
-        self.assertEqual([c["id"] for c in sem["contratos"]], [c["id"] for c in com["contratos"]])
-        self.assertEqual(len(com["contratos"]), 100)
+        self.assertEqual([c["id"] for c in sem["contratos"]], [c["id"] for c in com["contratos"] if c["tenant"] != "br-uniao"])
+        self.assertEqual(len([c for c in com["contratos"] if c["tenant"] != "br-uniao"]), 100)
 
     def test_entram_as_federais_de_pj_e_nenhuma_de_pf(self):
         com = self.rodar(True)
@@ -280,6 +283,12 @@ class TestAmostra(unittest.TestCase):
         ev = {e["id"] for e in com["evidencias"]}
         self.assertTrue({f"ev-f{k}" for k in range(11)} <= ev and "ev-f11" not in ev)
         self.assertEqual(sum(s["tenant"] == "pe-estado" for s in com["sancoes"]), 1)            # a estadual continua
+
+    def test_o_contrato_federal_passa_inteiro_uma_vez_so_com_a_evidencia(self):
+        com = self.rodar(True)
+        self.assertEqual([c["id"] for c in com["contratos"] if c["tenant"] == "br-uniao"], ["br-uniao:contrato:f1"])
+        self.assertIn("ev-fc", {e["id"] for e in com["evidencias"]})
+        self.assertEqual(len(com["contratos"]), 101)
 
     def test_sem_federal_a_saida_e_a_de_antes(self):
         sem = self.rodar(False)

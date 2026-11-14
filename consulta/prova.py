@@ -17,7 +17,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 ID_EVIDENCIA = re.compile(r"^[A-Za-z0-9:_\-]{1,80}$")
 LIMITE_PROVAS = 3          # quantas evidências uma resposta mostra (é o mesmo teto que a regra 2 do prompt dá ao modelo)
 VALOR_MINIMO = 1000        # abaixo disso o número solto é ambíguo demais para provar que a resposta falou daquele fato
-CAMPOS_DE_VALOR = ("valor_contratado", "empenhado", "liquidado", "pago", "restos_a_pagar", "valor_multa", "capital_social")
+CAMPOS_DE_VALOR = ("valor_contratado", "empenhado", "liquidado", "pago", "restos_a_pagar", "valor_multa", "capital_social", "valor_final")
 CAMPOS_DE_NOME = ("fornecedor", "unidade", "orgao")
 CAMPOS_DE_DATA = ("publicada_em", "fim_suspensao")      # a data da sanção identifica a ocorrência; a de início de contrato se repete demais
 

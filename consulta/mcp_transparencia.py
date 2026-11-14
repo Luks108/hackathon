@@ -180,6 +180,16 @@ def _fornecedor_id(valor: str) -> str:
     return valor
 
 
+def _sem_vazios(linhas: list[dict], chaves: tuple[str, ...]) -> list[dict]:
+    """Tira da resposta os campos NOVOS que vieram vazios. Uma sanção estadual não tem `valor_multa` nem `abrangencia`: se o campo aparecesse como nulo,
+    o modelo comentaria "a fonte não informa multa" sobre algo que aquela fonte nem tem (visto na bateria de ataques de 14/11/2026)."""
+    for linha in linhas:
+        for chave in chaves:
+            if linha.get(chave) is None:
+                linha.pop(chave, None)
+    return linhas
+
+
 # ---------- acesso ao grafo ----------
 
 def consultar(cypher: str, **parametros) -> list[dict]:
@@ -215,16 +225,26 @@ def cobertura() -> dict:
     cadastros = consultar("""
         MATCH (c:CadastroReceita) WHERE c.tenant IN $tenants AND c.sensibilidade IN $sensibilidades
         RETURN count(c) AS n""")[0]["n"]
+    sancoes_por_ente = consultar("""
+        MATCH (s:Sancao) WHERE s.tenant IN $tenants AND s.sensibilidade IN $sensibilidades
+        OPTIONAL MATCH (s)-[:PROVADO_POR]->(e:Evidencia)
+        WITH s.tenant AS id, count(DISTINCT s) AS sancoes, min(e.capturado_em) AS de, max(e.capturado_em) AS ate
+        MATCH (t:Ente {id: id})
+        RETURN t.nome AS ente, id, sancoes, de AS coletado_de, ate AS coletado_ate ORDER BY sancoes DESC""")
+    tem_sancoes_de_pe = any(r["id"] == "pe-estado" for r in sancoes_por_ente)
+    sancoes_por_ente = [{k: v for k, v in r.items() if k != "id"} for r in sancoes_por_ente]
     return {
         **totais,
         "cadastros_da_receita": cadastros,
+        "sancoes_por_ente": sancoes_por_ente,
         "contratos_por_ente": por_ente,
         "orgaos": orgaos,
         "execucao_financeira": anos,
         "perfil": PERFIL,
         "tenants_do_perfil": TENANTS,
         "capturado_entre": [datas["de"], datas["ate"]],
-        "cadastro_de_sancoes_de": CADASTRO_DE_SANCOES_DE,
+        # A data fixa vale só para o cadastro de sanções de Pernambuco: sem sanção desse ente no perfil, ela não se aplica (visto na demonstração de 14/11/2026).
+        **({"cadastro_de_sancoes_de": CADASTRO_DE_SANCOES_DE} if tem_sancoes_de_pe else {}),
         "limites": (
             f"Base limitada: {totais['contratos']} contratos e {totais['sancoes']} sanções visíveis para este perfil. "
             "A execução financeira é agregada por fornecedor, órgão e ano, só do Estado, e não se liga a um contrato. "
@@ -261,7 +281,7 @@ def buscar_fornecedor(termo: str) -> list[dict]:
             ORDER BY pontos DESC, id LIMIT 10""", texto=texto, teto=LIMITE_DO_INDICE):
             r.pop("pontos", None)
             achados.setdefault(r["id"], r)
-    return list(achados.values())[:10]
+    return _sem_vazios(list(achados.values())[:10], ("nome_fantasia",))
 
 
 @mcp.tool()
@@ -275,7 +295,7 @@ def listar_contratos() -> list[dict]:
         RETURN c.numero AS numero, f.id AS fornecedor_id, f.nome AS fornecedor,
                c.valor_contratado AS valor_contratado, c.inicio AS inicio, c.fim AS fim,
                e.id AS evidencia
-        ORDER BY c.valor_contratado DESC
+        ORDER BY coalesce(c.valor_contratado, -1) DESC
         LIMIT $limite""", limite=LIMITE_LINHAS)
 
 
@@ -308,26 +328,30 @@ def buscar_contratos(termo: str) -> list[dict]:
         RETURN c.numero AS numero, c.objeto AS objeto, u.nome AS unidade, f.id AS fornecedor_id, f.nome AS fornecedor,
                c.valor_contratado AS valor_contratado, c.inicio AS inicio, c.fim AS fim, c.tenant AS ente,
                e.id AS evidencia
-        ORDER BY c.valor_contratado DESC
+        ORDER BY coalesce(c.valor_contratado, -1) DESC
         LIMIT $limite""", texto=texto, teto=LIMITE_DO_INDICE, limite=LIMITE_LINHAS)
 
 
 @mcp.tool()
 @registrado
 def contratos_do_fornecedor(fornecedor_id: str) -> list[dict]:
-    """Contratos do fornecedor, com o processo, quando informado, e a evidência de cada um."""
-    return consultar("""
+    """Contratos do fornecedor, com o processo, quando informado, e a evidência de cada um.
+
+    Os federais (ente `br-uniao`) trazem `valor_contratado` (inicial) e `valor_final` (com aditivos e reajustes): são dois valores, não se somam.
+    `fonte` diz de onde veio (PNCP, Portal da Transparência federal ou o portal do ente); `situacao` e `orgao_superior` só existem nos federais."""
+    return _sem_vazios(consultar("""
         MATCH (c:Contrato)-[:CONTRATA]->(f:Fornecedor {id: $id})
         WHERE c.tenant IN $tenants AND c.sensibilidade IN $sensibilidades
         OPTIONAL MATCH (c)-[:PROVADO_POR]->(e:Evidencia)
         OPTIONAL MATCH (c)-[:DECORRE_DE]->(p:ProcessoLicitatorio)
         OPTIONAL MATCH (c)-[:CELEBRADO_POR]->(u:UnidadeJurisdicionada)
         RETURN c.numero AS numero, c.objeto AS objeto, c.inicio AS inicio, c.fim AS fim,
-               c.valor_contratado AS valor_contratado, c.tem_aditivo AS tem_aditivo,
-               c.processo_informado AS processo_informado, p.numero AS processo, p.modalidade AS modalidade,
+               c.valor_contratado AS valor_contratado, c.valor_final AS valor_final, c.tem_aditivo AS tem_aditivo,
+               c.processo_informado AS processo_informado, p.numero AS processo, coalesce(p.modalidade, c.modalidade) AS modalidade,
+               c.situacao AS situacao, c.orgao_superior AS orgao_superior, c.fonte AS fonte,
                u.nome AS unidade, c.tenant AS ente, e.id AS evidencia
         ORDER BY c.inicio DESC
-        LIMIT $limite""", id=_fornecedor_id(fornecedor_id), limite=LIMITE_LINHAS)
+        LIMIT $limite""", id=_fornecedor_id(fornecedor_id), limite=LIMITE_LINHAS), ("valor_final", "situacao", "orgao_superior", "fonte"))
 
 
 @mcp.tool()
@@ -337,7 +361,7 @@ def sancoes_do_fornecedor(fornecedor_id: str) -> list[dict]:
 
     As federais (cadastro CEIS ou CNEP, ente `br-uniao`) trazem as datas de início e fim, sem a situação: compare com a data de hoje.
     `abrangencia` diz onde a sanção vale ("Sem Informação" não é "vale em todo lugar"). `valor_multa` só existe no CNEP."""
-    return consultar("""
+    return _sem_vazios(consultar("""
         MATCH (f:Fornecedor {id: $id})-[:RECEBEU]->(s:Sancao)
         WHERE s.tenant IN $tenants AND s.sensibilidade IN $sensibilidades
         OPTIONAL MATCH (s)-[:PROVADO_POR]->(e:Evidencia)
@@ -346,7 +370,7 @@ def sancoes_do_fornecedor(fornecedor_id: str) -> list[dict]:
                s.abrangencia AS abrangencia, s.valor_multa AS valor_multa, s.descricao AS descricao,
                s.tenant AS ente, e.id AS evidencia
         ORDER BY s.publicada_em DESC
-        LIMIT $limite""", id=_fornecedor_id(fornecedor_id), limite=LIMITE_LINHAS)
+        LIMIT $limite""", id=_fornecedor_id(fornecedor_id), limite=LIMITE_LINHAS), ("cadastro", "inicio_suspensao", "abrangencia", "valor_multa"))
 
 
 @mcp.tool()

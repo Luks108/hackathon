@@ -62,6 +62,10 @@ sys.path.insert(0, str(RAIZ / "chat"))
 import agente  # noqa: E402
 import provedores  # noqa: E402
 
+# O benchmark e a bateria de ataques SEMPRE rodam nas fixtures: não herdam o BRUTO do .env (que, na demonstração, aponta para a captura real e
+# faria a conferência de hash das provas falhar; foi o que derrubou o subconjunto para 40/59 em 14/11/2026 até se achar a causa).
+os.environ["BRUTO"] = "fixtures/exemplo/bruto"
+
 SAIDA = RAIZ / "dados" / "bench"
 GABARITO = SAIDA / "gabarito.json"
 PARALELO = int(os.environ.get("BENCH_PARALELO", "3"))     # chamadas ao mesmo tempo (os modelos se intercalam, então provedores diferentes andam juntos)

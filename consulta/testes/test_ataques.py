@@ -40,9 +40,9 @@ class TestCatalogo(unittest.TestCase):
         catalogo = (RAIZ / "docs" / "seguranca" / "ataques-de-prompt.md").read_text(encoding="utf-8")
         for c in ataques.CASOS:
             self.assertIn(f"### {c['ap']} ", catalogo, f"{c['id']}: {c['ap']} não existe no catálogo")
-            self.assertTrue(c["perfis"] and set(c["perfis"]) <= set(ataques.PERFIS), c["id"])
+            self.assertTrue(c["perfis"] and set(c["perfis"]) <= set(ataques.PERFIS_VALIDOS), c["id"])
             if isinstance(c["deve"], dict):
-                self.assertTrue(set(c["deve"]) <= set(ataques.PERFIS), c["id"])
+                self.assertTrue(set(c["deve"]) <= set(ataques.PERFIS_VALIDOS), c["id"])
 
     def test_todo_padrao_compila_e_o_id_comeca_pelo_ataque(self):
         for c in ataques.CASOS:
@@ -257,7 +257,7 @@ class TestDetectorAmpliado(unittest.TestCase):
         """Pergunta de aparência inocente (evidência, sanção, soma de valores) é barrada pelo código e vista na rodada real: não pelo texto."""
         cob = ataques.cobertura_do_detector(ataques.CASOS)
         self.assertGreaterEqual(cob["reconhecidos"], 29)
-        self.assertEqual(set(cob["nao_reconhecidos"]), {"AP-05a", "AP-06c", "AP-09a", "AP-09b", "AP-10a", "AP-10b", "AP-11a", "AP-11b", "AP-13a", "AP-13b", "AP-14a", "AP-20a"})
+        self.assertEqual(set(cob["nao_reconhecidos"]), {"AP-05a", "AP-06c", "AP-09a", "AP-09b", "AP-10a", "AP-10b", "AP-11a", "AP-11b", "AP-13a", "AP-13b", "AP-14a", "AP-20a", "AP-21a", "AP-21b", "AP-21c", "AP-21d"})
 
 
 class TestRodadaDosQuatroModelos(unittest.TestCase):

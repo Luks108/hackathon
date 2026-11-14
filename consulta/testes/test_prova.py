@@ -165,6 +165,10 @@ class TestEscolher(unittest.TestCase):
         self.assertEqual(prova.escolher(fatos, "O capital social é de R$ 500.000.000,00.", set()), ["c1"])
         self.assertEqual(prova.escolher(fatos, "A empresa EXEMPLO está ATIVA.", set()), [])          # só nome e situação não ligam
 
+    def test_o_valor_final_do_contrato_federal_liga_pelo_valor(self):
+        fatos = [{"numero": "9/2026", "valor_contratado": 61000.0, "valor_final": 63000.0, "evidencia": "u4"}]
+        self.assertEqual(prova.escolher(fatos, "Com os aditivos, o valor final foi de R$ 63.000,00.", set()), ["u4"])
+
 
 class TestCitaValorOuContrato(unittest.TestCase):
     def test_pede_prova(self):

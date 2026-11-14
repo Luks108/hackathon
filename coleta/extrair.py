@@ -38,6 +38,8 @@ CHAVE_PF = os.environ["CHAVE_PF"].encode()
 GARANHUNS = "pe-garanhuns"
 ESTADO = "pe-estado"
 UNIAO = "br-uniao"
+# Órgãos que a coleta do PNCP (coleta/pncp.py) pode trazer: CNPJ do órgão -> (ente do projeto, nome do ente). Órgão fora daqui é contado e ignorado.
+ORGAOS_PNCP = {"11303906000100": ("pe-garanhuns", "Município de Garanhuns")}
 PAGINA_FEDERAL = "https://portaldatransparencia.gov.br/download-de-dados/{cadastro}"
 # Colunas que a extração federal exige (nomes sem acento). Se o portal mudar o layout, para em vez de adivinhar.
 COLUNAS_FEDERAIS = ("CODIGO DA SANCAO", "CPF OU CNPJ DO SANCIONADO", "NOME DO SANCIONADO", "CATEGORIA DA SANCAO",
@@ -541,24 +543,151 @@ def extrair_cadastros_receita(saida: dict, relatorio: dict, bruto: Path | None =
         })
 
 
+def _iso(v) -> str | None:
+    return v[:10] if isinstance(v, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}.*", v) else None
+
+
+def _brl(v) -> str | None:
+    return None if v is None else "R$ " + f"{float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def extrair_contratos_federais(saida: dict, relatorio: dict, bruto: Path | None = None) -> None:
+    """Contratos federais por CNPJ (coleta/federal_contratos.py), de `federal-contratos-<cnpj>.json`. Opcional. Ente `br-uniao`.
+
+    O valor inicial vira `valor_contratado` e o final (com aditivos e reajustes) vira `valor_final`: são dois valores, nunca somados.
+    `tem_aditivo` fica nulo: a API não diz, e comparar os dois valores seria inferir."""
+    bruto = bruto or BRUTO
+    for arquivo in sorted(bruto.glob("federal-contratos-*.json")):
+        try:
+            doc = json.loads(arquivo.read_text(encoding="utf-8"))
+            lista = doc["contratos"]
+            cnpj = arquivo.name.removeprefix("federal-contratos-").removesuffix(".json")
+            assert cnpj_valido(cnpj) and isinstance(lista, list)
+        except (ValueError, KeyError, TypeError, AssertionError):
+            relatorio["federal_contratos_arquivo_invalido"] += 1
+            continue
+        for n, c in enumerate(lista, 1):
+            if digitos(str((c.get("fornecedor") or {}).get("cnpj", ""))) != cnpj or c.get("id") is None:
+                relatorio["federal_contratos_item_invalido"] += 1
+                continue
+            relatorio["federal_contratos"] += 1
+            ug = c.get("unidadeGestora") or {}
+            codigo = str(ug.get("codigo") or "-1")
+            unidade = ug.get("nome") if ug.get("nome") and ug.get("nome") != "Inválido" else "Unidade não informada"
+            orgao = (ug.get("orgaoMaximo") or {}).get("sigla")
+            orgao = orgao if orgao and orgao != "-1" else None
+            objeto = sem_cpf(re.sub(r"^\s*Objeto:\s*", "", c.get("objeto") or "")).strip() or None
+            nome = sem_cpf(str((c.get("fornecedor") or {}).get("razaoSocialReceita") or "")) or None
+            inicio_v, final_v = c.get("valorInicialCompra"), c.get("valorFinalCompra")
+            trecho = " | ".join(p for p in (
+                "Contrato federal (Portal da Transparência)", f"CNPJ {cnpj}", nome, f"contrato {c.get('numero')}", objeto[:300] if objeto else None,
+                unidade + (f" ({orgao})" if orgao else ""), f"valor inicial {_brl(inicio_v)}" if inicio_v is not None else None,
+                f"valor final {_brl(final_v)}" if final_v is not None else None,
+                f"vigência {_iso(c.get('dataInicioVigencia'))} a {_iso(c.get('dataFimVigencia'))}" if _iso(c.get("dataInicioVigencia")) else None,
+                f"situação {c['situacaoContrato']}" if c.get("situacaoContrato") else None) if p)
+            ev = evidencia(arquivo, "contratos", n, trecho, doc.get("url") or PAGINA_FEDERAL.format(cadastro="contratos"), UNIAO,
+                           capturado_em=doc.get("coletado_em") or "desconhecido")
+            saida["evidencias"].append(ev)
+            saida["fornecedores"].append({"id": f"cnpj:{cnpj}", "tipo": "PJ", "cnpj": cnpj, "nome": nome, "resolvido": True, "evidencia": ev["id"], "tenant": UNIAO})
+            saida["contratos"].append({
+                "id": f"{UNIAO}:contrato:{c['id']}", "idc": str(c["id"]), "numero": str(c.get("numero") or c["id"]), "objeto": objeto,
+                "valor_contratado": inicio_v, "valor_final": final_v,
+                "inicio": _iso(c.get("dataInicioVigencia")) or _iso(c.get("dataAssinatura")), "fim": _iso(c.get("dataFimVigencia")), "assinatura": _iso(c.get("dataAssinatura")),
+                "situacao": c.get("situacaoContrato"), "modalidade": c.get("modalidadeCompra"), "orgao_superior": orgao, "fonte": "Portal da Transparência (federal)",
+                "tem_aditivo": None, "processo_informado": bool(c.get("numeroProcesso")), "processo": None,
+                "uj": f"{UNIAO}:uj:{codigo}", "uj_nome": unidade, "tenant": UNIAO, "sensibilidade": "publico", "fornecedor": f"cnpj:{cnpj}", "evidencia": ev["id"]})
+
+
+def extrair_contratos_pncp(saida: dict, relatorio: dict, bruto: Path | None = None, sensiveis: set[str] | None = None) -> None:
+    """Contratos de órgãos no PNCP (coleta/pncp.py), de `pncp-<orgao>-<de>-<ate>.json`. Opcional. O ente vem de ORGAOS_PNCP.
+
+    Fornecedor pessoa física: só o hash do CPF, sem nome e sem documento no trecho, sensibilidade "pessoal".
+    O mesmo contrato visto em duas janelas vale uma vez. Um contrato que também esteja em outra fonte do mesmo ente (por exemplo o portal municipal)
+    entra duas vezes, com ids diferentes: o projeto ainda não cruza as duas fontes."""
+    bruto = bruto or BRUTO
+    sensiveis = sensiveis if sensiveis is not None else set()
+    vistos: set[str] = set()
+    for arquivo in sorted(bruto.glob("pncp-*.json")):
+        try:
+            doc = json.loads(arquivo.read_text(encoding="utf-8"))
+            lista = doc["contratos"]
+            assert isinstance(lista, list)
+        except (ValueError, KeyError, TypeError, AssertionError):
+            relatorio["pncp_arquivo_invalido"] += 1
+            continue
+        for n, c in enumerate(lista, 1):
+            orgao = digitos(str((c.get("orgaoEntidade") or {}).get("cnpj", "")))
+            controle = c.get("numeroControlePNCP")
+            if orgao not in ORGAOS_PNCP:
+                relatorio["pncp_orgao_sem_mapa"] += 1
+                continue
+            if not controle:
+                relatorio["pncp_item_invalido"] += 1
+                continue
+            tenant, nome_ente = ORGAOS_PNCP[orgao]
+            if f"{tenant}:{controle}" in vistos:
+                relatorio["pncp_repetido"] += 1
+                continue
+            vistos.add(f"{tenant}:{controle}")
+            d = digitos(str(c.get("niFornecedor") or ""))
+            tipo, doc_forn = documento(d)
+            if tipo == "invalido":
+                relatorio["pncp_fornecedor_invalido"] += 1
+                continue
+            pj = tipo == "PJ"
+            relatorio["pncp_contratos" if pj else "pncp_contratos_pf"] += 1
+            if not pj:
+                sensiveis.add(d.lstrip("0"))
+            nome = (sem_cpf(str(c.get("nomeRazaoSocialFornecedor") or "")) or None) if pj else None
+            numero = str(c.get("numeroContratoEmpenho") or f"{c.get('sequencialContrato')}/{c.get('anoContrato')}")
+            valor = next((v for v in (c.get("valorGlobal"), c.get("valorInicial")) if isinstance(v, (int, float)) and v > 0), None)
+            unidade = c.get("unidadeOrgao") or {}
+            uj_nome = unidade.get("nomeUnidade") or (c.get("orgaoEntidade") or {}).get("razaoSocial") or nome_ente
+            objeto = sem_cpf(re.sub(r"\s+", " ", c.get("objetoContrato") or "")).strip() or None
+            ini, fim = _iso(c.get("dataVigenciaInicio")) or _iso(c.get("dataAssinatura")), _iso(c.get("dataVigenciaFim"))
+            partes = ["Contrato no PNCP", nome_ente, f"contrato {numero}", f"fornecedor {nome} (CNPJ {doc_forn})" if pj else "fornecedor pessoa física",
+                      objeto[:300] if objeto else None, uj_nome, f"valor {_brl(valor)}" if valor else "valor não informado",
+                      f"vigência {ini} a {fim}" if ini else None, f"publicado em {_iso(c.get('dataPublicacaoPncp'))}" if _iso(c.get("dataPublicacaoPncp")) else None]
+            ev = evidencia(arquivo, "contratos", n, " | ".join(p for p in partes if p), doc.get("url") or "https://pncp.gov.br/", tenant, not pj,
+                           capturado_em=doc.get("coletado_em") or "desconhecido")
+            saida["evidencias"].append(ev)
+            forn_id = f"cnpj:{doc_forn}" if pj else f"pf:{pseudonimo(d.lstrip('0'))}"
+            saida["fornecedores"].append({"id": forn_id, "tipo": "PJ" if pj else "PF", "cnpj": doc_forn if pj else None, "nome": nome, "resolvido": True,
+                                          "evidencia": ev["id"], "tenant": tenant})
+            saida["contratos"].append({
+                "id": f"{tenant}:pncp:{controle}", "idc": controle, "numero": numero, "objeto": objeto, "valor_contratado": valor, "inicio": ini, "fim": fim,
+                "assinatura": _iso(c.get("dataAssinatura")), "fonte": "PNCP", "tem_aditivo": None, "processo_informado": bool(c.get("processo")), "processo": None,
+                "uj": f"{tenant}:uj:pncp:{unidade.get('codigoUnidade') or orgao}", "uj_nome": uj_nome, "tenant": tenant,
+                "sensibilidade": "publico" if pj else "pessoal", "fornecedor": forn_id, "evidencia": ev["id"]})
+
+
 def main() -> int:
-    SAIDA.mkdir(exist_ok=True)
+    """`--so-externas` roda só as fontes de fora (CEIS/CNEP, cadastro da Receita, contratos federais, PNCP) e grava em `dados/externas/`,
+    sem exigir nem sobrescrever a captura completa do Estado e de Garanhuns. Carregue com `carregar_neo4j.py --externas`."""
+    externas = "--so-externas" in sys.argv
+    destino = SAIDA / "externas" if externas else SAIDA
+    destino.mkdir(parents=True, exist_ok=True)
     saida = {k: [] for k in ("contratos", "processos", "fornecedores", "sancoes", "cadastros", "execucoes", "evidencias")}
     relatorio: dict = {k: 0 for k in (
         "pj_resolvido", "pf_resolvido", "pj_sem_documento", "pf_sem_documento", "mascara_divergente",
         "contrato_fora_do_padrao", "licitacao_fora_do_padrao", "sancao_linha_repetida", "sancao_pj",
         "sancao_documento_nao_cnpj", "estado_pj", "estado_pf", "estado_invalido", "execucao_outro_credor",
         "federal_pj", "federal_pf", "federal_documento_invalido", "federal_linha_repetida", "federal_sem_codigo",
-        "receita_cadastros", "receita_arquivo_invalido",
+        "receita_cadastros", "receita_arquivo_invalido", "federal_contratos", "federal_contratos_arquivo_invalido", "federal_contratos_item_invalido",
+        "pncp_contratos", "pncp_contratos_pf", "pncp_arquivo_invalido", "pncp_orgao_sem_mapa", "pncp_item_invalido", "pncp_repetido", "pncp_fornecedor_invalido",
     )}
     sensiveis: set[str] = set()
-    extrair_contratos(saida, relatorio)
-    extrair_licitacoes(saida, relatorio)
-    extrair_contratos_estado(saida, relatorio, sensiveis)
-    extrair_sancoes(saida, relatorio)
+    if not externas:
+        extrair_contratos(saida, relatorio)
+        extrair_licitacoes(saida, relatorio)
+        extrair_contratos_estado(saida, relatorio, sensiveis)
+        extrair_sancoes(saida, relatorio)
     extrair_sancoes_federais(saida, relatorio, sensiveis=sensiveis)
     extrair_cadastros_receita(saida, relatorio)
-    extrair_execucao(saida, relatorio)
+    extrair_contratos_federais(saida, relatorio)
+    extrair_contratos_pncp(saida, relatorio, sensiveis=sensiveis)
+    if not externas:
+        extrair_execucao(saida, relatorio)
 
     for f in saida["fornecedores"]:
         f["nome"] = sem_cpf(f["nome"]) if f["nome"] else None
@@ -569,7 +698,7 @@ def main() -> int:
         print("ERRO: CPF no resultado; nada foi gravado", file=sys.stderr)
         return 1
     for nome, itens in saida.items():
-        (SAIDA / f"{nome}.jsonl").write_text("".join(json.dumps(i, ensure_ascii=False) + "\n" for i in itens), encoding="utf-8")
+        (destino / f"{nome}.jsonl").write_text("".join(json.dumps(i, ensure_ascii=False) + "\n" for i in itens), encoding="utf-8")
     print(json.dumps({**{k: len(v) for k, v in saida.items()}, "relatorio": relatorio}, ensure_ascii=False, indent=2))
     return 0
 
