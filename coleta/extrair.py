@@ -18,6 +18,7 @@ import json
 import os
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -36,6 +37,11 @@ CHAVE_PF = os.environ["CHAVE_PF"].encode()
 
 GARANHUNS = "pe-garanhuns"
 ESTADO = "pe-estado"
+UNIAO = "br-uniao"
+PAGINA_FEDERAL = "https://portaldatransparencia.gov.br/download-de-dados/{cadastro}"
+# Colunas que a extração federal exige (nomes sem acento). Se o portal mudar o layout, para em vez de adivinhar.
+COLUNAS_FEDERAIS = ("CODIGO DA SANCAO", "CPF OU CNPJ DO SANCIONADO", "NOME DO SANCIONADO", "CATEGORIA DA SANCAO",
+                    "DATA INICIO SANCAO", "DATA FINAL SANCAO", "DATA PUBLICACAO", "ABRAGENCIA DA SANCAO", "ORGAO SANCIONADOR")
 PORTAL = "https://portaltransparencia.app.br"
 PAINEL_CONTRATOS = "https://transparencia.pe.gov.br/licitacoes-e-contratos/menu-contratos/painel-de-contratos/"
 PAINEL_FORNECEDORES = "https://transparencia.pe.gov.br/licitacoes-e-contratos/fornecedores/consulta-fornecedores/"
@@ -391,6 +397,101 @@ def extrair_sancoes(saida: dict, relatorio: dict) -> None:
         })
 
 
+def _coluna(nome: str) -> str:
+    """Nome de coluna sem acento e em maiúsculas: o portal já mudou a acentuação entre arquivos."""
+    return unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode().upper().strip()
+
+
+def extrair_sancoes_federais(saida: dict, relatorio: dict, bruto: Path | None = None, sensiveis: set[str] | None = None) -> None:
+    """CEIS e CNEP (sanções da União), de `federal-ceis.csv` e `federal-cnep.csv` (coleta/federal.py). Os dois são opcionais.
+
+    - Pessoa física: só o hash do CPF, sem nome, sem documento no trecho, sensibilidade "pessoal".
+    - O nome do fornecedor vem da razão social do cadastro da Receita que o próprio arquivo traz, quando houver.
+    - O arquivo diz onde a sanção vale (`abrangencia`); isso entra na ocorrência, porque "sem informação" não é "vale em todo lugar".
+    - A situação (vigente ou encerrada) não é calculada aqui: o arquivo tem as datas e a resposta compara com a data da consulta.
+    """
+    bruto = bruto or BRUTO
+    sensiveis = sensiveis if sensiveis is not None else set()
+    for cadastro in ("ceis", "cnep"):
+        arquivo = bruto / f"federal-{cadastro}.csv"
+        if not arquivo.exists():
+            continue
+        meta_arquivo = bruto / f"federal-{cadastro}.meta.json"
+        meta = json.loads(meta_arquivo.read_text(encoding="utf-8")) if meta_arquivo.exists() else {}
+        url = meta.get("url") or PAGINA_FEDERAL.format(cadastro=cadastro)
+        capturado = meta.get("coletado_em") or "desconhecido"
+        leitor = csv.reader(io.StringIO(arquivo.read_bytes().decode("cp1252", errors="replace")), delimiter=";")
+        cabecalho = [_coluna(c) for c in next(leitor, [])]
+        faltam = [c for c in COLUNAS_FEDERAIS if c not in cabecalho]
+        if faltam:
+            raise ValueError(f"{arquivo.name}: o layout mudou, faltam as colunas {faltam}")
+        posicao = {c: cabecalho.index(c) for c in dict.fromkeys(cabecalho)}
+
+        def campo(r: list[str], nome: str) -> str:
+            i = posicao.get(nome)
+            return r[i].strip() if i is not None and i < len(r) else ""
+
+        vistos: set[str] = set()
+        for n, r in enumerate(leitor, 2):
+            cod = campo(r, "CODIGO DA SANCAO")
+            if not cod:
+                relatorio["federal_sem_codigo"] += 1
+                continue
+            if cod in vistos:
+                relatorio["federal_linha_repetida"] += 1
+                continue
+            vistos.add(cod)
+            d = digitos(campo(r, "CPF OU CNPJ DO SANCIONADO"))
+            tipo, doc = documento(d)
+            if tipo == "invalido":
+                relatorio["federal_documento_invalido"] += 1
+                continue
+            pj = tipo == "PJ"
+            relatorio["federal_pj" if pj else "federal_pf"] += 1
+            if not pj:
+                sensiveis.add(d.lstrip("0"))
+            nome = (campo(r, "RAZAO SOCIAL - CADASTRO RECEITA") or campo(r, "NOME DO SANCIONADO")) or None if pj else None
+            categoria, orgao, abrangencia = campo(r, "CATEGORIA DA SANCAO"), campo(r, "ORGAO SANCIONADOR"), campo(r, "ABRAGENCIA DA SANCAO")
+            inicio, fim, publicada = (campo(r, c) for c in ("DATA INICIO SANCAO", "DATA FINAL SANCAO", "DATA PUBLICACAO"))
+            fundamentacao, processo, multa = campo(r, "FUNDAMENTACAO LEGAL"), campo(r, "NUMERO DO PROCESSO"), campo(r, "VALOR DA MULTA")
+            forn = {
+                "id": f"cnpj:{doc}" if pj else f"pf:{pseudonimo(d.lstrip('0'))}",
+                "tipo": "PJ" if pj else "PF",
+                "cnpj": doc if pj else None,
+                "nome": nome,
+                "resolvido": True,
+            }
+            partes = [f"{cadastro.upper()} (União)", categoria, nome, f"CNPJ {doc}" if pj else None, orgao,
+                      f"início {inicio}" if inicio else None, f"fim {fim}" if fim else None,
+                      f"publicada em {publicada}" if publicada else None, f"abrangência: {abrangencia}" if abrangencia else None,
+                      f"multa R$ {multa}" if multa else None]
+            ev = evidencia(arquivo, cadastro, n, " | ".join(p for p in partes if p) if pj else
+                           " | ".join(p for p in (f"{cadastro.upper()} (União)", categoria, orgao, f"início {inicio}" if inicio else None,
+                                                  f"fim {fim}" if fim else None) if p),
+                           url, UNIAO, not pj, capturado_em=capturado)
+            saida["evidencias"].append(ev)
+            saida["fornecedores"].append({**forn, "evidencia": ev["id"], "tenant": UNIAO})
+            descricao = " | ".join(filter(None, [f"Fundamentação: {fundamentacao}" if fundamentacao else None,
+                                                 f"Processo: {processo}" if processo else None]))
+            saida["sancoes"].append({
+                "id": f"{UNIAO}:{cadastro}:{cod}",
+                "cadastro": cadastro.upper(),
+                "tipo": categoria or None,
+                "situacao": None,
+                "publicada_em": data_br(publicada),
+                "inicio_suspensao": data_br(inicio),
+                "fim_suspensao": data_br(fim),
+                "orgao": orgao or None,
+                "abrangencia": abrangencia or None,
+                "valor_multa": real(multa) if multa else None,
+                "descricao": sem_cpf(descricao) or None if pj else None,
+                "fornecedor": forn["id"],
+                "tenant": UNIAO,
+                "sensibilidade": "publico" if pj else "pessoal",
+                "evidencia": ev["id"],
+            })
+
+
 def main() -> int:
     SAIDA.mkdir(exist_ok=True)
     saida = {k: [] for k in ("contratos", "processos", "fornecedores", "sancoes", "execucoes", "evidencias")}
@@ -398,12 +499,14 @@ def main() -> int:
         "pj_resolvido", "pf_resolvido", "pj_sem_documento", "pf_sem_documento", "mascara_divergente",
         "contrato_fora_do_padrao", "licitacao_fora_do_padrao", "sancao_linha_repetida", "sancao_pj",
         "sancao_documento_nao_cnpj", "estado_pj", "estado_pf", "estado_invalido", "execucao_outro_credor",
+        "federal_pj", "federal_pf", "federal_documento_invalido", "federal_linha_repetida", "federal_sem_codigo",
     )}
     sensiveis: set[str] = set()
     extrair_contratos(saida, relatorio)
     extrair_licitacoes(saida, relatorio)
     extrair_contratos_estado(saida, relatorio, sensiveis)
     extrair_sancoes(saida, relatorio)
+    extrair_sancoes_federais(saida, relatorio, sensiveis=sensiveis)
     extrair_execucao(saida, relatorio)
 
     for f in saida["fornecedores"]:
@@ -415,7 +518,7 @@ def main() -> int:
         print("ERRO: CPF no resultado; nada foi gravado", file=sys.stderr)
         return 1
     for nome, itens in saida.items():
-        (SAIDA / f"{nome}.jsonl").write_text("".join(json.dumps(i, ensure_ascii=False) + "\n" for i in itens))
+        (SAIDA / f"{nome}.jsonl").write_text("".join(json.dumps(i, ensure_ascii=False) + "\n" for i in itens), encoding="utf-8")
     print(json.dumps({**{k: len(v) for k, v in saida.items()}, "relatorio": relatorio}, ensure_ascii=False, indent=2))
     return 0
 

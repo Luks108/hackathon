@@ -4,3 +4,5 @@
 {"id": "cnpj:22222222000122", "tipo": "PJ", "cnpj": "22222222000122", "nome": "Serviços Modelo Ltda (fictícia)", "resolvido": true, "evidencia": "g2", "tenant": "pe-garanhuns"}
 {"id": "cnpj:33333333000133", "tipo": "PJ", "cnpj": "33333333000133", "nome": "Obras Exemplares Ltda (fictícia)", "resolvido": true, "evidencia": "x2", "tenant": "ex-estado"}
 {"id": "pf:0123456789abcdef01234567", "tipo": "PF", "cnpj": null, "nome": null, "resolvido": true, "evidencia": "g4", "tenant": "pe-garanhuns"}
+{"id": "cnpj:11111111000111", "tipo": "PJ", "cnpj": "11111111000111", "nome": "CONSTRUTORA EXEMPLO LTDA (RAZÃO SOCIAL NA RECEITA, FICTÍCIA)", "resolvido": true, "evidencia": "u1", "tenant": "br-uniao"}
+{"id": "cnpj:44444444000144", "tipo": "PJ", "cnpj": "44444444000144", "nome": "Federal Exemplo S.A. (fictícia)", "resolvido": true, "evidencia": "u2", "tenant": "br-uniao"}

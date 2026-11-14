@@ -22,6 +22,7 @@ import util
 A = "cnpj:11111111000111"      # Construtora Exemplo: aparece em pe-garanhuns, pe-estado e ex-estado
 B = "cnpj:22222222000122"      # Serviços Modelo: só em pe-garanhuns (um contrato tem texto malicioso)
 C = "cnpj:33333333000133"      # Obras Exemplares: só em ex-estado
+D = "cnpj:44444444000144"      # Federal Exemplo: só tem sanção da União (CNEP), nenhum contrato
 PF = "pf:0123456789abcdef01234567"
 
 
@@ -95,6 +96,65 @@ class TestIsolamentoEntrePerfis(unittest.TestCase):
         self.assertEqual(len(e.listar_contratos()), 3)
         self.assertIn("erro", e.conferir_evidencia("g4"))
         self.assertEqual(e.buscar_fornecedor("pf"), [])
+
+    # ---------- União (CEIS e CNEP): só o perfil que a inclui enxerga; os outros ficam como estavam ----------
+
+    def test_perfis_sem_a_uniao_nao_enxergam_nada_federal(self):
+        for nome in ("municipio", "estado", "estado-exemplo"):
+            m = self.perfil(nome)
+            self.assertEqual(m.sancoes_do_fornecedor(D), [], nome)
+            self.assertEqual(m.buscar_fornecedor("Federal Exemplo"), [], nome)
+            self.assertEqual(m.buscar_fornecedor("44444444000144"), [], nome)
+            for negada in ("u1", "u2"):
+                self.assertIn("erro", m.conferir_evidencia(negada), (nome, negada))
+            self.assertNotIn("br-uniao", [s["ente"] for s in m.sancoes_do_fornecedor(A)], nome)
+            self.assertNotIn("br-uniao", m.cobertura()["tenants_do_perfil"], nome)
+
+    def test_estado_e_uniao_ve_as_sancoes_federais_com_data_e_abrangencia(self):
+        u = self.perfil("estado-uniao")
+        por_ente = {s["ente"]: s for s in u.sancoes_do_fornecedor(A)}
+        self.assertEqual(set(por_ente), {"pe-estado", "br-uniao"})
+        federal = por_ente["br-uniao"]
+        self.assertEqual((federal["cadastro"], federal["inicio_suspensao"], federal["fim_suspensao"], federal["publicada_em"], federal["valor_multa"]),
+                         ("CEIS", "2026-03-01", "2028-03-01", "2026-03-05", None))
+        self.assertEqual((federal["abrangencia"], federal["situacao"]), ("Todas as Esferas em todos os Poderes", None))
+        self.assertIsNone(por_ente["pe-estado"]["cadastro"])                          # a estadual não ganhou campo que não tem
+
+    def test_empresa_so_com_sancao_federal_aparece_na_busca_sem_contrato(self):
+        u = self.perfil("estado-uniao")
+        self.assertEqual([f["id"] for f in u.buscar_fornecedor("Federal Exemplo")], [D])
+        self.assertEqual([f["id"] for f in u.buscar_fornecedor("44444444000144")], [D])         # CNPJ exato
+        self.assertEqual([f["id"] for f in u.buscar_fornecedor("federal exemlo")], [D])         # erro de digitação
+        self.assertEqual(u.contratos_do_fornecedor(D), [])
+        (s,) = u.sancoes_do_fornecedor(D)
+        self.assertEqual((s["cadastro"], s["tipo"], s["valor_multa"], s["ente"]), ("CNEP", "Multa", 25000.5, "br-uniao"))
+
+    def test_estado_e_uniao_abre_a_prova_da_federal_com_o_hash_conferido(self):
+        u = self.perfil("estado-uniao", BRUTO="fixtures/exemplo/bruto")
+        for ident in ("u1", "u2"):
+            r = u.conferir_evidencia(ident)
+            self.assertNotIn("erro", r, ident)
+            self.assertTrue(r["hash_confere"], ident)
+            self.assertIn("DADO FICTÍCIO", r["trecho"])
+        self.assertIn("abrangência", u.conferir_evidencia("u1")["trecho"])
+
+    def test_a_uniao_nao_abre_o_acesso_a_outro_estado_nem_a_pessoa_fisica(self):
+        u = self.perfil("estado-uniao")
+        for negada in ("x1", "x2", "g4"):
+            self.assertIn("erro", u.conferir_evidencia(negada), negada)
+        self.assertEqual(u.buscar_fornecedor("Obras Exemplares"), [])
+        self.assertEqual(u.contratos_do_fornecedor(PF), [])
+        self.assertNotIn("ex-estado", [s["ente"] for s in u.sancoes_do_fornecedor(A)])
+
+    def test_a_cobertura_conta_as_sancoes_da_uniao_no_perfil_que_as_inclui(self):
+        self.assertEqual(self.perfil("estado").cobertura()["sancoes"], 1)
+        self.assertEqual(self.perfil("estado-uniao").cobertura()["sancoes"], 3)       # a de PE e as duas federais
+
+    def test_o_nome_dos_contratos_nao_e_trocado_pela_razao_social_da_receita(self):
+        """O nome já gravado fica; o do CEIS/CNEP só preenche quando não havia nenhum."""
+        u = self.perfil("estado-uniao")
+        (a,) = [f for f in u.buscar_fornecedor("Construtora") if f["id"] == A]
+        self.assertEqual(a["nome"], "Construtora Exemplo Ltda (fictícia)")
 
     # ---------- Busca por texto (índice de texto, passo 4): tolera acento e erro, e não amplia o acesso ----------
 

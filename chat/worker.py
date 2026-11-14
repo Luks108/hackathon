@@ -43,7 +43,7 @@ LOG = RAIZ / "logs" / "chat.jsonl"
 _VENV_AUDIO = RAIZ / "inferencia" / ".venv"      # inferencia/ fica na raiz do projeto, ao lado de chat/
 PYTHON_AUDIO = _VENV_AUDIO / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 TRANSCRITOR = RAIZ / "inferencia" / "transcrever.py"
-PERFIL_MANUAL = ["pe-estado", "pe-garanhuns"]   # números liberados pelo dono no terminal
+PERFIL_MANUAL = ["pe-estado", "pe-garanhuns", "br-uniao"]   # números liberados pelo dono no terminal (Estado, Garanhuns e as sanções da União)
 ERRO_PADRAO = "Não consegui concluir agora. Tente de novo em instantes."
 AGENTES_SITE = int(os.environ.get("AGENTES_SITE", "3"))   # o WhatsApp tem o próprio agente, um por vez
 

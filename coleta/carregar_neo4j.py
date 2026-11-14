@@ -28,11 +28,13 @@ LOTE = 500
 ENTES = [
     {"id": "pe-garanhuns", "nome": "Município de Garanhuns", "esfera": "municipal", "uf": "PE"},
     {"id": "pe-estado", "nome": "Estado de Pernambuco", "esfera": "estadual", "uf": "PE"},
+    {"id": "br-uniao", "nome": "União (governo federal)", "esfera": "federal", "uf": "BR"},
 ]
 if "--exemplo" in sys.argv:  # segundo estado, fictício, para provar o isolamento entre estados
     ENTES.append({"id": "ex-estado", "nome": "Estado Exemplo (fictício)", "esfera": "estadual", "uf": "EX"})
 
-# Um fornecedor pode ter nome só numa fonte: coalesce não apaga o nome já gravado.
+# Um fornecedor pode ter nome só numa fonte: o nome já gravado fica (vale o da primeira fonte que trouxe um), e um nome novo só preenche o vazio.
+# Assim a razão social do CEIS/CNEP não troca o nome que o fornecedor já tem nos contratos.
 CARGAS = [
     ("evidencias", """
         UNWIND $linhas AS l
@@ -41,7 +43,7 @@ CARGAS = [
     ("fornecedores", """
         UNWIND $linhas AS l
         MERGE (f:Fornecedor {id: l.id})
-        SET f.tipo = l.tipo, f.cnpj = coalesce(l.cnpj, f.cnpj), f.nome = coalesce(l.nome, f.nome),
+        SET f.tipo = l.tipo, f.cnpj = coalesce(l.cnpj, f.cnpj), f.nome = coalesce(f.nome, l.nome),
             f.resolvido = l.resolvido
         WITH f, l
         MATCH (e:Evidencia {id: l.evidencia})

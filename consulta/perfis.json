@@ -9,6 +9,11 @@
     "tenants": ["pe-estado", "pe-garanhuns"],
     "ver_pessoal": false
   },
+  "estado-uniao": {
+    "nome": "Estado e União",
+    "tenants": ["pe-estado", "pe-garanhuns", "br-uniao"],
+    "ver_pessoal": false
+  },
   "estado-exemplo": {
     "nome": "Estado Exemplo (fictício)",
     "tenants": ["ex-estado"],

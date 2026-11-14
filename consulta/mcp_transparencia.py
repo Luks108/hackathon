@@ -329,13 +329,17 @@ def contratos_do_fornecedor(fornecedor_id: str) -> list[dict]:
 @mcp.tool()
 @registrado
 def sancoes_do_fornecedor(fornecedor_id: str) -> list[dict]:
-    """Ocorrências do fornecedor nos cadastros de sanções dos entes do perfil."""
+    """Ocorrências do fornecedor nos cadastros de sanções dos entes do perfil.
+
+    As federais (cadastro CEIS ou CNEP, ente `br-uniao`) trazem as datas de início e fim, sem a situação: compare com a data de hoje.
+    `abrangencia` diz onde a sanção vale ("Sem Informação" não é "vale em todo lugar"). `valor_multa` só existe no CNEP."""
     return consultar("""
         MATCH (f:Fornecedor {id: $id})-[:RECEBEU]->(s:Sancao)
         WHERE s.tenant IN $tenants AND s.sensibilidade IN $sensibilidades
         OPTIONAL MATCH (s)-[:PROVADO_POR]->(e:Evidencia)
-        RETURN s.tipo AS tipo, s.situacao AS situacao, s.publicada_em AS publicada_em,
-               s.fim_suspensao AS fim_suspensao, s.orgao AS orgao, s.descricao AS descricao,
+        RETURN s.cadastro AS cadastro, s.tipo AS tipo, s.situacao AS situacao, s.publicada_em AS publicada_em,
+               s.inicio_suspensao AS inicio_suspensao, s.fim_suspensao AS fim_suspensao, s.orgao AS orgao,
+               s.abrangencia AS abrangencia, s.valor_multa AS valor_multa, s.descricao AS descricao,
                s.tenant AS ente, e.id AS evidencia
         ORDER BY s.publicada_em DESC
         LIMIT $limite""", id=_fornecedor_id(fornecedor_id), limite=LIMITE_LINHAS)

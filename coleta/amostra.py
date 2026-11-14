@@ -7,7 +7,8 @@ Critério fixo, para a seleção não depender de quem roda:
 - fornecedores do Estado que constam no cadastro de sanções, em aberto primeiro;
 - em Garanhuns, os casos com sanção, com processo, sem processo e com aditivo;
 - o restante do Estado vem do maior contrato de cada órgão, em rodízio, para cobrir mais órgãos;
-- pessoas físicas ficam na base para provar que o perfil as esconde.
+- pessoas físicas ficam na base para provar que o perfil as esconde;
+- as sanções federais (CEIS e CNEP) de pessoa jurídica entram todas, e não influem na escolha dos contratos: é o que permite consultar qualquer CNPJ.
 Grava também a lista de CNPJs usada na coleta de execução financeira.
 """
 
@@ -18,6 +19,7 @@ from pathlib import Path
 DADOS = Path(__file__).resolve().parents[1] / "dados"
 SAIDA = DADOS / "amostra"
 ESTADO, GARANHUNS = "pe-estado", "pe-garanhuns"
+UNIAO = "br-uniao"
 META_ESTADO, META_GARANHUNS = 70, 30
 PF_POR_ENTE = {ESTADO: 3, GARANHUNS: 2}
 CRUZADOS = 12
@@ -46,6 +48,8 @@ class Selecao:
 def main() -> None:
     contratos, processos, fornecedores, sancoes, execucoes, evidencias = map(
         ler, ("contratos", "processos", "fornecedores", "sancoes", "execucoes", "evidencias"))
+    federais = [s for s in sancoes if s["tenant"] == UNIAO and s["sensibilidade"] == "publico"]
+    sancoes = [s for s in sancoes if s["tenant"] != UNIAO]      # a escolha dos contratos olha só as sanções estaduais
     abertas = {s["fornecedor"] for s in sancoes if s["situacao"] == "EM ABERTO"}
     sancionados = {s["fornecedor"] for s in sancoes}
     processos_ids = {p["id"] for p in processos}
@@ -107,18 +111,20 @@ def main() -> None:
     sanc = [s for s in sancoes if s["fornecedor"] in forn]
     exec_ = [x for x in execucoes if x["fornecedor"] in forn]
     procs = [p for p in processos if p["id"] in {c["processo"] for c in escolhidos}]
-    evs = {x["evidencia"] for grupo in (escolhidos, sanc, exec_, procs) for x in grupo}
+    federais_ids = {s["fornecedor"] for s in federais}
+    evs = {x["evidencia"] for grupo in (escolhidos, sanc, exec_, procs, federais) for x in grupo}
     SAIDA.mkdir(exist_ok=True)
     conjuntos = {
         "contratos": escolhidos,
         "processos": procs,
-        "sancoes": sanc,
+        "sancoes": sanc + federais,
         "execucoes": exec_,
-        "fornecedores": [f for f in fornecedores if f["id"] in forn and f["evidencia"] in evs],
+        "fornecedores": [f for f in fornecedores if f["tenant"] != UNIAO and f["id"] in forn and f["evidencia"] in evs]
+                        + [f for f in fornecedores if f["tenant"] == UNIAO and f["id"] in federais_ids and f["evidencia"] in evs],
         "evidencias": [e for e in evidencias if e["id"] in evs],
     }
     for nome, itens in conjuntos.items():
-        (SAIDA / f"{nome}.jsonl").write_text("".join(json.dumps(i, ensure_ascii=False) + "\n" for i in itens))
+        (SAIDA / f"{nome}.jsonl").write_text("".join(json.dumps(i, ensure_ascii=False) + "\n" for i in itens), encoding="utf-8")
     cnpjs = sorted(f[5:] for f in forn if f.startswith("cnpj:"))
     (SAIDA / "cnpjs.txt").write_text("\n".join(cnpjs) + "\n")
     print({k: len(v) for k, v in conjuntos.items()}, "cnpjs", len(cnpjs))

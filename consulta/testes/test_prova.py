@@ -155,6 +155,11 @@ class TestEscolher(unittest.TestCase):
         fatos = [{"ano": "2025", "orgao": "SECRETARIA DE MEIO AMBIENTE", "pago": 583271.0, "empenhado": 600000.0, "evidencia": "e218"}]
         self.assertEqual(prova.escolher(fatos, "Em 2025 foram pagos R$ 583.271,00.", set()), ["e218"])
 
+    def test_a_multa_do_cnep_liga_pelo_valor(self):
+        fatos = [{"cadastro": "CNEP", "tipo": "Multa", "valor_multa": 25000.5, "orgao": "Órgão federal de exemplo", "evidencia": "u2"}]
+        self.assertEqual(prova.escolher(fatos, "O CNEP registra multa de R$ 25.000,50.", set()), ["u2"])
+        self.assertEqual(prova.escolher(fatos, "O CNEP registra uma multa.", set()), [])      # sem o valor, só o nome do órgão não liga
+
 
 class TestCitaValorOuContrato(unittest.TestCase):
     def test_pede_prova(self):
