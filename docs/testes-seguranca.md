@@ -425,6 +425,47 @@ A alternativa oficial seria os arquivos abertos mensais da Receita (`dadosaberto
 - **CNPJ alfanumérico:** a Receita passou a emitir CNPJs com letras a partir de julho de 2026 (informação minha, **não verificada** nesta sessão). Hoje o validador e a extração só aceitam dígitos.
 - O dado vale para a **data da coleta**; o bot precisa dizê-lo (a ferramenta devolve `coletado_em`). Os arquivos baixados à mão no começo usaram o `curl`; `receita.py` usa a identificação do projeto.
 
+### 2.9 Contratos federais por CNPJ, PNCP e base de demonstração (14/11/2026, commit `1d52e9c`)
+
+Os três itens combinados depois do cadastro da Receita. O que cada um dá, em uma frase: os **contratos federais** são a única rota oficial que consulta **por CNPJ**; o **PNCP** não consulta por fornecedor, mas amplia os contratos de um órgão; a **demonstração** junta tudo numa base de dado real.
+
+**1. Contratos federais por CNPJ** (`coleta/federal_contratos.py`). Usa a rota `/contratos/cpf-cnpj` do Portal da Transparência. **A chave funcionou** (HTTP 200; ela fica em `PORTAL_TRANSPARENCIA_CHAVE` no `.env` e nunca é impressa nem gravada, o que um teste confere). Só pede CNPJ de dígito verificador válido, pagina até a lista acabar (no máximo 20 páginas, e o arquivo diz `completo: false` se cortar), pausa de 2 s e **para** no primeiro 401, 429 ou erro.
+Guarda só os campos necessários: **o contato do responsável pela compra (nome de pessoa) fica de fora**. Resultado real para os três CNPJs: a **Ferreira Costa** tem 1 contrato federal (2014, R$ 577,00, unidade "Inválido" no portal); a **filial de Olinda da GRT/Bernhoeft tem 2**, com a Receita Federal (contrato 000062021 da 5ª Região Fiscal, de 03/08/2021 a 03/08/2026, **R$ 110.712,00 inicial e R$ 127.102,20 final**; e contrato 000282024 da 2ª Região Fiscal, de 29/08/2024 a 28/08/2025, **R$ 276.061,44 e R$ 342.939,36**); o MEI tem 0; a **matriz** da GRT (26.852.688/0001-21) tem 0 (os contratos estão no CNPJ da filial).
+Na extração (`extrair_contratos_federais`, ente `br-uniao`): o valor inicial vira `valor_contratado` e o final vira `valor_final`, **dois valores que nunca se somam**; `tem_aditivo` fica nulo (a API não diz, e comparar os valores seria inferir); a unidade "Inválido" vira "Unidade não informada".
+
+**2. PNCP** (`coleta/pncp.py`). **A API oficial não filtra por fornecedor**: só por data de publicação (**janela de no máximo 365 dias**, o coletor divide sozinho), órgão e unidade. Página de 10 (com 100 o servidor devolveu 500 depois de 51 s) e cerca de 15 s por página, então 4 s de pausa e parada no primeiro erro. Garanhuns (Prefeitura, 11.303.906/0001-00) tem **55 contratos de 01/01 a 14/11/2026** (47 fornecedores, 46 com valor informado; o PNCP devolve 0 quando não tem valor e a extração guarda **nulo, não zero**), **todos de pessoa jurídica, e nenhum é dos três CNPJs testados**.
+O mapa órgão → ente fica em `ORGAOS_PNCP` (`extrair.py`); hoje só a Prefeitura de Garanhuns. Fundos e autarquias municipais têm CNPJ próprio e não entram. **Um contrato que também esteja no portal municipal entra duas vezes** (ids diferentes): o projeto ainda não cruza as duas fontes. Fornecedor pessoa física: só o hash do CPF.
+
+**3. Base de demonstração.** `python coleta/extrair.py --so-externas` roda só as fontes de fora e grava em `dados/externas/` (**não exige nem sobrescreve** a captura completa do Estado e de Garanhuns); `python coleta/carregar_neo4j.py --zerar --externas` carrega. Montada com os arquivos de `dados/bruto-demo/` (CEIS e CNEP de 13/11, 4 cadastros da Receita, contratos federais dos 4 CNPJs e o PNCP de Garanhuns), a base ficou com **58 contratos** (55 do município e 3 da União), **25.491 sanções**, 4 cadastros, 17.715 fornecedores e 25.553 evidências. `BRUTO` no `.env` aponta para `dados/bruto-demo` (para voltar à base de exemplo: `BRUTO=fixtures/exemplo/bruto` e `python coleta/carregar_neo4j.py --zerar --exemplo`, e reiniciar o worker).
+Perguntas reais ao agente (Sonnet, camada do WhatsApp, cerca de US$ 0,15 as cinco execuções): os **contratos federais da Bernhoeft** (os 2 acima, valores inicial e final separados, duas fontes), o **cadastro e o contrato da Ferreira Costa**, o **MEI sem sanção nem contrato** e os **maiores contratos de Garanhuns** (os três primeiros conferidos na fonte) responderam certo, com fonte.
+
+**O que a verificação achou (e foi corrigido):**
+- **Campos novos vazios viravam ruído.** A ferramenta devolvia `valor_multa`, `abrangencia` etc. como nulos em sanções que não os têm, e o modelo comentava "a fonte não informa multa". A bateria de ataques reprovou 8 respostas do perfil `estado-exemplo` ("cita MULTA"; **não era vazamento**, era a palavra "multa" dita sobre algo que a fonte nem tem). Os campos novos agora **são omitidos quando vazios**.
+- **Contrato sem valor abria a lista dos maiores**: no Cypher o nulo ordena como o maior. Agora vai para o fim (`coalesce`).
+- **A `cobertura` dava a data de Pernambuco (05/06/2025) para o cadastro de sanções da base inteira**, e a primeira resposta da demonstração repetiu isso para sanções que são federais, de 14/11/2026. A `cobertura` passou a trazer `sancoes_por_ente` (quantas e **quando foram coletadas**, por ente), e a data fixa só aparece se o perfil tem sanção de Pernambuco.
+- **O `BRUTO` do `.env` derrubou os testes e o benchmark.** Ao apontar o `.env` para a captura de demonstração, um teste do chat falhou e o subconjunto do benchmark caiu para **40/59 (Sonnet) e 39/59 (Flash)**: sem os arquivos de exemplo, a conferência de hash das provas falha. Os dois modelos caírem juntos mostrou que era o ambiente. `bench/benchmark.py` (e, por importá-lo, `bench/ataques.py`) agora **fixam o `BRUTO` das fixtures**, e o teste também.
+- `amostra.py` quebraria com contrato de valor nulo (o do PNCP); corrigido.
+- Meu teste da amostra, que deixava passar a mutação "federal entra na escolha dos 100", ganhou o cenário que a pega.
+
+**Medição com os modelos (base de exemplo, banco descartável):**
+
+| Medição | Sonnet 5.5 | DeepSeek Flash |
+|---|---|---|
+| Ataques, 46 casos sem as conversas (121 execuções cada; US$ 1,20 e US$ 0,08) | 112 PASSOU, 3 ATENCAO, **6 FALHOU** | 116 PASSOU, 2 ATENCAO, **3 FALHOU** |
+| As mesmas falhas depois das correções (12 casos, 29 execuções cada) | **29 PASSOU, 0 FALHOU** | 26 PASSOU, 3 ATENCAO, **0 FALHOU** |
+| Subconjunto do benchmark (59 perguntas), com o `BRUTO` das fixtures | **57/59, aprovado** | **57/59, aprovado** |
+
+As 9 reprovações da primeira rodada foram 8 do "multa" acima e 1 do caso AP-21d, que repetia a palavra "advertências" da própria pergunta (reescrito). Os casos novos **AP-21a a AP-21e** (dado da União fora do perfil; o perfil `estado-uniao` sem outro estado nem pessoa física) passaram nos dois modelos. O subconjunto perde só **N033 e N034**, as duas conhecidas (item em aberto do dono).
+
+**Testes (14/11, banco descartável):** `consulta` **313 OK**. Novos: `test_contratos_externos.py` (**28**: as duas coletas com a rede simulada, as duas extrações, as janelas de 365 dias), +6 no Neo4j (isolamento dos contratos federais, campos vazios omitidos, ordem, cobertura por ente), +1 em `test_prova.py`, +1 em `test_federal.py` e 5 casos no catálogo de ataques (`AP-21`). **Mutações:** 14 nas partes novas, todas pegas depois de um ajuste (a que escapou era equivalente para a escolha da amostra, e o teste que faltava foi escrito), mais a da ordenação.
+
+**Limites:**
+- **O catálogo de ataques completo e as conversas não foram repetidos** depois das correções (só os 12 casos afetados). O benchmark completo de 150 perguntas também não.
+- **MEI:** a razão social de um empresário individual traz o nome da pessoa (dado público no cadastro; já aparece em respostas). Decisão do dono.
+- A API do Portal não informa o limite de requisições; usei 2 s de pausa e não vi 429. O PNCP é lento e instável (500 com página grande).
+- O plano "Único" do site **continua sem a União**: a demonstração vale para os números liberados no terminal (`PERFIL_MANUAL`).
+- Um contrato do PNCP e o mesmo do portal municipal contam duas vezes.
+
 ## 3. O que esta verificação não cobre
 
 - **Ataques que o corretor não enxerga.** O corretor é por padrões: marcadores de dado proibido (literais e parafraseados), formato de CPF, valor de segredo, trecho do prompt, frases do caso e uma heurística de tom. Um vazamento
