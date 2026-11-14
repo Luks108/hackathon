@@ -40,3 +40,11 @@ Code freeze: **06/11/2026, 12h**. O que ficar de fora entra como próximo passo 
 4. Que decisão a resposta alimenta: homologar, bloquear ou renovar?
 5. Qual erro é inaceitável: sem fonte, vazamento ou dado desatualizado?
 6. O "Obrigatório (até 19h)" do slide 44 vale para hoje?
+
+## Cobertura de CNPJs fora da amostra (combinado em 14/11/2026, um item de cada vez, com verificação)
+Motivo: três CNPJs reais testados pelo WhatsApp (Ferreira Costa e dois outros) não foram achados. A base é uma amostra de 100 contratos e o Neo4j do notebook tem hoje a base de exemplo (fictícia).
+1. [ ] **CEIS e CNEP** (sanções federais): feito e verificado com dado real, **no disco, sem commit** (ver `docs/testes-seguranca.md` §2.7). Falta: decidir se o plano "Único" do site passa a incluir a União (1 linha em `site/setup.php` e os asserts de `site/dev/test_api.py`), reiniciar o worker, subir o worker novo antes de rodar `php site/setup.php` na Hostinger, e rodar ataques e subconjunto do benchmark com a regra 8 nova.
+2. [ ] **Cadastro da Receita sob demanda** (razão social, situação, CNAE) para um CNPJ que não está na base.
+3. [ ] **PNCP** (contratos de todos os entes; capturar e filtrar por conta própria, porque a API ignorou o filtro de município em 12/11).
+4. [ ] **API da Receita Federal** (pedido do Rodrigo, para análise depois): consulta por CNPJ (por exemplo BrasilAPI) ou os arquivos abertos mensais (`dadosabertos.rfb.gov.br`). Só dá identidade da empresa; não traz contrato nem sanção.
+5. [ ] **Contratos federais por CNPJ** (`/api-de-dados/contratos/cpf-cnpj` do Portal da Transparência): precisa da chave da API (cadastro por e-mail), que ainda não está no `.env`.

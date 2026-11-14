@@ -345,6 +345,49 @@ Se esse bloco fosse lido em vez de escrito, a economia seria de até **US$ 0,003
 
 **Limites:** 33 perguntas reais; as taxas por intervalo vêm de poucas amostras (n=6 e n=3 acima de 5 minutos); os preços do Claude foram derivados do custo informado, não de uma tabela de preços; o experimento repetiu uma pergunta curta, fora do escopo, e não mede o efeito nas perguntas com várias rodadas.
 
+### 2.7 Sanções federais, CEIS e CNEP (14/11/2026)
+
+**Por quê.** Três CNPJs reais testados pelo WhatsApp (Ferreira Costa e dois outros) voltaram "não encontrei". Causa: a base é uma **amostra de 100 contratos** (README) e o Neo4j do notebook tem hoje a base de exemplo (fictícia); o log não registra qual base estava carregada na hora dos testes. O CEIS e o CNEP não dependem de contrato:
+respondem "esta empresa está sancionada pela União?" para **qualquer** CNPJ, e hoje uma empresa punida pela União saía como "não localizei".
+
+**Fonte (conferida no Swagger oficial e nos arquivos).** O portal publica os dois cadastros em arquivo, **sem chave**: `https://portaldatransparencia.gov.br/download-de-dados/{ceis|cnep}/AAAAMMDD` (zip com um CSV em cp1252, separado por `;`; a data mais recente vem listada na página). Em 13/11/2026: **CEIS 23.667 linhas, CNEP 1.845**.
+A API (`api.portaldatransparencia.gov.br`, cabeçalho `chave-api-dados`) **não foi usada**: não há chave no `.env`. O site `portaldatransparencia.gov.br` responde ao `curl` com um desafio anti-robô (AWS WAF), inclusive o `robots.txt`, então **não consegui ler o `robots.txt`**; a página de download e os arquivos responderam normalmente.
+
+**O que foi feito (tudo no disco, sem commit):**
+- `coleta/federal.py` (novo): um pedido à página e um ao arquivo de cada cadastro, identificação `hackathon-garanhuns-tech/0.1`, 5 s entre pedidos; **para** se vier outra coisa que um zip (não contorna o desafio). Grava `federal-ceis.csv` e `federal-cnep.csv` em `BRUTO` (sem alterar) e um `.meta.json` com data do arquivo, quando foi baixado, endereço e hash.
+- `coleta/extrair.py`: `extrair_sancoes_federais`. Ente novo **`br-uniao`** ("União (governo federal)"). Pessoa jurídica: fornecedor `cnpj:...` com a razão social da Receita que o próprio arquivo traz, ocorrência com `cadastro`, categoria, datas de início, fim e publicação, órgão, **`abrangencia`** (onde a sanção vale; "Sem Informação" não é "vale em todo lugar"), `valor_multa` (CNEP) e fundamentação; o trecho da prova traz o CNPJ.
+  **Pessoa física: só o hash do CPF** (o arquivo traz o CPF inteiro), sem nome e sem documento no trecho, sensibilidade `pessoal`; o hash é o mesmo do painel do Estado (zero à esquerda não conta). A coluna de observações **não entra**. A situação (vigente ou encerrada) **não é calculada**: vão as datas e a resposta compara com hoje.
+  Se o layout mudar (coluna faltando), para em vez de adivinhar. Os CPFs entram na trava de vazamento do `main`.
+- `consulta/mcp_transparencia.py`: `sancoes_do_fornecedor` devolve também `cadastro`, `inicio_suspensao`, `abrangencia` e `valor_multa` (campos novos; os antigos não mudaram). `consulta/prova.py`: `valor_multa` liga a resposta à evidência.
+- `consulta/perfis.json`: perfil **novo `estado-uniao`** (Estado, Garanhuns e União). **Os perfis antigos não enxergam a União** (testado). `chat/worker.py`: `PERFIL_MANUAL` (números liberados pelo dono no terminal) inclui `br-uniao`. `chat/agente.py`: a regra 8 passa a dizer "União" (e proíbe escrever `br-uniao`).
+- `coleta/carregar_neo4j.py`: o ente entra sempre; **o nome já gravado do fornecedor fica** (antes o último nome ganhava; agora a razão social do CEIS não troca o nome que o fornecedor tem nos contratos). `coleta/amostra.py`: as sanções federais de pessoa jurídica entram **todas** na amostra e **não mudam a escolha dos 100 contratos** (testado com dados sintéticos; a captura real do Estado não está nesta máquina).
+- **Defeito antigo corrigido de passagem:** `amostra.py` e `extrair.py` gravavam os `.jsonl` sem dizer a codificação (no Windows, cp1252), e o `carregar_neo4j.py` lê como UTF-8: qualquer acento quebraria. Agora `encoding="utf-8"`.
+- `fixtures/exemplo` ganhou duas ocorrências federais fictícias (uma sobre fornecedor que já existe e uma empresa que **só** tem sanção federal), então a base de exemplo passa a imprimir `evidencias: 12`, `fornecedores: 8`, `sancoes: 4`.
+
+**Verificação com dado real (Neo4j descartável na porta 7699, para não tocar o do bot).** Os arquivos de 13/11 foram extraídos e carregados em 10 s:
+
+| O que | Resultado |
+|---|---|
+| Linhas dos arquivos | CEIS 23.667 + CNEP 1.845 = **25.512** |
+| No grafo | **25.491** sanções (**16.374 de pessoa jurídica**, 14.569 CEIS e 1.805 CNEP, e 9.117 de pessoa física) + **21 descartadas por documento inválido** (não investiguei quais são) |
+| Conferência independente | **300 sanções de PJ sorteadas** comparadas campo a campo com o CSV lido sem o extrator: **0 divergências** |
+| CPF no resultado | **0** (os 5 nomes de MEI com CPF colado são mascarados pela passada final do `main`; o teste com os 7.254 CPFs do arquivo achou 5 antes dela e 0 depois) |
+| Prova | `hash_confere` **verdadeiro** com o arquivo baixado; **falso** com 1 letra alterada |
+| Perfil sem a União (`estado`) | **0** sanções federais, **0** na busca |
+| Perfil com a União | cobertura **16.374** sanções (só as de PJ); **0** de PF visíveis |
+| `federal.py` pela rede | rodou de verdade (16 s); arquivos **idênticos byte a byte** aos baixados à mão |
+
+**Os três CNPJs testados: nenhum consta no CEIS nem no CNEP de 13/11.** Para "Ferreira Costa" por nome a busca acha **3 empresas homônimas** (outras empresas, com CNPJ diferente), o que confirma que nome não é identidade. Também não há "Bernhoeft" nem variações nos dois arquivos (busca por nome; o CNPJ da empresa não foi conferido).
+
+**Testes (14/11, notebook Windows, banco descartável):** `consulta` **254 OK**, `chat` **239 OK** (12 pulados no Windows). Novos: `test_federal.py` (**23**: coleta, extração, amostra, perfil), **7** no Neo4j em `test_acesso_neo4j.py` (isolamento da União, empresa só com sanção federal, prova com hash, nome não trocado) e 1 em `test_prova.py` (multa). **Mutações:** 9 de 10 pegas (a décima é equivalente: o código já protege o trecho da PF por outro caminho) e 2 no banco (o perfil `estado` enxergando a União; o nome federal sobrescrevendo o dos contratos). **Uma mutação escapou na primeira rodada**: meu teste da amostra era vazio (a sanção federal caía num fornecedor que já era escolhido); reescrevi o cenário e passou a pegar.
+
+**Limites:**
+- **Não rodei ataques nem benchmark** com a regra 8 nova e com as respostas federais (sem gastar crédito). Mudei uma linha do prompt de produção sem medir com os modelos.
+- **O bot atual (gateway e dois workers em execução) ainda roda o código antigo**: precisa reiniciar o worker. O Neo4j do bot continua com a base de exemplo antiga (10 evidências); recarregar com `--zerar --exemplo` para ver as duas ocorrências federais.
+- **O plano do site não mudou**: `site/setup.php` e os testes de `site/dev/test_api.py` afirmam que o plano "Único" tem só Estado e Garanhuns. Para a União valer para as contas do site é preciso trocar essa linha e os asserts dos testes, e rodar `php site/setup.php` na Hostinger **depois** de subir o worker novo (o contrário faria o site mandar uma lista de entes que o worker antigo não reconhece). Hoje só os números liberados no terminal (`PERFIL_MANUAL`) usam a União.
+- A **API** do Portal e as rotas de contratos federais **não foram testadas** (sem chave). Só PJ entra na amostra, então um CPF não é consultável. O peso jurídico de "consta no CEIS" não foi verificado; o texto das respostas deve continuar a dizer que sanção em aberto não prova irregularidade e que o cadastro é de 13/11.
+- Os arquivos baixados à mão para testar usaram o `curl` (identificação padrão do `curl`); o `federal.py` usa a identificação honesta do projeto.
+
 ## 3. O que esta verificação não cobre
 
 - **Ataques que o corretor não enxerga.** O corretor é por padrões: marcadores de dado proibido (literais e parafraseados), formato de CPF, valor de segredo, trecho do prompt, frases do caso e uma heurística de tom. Um vazamento
